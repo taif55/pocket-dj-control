@@ -8,14 +8,12 @@
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
         .card { background: #1e1e1e; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 600px; margin: auto; border: 1px solid #333; }
         
-        /* สถานะและการเชื่อมต่อ */
         .status { margin: 15px; font-size: 14px; color: #ff5252; font-weight: bold; }
         button { border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; }
         .btn-connect { background: #00e676; color: black; width: 100%; margin-bottom: 20px; }
         .btn-disconnect { background: #ff5252; color: white; display: none; width: 100%; margin-bottom: 20px; }
         
-        /* ช่องกรอกคำสั่งหลัก */
-        .editor-label { text-align: left; font-size: 12px; color: #00e676; margin-bottom: 5px; font-weight: bold; }
+        .editor-label { text-align: left; font-size: 12px; color: #00e676; margin-bottom: 5px; font-weight: bold; display: flex; justify-content: space-between; }
         textarea { 
             width: 100%; height: 100px; background: #000; color: #00e676; border: 2px solid #333; 
             border-radius: 12px; padding: 15px; font-family: 'Courier New', monospace; 
@@ -23,7 +21,15 @@
         }
         textarea:focus { border-color: #00e676; }
 
-        /* ส่วนของปุ่ม Preset */
+        /* --- สไลด์ปรับความเร็ว --- */
+        .slider-container { margin: 25px 0; background: #252525; padding: 15px; border-radius: 15px; border: 1px solid #444; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; color: #bbb; }
+        input[type=range] { 
+            width: 100%; cursor: pointer; accent-color: #00e676; 
+            height: 8px; border-radius: 5px; background: #444; outline: none;
+        }
+        /* ----------------------- */
+
         .preset-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
         .btn-preset { background: #333; color: white; border: 1px solid #444; }
         .btn-preset:hover { background: #444; border-color: #00e676; }
@@ -42,15 +48,26 @@
         <button id="connectBtn" class="btn-connect">CONNECT POCKET DJ</button>
         <button id="disconnectBtn" class="btn-disconnect">DISCONNECT</button>
 
-        <div class="editor-label">LIVE COMMAND EDITOR (แก้ไขแล้วไฟเปลี่ยนทันที)</div>
+        <div class="editor-label">
+            <span>LIVE COMMAND EDITOR</span>
+            <span id="speedVal" style="color:#fff;">Master Speed: 5</span>
+        </div>
         <textarea id="liveInput" placeholder="เลือกปุ่มด้านล่างหรือพิมพ์คำสั่งเองที่นี่..."></textarea>
 
+        <div class="slider-container">
+            <div class="slider-label">
+                <span>Slow (1)</span>
+                <span>Fast (9)</span>
+            </div>
+            <input type="range" id="speedSlider" min="1" max="9" value="5">
+        </div>
+
         <div class="preset-container">
-            <button class="btn-preset" onclick="loadPreset('(0099,ab,re,o10,0)')">Red Static (All AB)</button>
-            <button class="btn-preset" onclick="loadPreset('(0099,cd,bl,h20,0)')">Blue Breath (All CD)</button>
-            <button class="btn-preset" onclick="loadPreset('(0010,l,wh,s05,0)')">White Strobe (L)</button>
-            <button class="btn-preset" onclick="loadPreset('[(0010,<29>,go,r10,0)][(0010,<30>,am,r10,0)]')">Sparkle Gold (29-30)</button>
-            <button class="btn-preset" onclick="loadPreset('(0099,ef,li,p15,0)')">Heartbeat Lime (EF)</button>
+            <button class="btn-preset" onclick="loadPreset('5 m (0099,ab,re,o10,0)')">Red Static (All AB)</button>
+            <button class="btn-preset" onclick="loadPreset('5 m (0099,cd,bl,h20,0)')">Blue Breath (All CD)</button>
+            <button class="btn-preset" onclick="loadPreset('5 m (0010,l,wh,s05,0)')">White Strobe (L)</button>
+            <button class="btn-preset" onclick="loadPreset('5 [ (0010,<29>,go,r10,0) ] [ (0010,<30>,am,r10,0) ]')">Sparkle Gold (29-30)</button>
+            <button class="btn-preset" onclick="loadPreset('5 m (0099,ef,li,p15,0)')">Heartbeat Lime (EF)</button>
             <button class="btn-preset" onclick="loadPreset('off')">TURN OFF ALL</button>
         </div>
 
@@ -70,6 +87,36 @@
         const disconnectBtn = document.getElementById('disconnectBtn');
         const statusDiv = document.getElementById('status');
         const liveInput = document.getElementById('liveInput');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValDisplay = document.getElementById('speedVal');
+
+        // ฟังก์ชันแก้ไขความเร็วในสตริงคำสั่ง
+        function applySpeedToCode(code, speed) {
+            if (!code || code === "off") return code;
+            // ถ้าคำสั่งขึ้นต้นด้วยตัวเลข (ความเร็วเดิม) ให้แทนที่ตัวแรก
+            if (!isNaN(code.charAt(0))) {
+                return speed + code.substring(1);
+            }
+            // ถ้าคำสั่งไม่มีตัวเลขความเร็ว (เช่นเริ่มด้วยวงเล็บเลย) ให้เติมตัวเลขเข้าไปข้างหน้า
+            return speed + " m " + code;
+        }
+
+        // เมื่อเลื่อนสไลด์
+        speedSlider.oninput = function() {
+            let speed = this.value;
+            speedValDisplay.innerText = "Master Speed: " + speed;
+            
+            // แก้ไขโค้ดในช่อง Input ตามสไลด์
+            let currentCode = liveInput.value;
+            let updatedCode = applySpeedToCode(currentCode, speed);
+            liveInput.value = updatedCode;
+
+            // ส่งข้อมูลหา Bluetooth ทันที (หน่วงเวลาเล็กน้อยกันค้าง)
+            clearTimeout(sendTimeout);
+            sendTimeout = setTimeout(() => {
+                sendBluetooth(updatedCode);
+            }, 100);
+        };
 
         // ฟังก์ชันเชื่อมต่อ
         connectBtn.onclick = async () => {
@@ -104,22 +151,20 @@
 
         disconnectBtn.onclick = () => { device.gatt.disconnect(); };
 
-        // ฟังก์ชันโหลด Preset ลงในช่องพิมพ์
         function loadPreset(cmd) {
-            liveInput.value = cmd;
-            sendBluetooth(cmd); // ส่งทันทีที่กดปุ่ม
+            // เมื่อกด Preset ให้เอาค่าจากสไลด์ปัจจุบันไปใส่ด้วย
+            let finalCmd = applySpeedToCode(cmd, speedSlider.value);
+            liveInput.value = finalCmd;
+            sendBluetooth(finalCmd);
         }
 
-        // ฟังเหตุการณ์การพิมพ์ในช่อง Input (Real-time)
         liveInput.addEventListener('input', () => {
             clearTimeout(sendTimeout);
-            // หน่วงเวลา 300ms หลังจากหยุดพิมพ์ค่อยส่งข้อมูล (ป้องกันบอร์ดค้าง)
             sendTimeout = setTimeout(() => {
                 sendBluetooth(liveInput.value);
             }, 300);
         });
 
-        // ฟังก์ชันส่งข้อมูลเข้า Bluetooth
         async function sendBluetooth(val) {
             if (!characteristic) return;
             val = val.trim();
