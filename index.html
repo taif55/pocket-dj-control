@@ -3,126 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pocket DJ Pro - Drag & Drop</title>
+    <title>Pocket DJ - Persistent Storage</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #121212; color: white; padding: 10px; }
         .card { background: #1e1e1e; padding: 20px; border-radius: 20px; max-width: 800px; margin: auto; border: 1px solid #333; }
-        
-        /* สไตล์ปุ่มตอนกำลังถูกลาก */
-        .sortable-ghost { opacity: 0.3; background: #00e676 !important; }
-        .sortable-chosen { cursor: grabbing; transform: scale(1.1); box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10; }
-
-        .preset-grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 8px; 
-            margin-top: 20px; 
-        }
-        .btn-fx { 
-            background: #2a2a2a; color: #bbb; border: 1px solid #444; 
-            height: 60px; display: flex; align-items: center; justify-content: center;
-            font-size: 11px; border-radius: 8px; cursor: grab; user-select: none;
-            touch-action: manipulation; /* ช่วยให้การทัชบนมือถือลื่นขึ้น */
-        }
-        .btn-fx:active { cursor: grabbing; }
-        .btn-fx.active { background: #00e676; color: black; border-color: #fff; }
-
-        /* ส่วนอื่นๆ เหมือนเดิม */
         .status { margin: 10px; font-size: 14px; font-weight: bold; }
-        .btn-connect { background: #00e676; color: black; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; }
-        textarea { width: 100%; height: 60px; background: #000; color: #00e676; border: 1px solid #333; border-radius: 10px; padding: 10px; font-size: 14px; margin-bottom: 10px; }
-        .slider-container { margin: 15px 0; background: #252525; padding: 12px; border-radius: 15px; }
+        .btn-connect { background: #00e676; color: black; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 10px; }
+        textarea { width: 100%; height: 80px; background: #000; color: #00e676; border: 1px solid #333; border-radius: 10px; padding: 10px; font-size: 14px; margin-bottom: 10px; font-family: monospace; }
+        
+        /* ปุ่มบันทึกลงบอร์ด */
+        .btn-save-board { background: #ff9800; color: black; width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; margin-bottom: 20px; }
+        
+        .preset-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
+        .btn-fx { 
+            background: #2a2a2a; color: #bbb; border: 1px solid #444; height: 60px; 
+            display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 8px; 
+        }
+        .btn-fx.active { background: #00e676; color: black; border-color: #fff; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h3>🎛️ Pocket DJ Master (Drag to Swap)</h3>
+        <h3>🎛️ Pocket DJ Sync System</h3>
         <div id="status" class="status" style="color:#ff5252;">● Disconnected</div>
-        <button id="connectBtn" class="btn-connect">CONNECT</button>
-        <textarea id="liveInput" placeholder="Command..."></textarea>
+        <button id="connectBtn" class="btn-connect">CONNECT & SYNC</button>
 
-        <div class="slider-container">
-            <div style="display:flex; justify-content: space-between; font-size:12px;">
-                <span>Speed Master</span>
-                <span id="speedVal">5</span>
-            </div>
-            <input type="range" id="speedSlider" min="1" max="9" value="5">
-        </div>
-
-        <div style="text-align: left; font-size: 12px; color: #00e676;">HOLD & DRAG TO REORDER</div>
+        <div style="text-align: left; font-size: 12px; color: #00e676;">LIVE EDITOR</div>
+        <textarea id="liveInput" placeholder="แก้ไขลายไฟที่นี่..."></textarea>
         
+        <button id="saveToBoardBtn" class="btn-save-board">💾 SAVE CURRENT TO ESP32</button>
+
+        <div style="text-align: left; font-size: 12px; color: #bbb;">FX LIBRARY (SYNCED FROM BOARD)</div>
         <div id="presetGrid" class="preset-grid"></div>
     </div>
 
     <script>
-        // 1. ข้อมูลปุ่ม 50 ปุ่ม
-        let patternList = [];
-        const initialPatterns = [
-            { name: "RED", code: "m (0099,ab,re,o10,0)" },
-            { name: "BLUE", code: "m (0099,cd,bl,h20,0)" },
-            { name: "STRB", code: "m (0010,l,wh,s05,0)" },
-            { name: "GOLD", code: "[(0010,<29>,go,r10,0)][(0010,<30>,am,r10,0)]" },
-            { name: "BEAT", code: "m (0099,ef,li,p15,0)" }
-        ];
+        let device, characteristic;
+        let selectedIndex = -1;
+        let patterns = Array(50).fill("off"); // เตรียมที่ว่าง 50 ช่อง
 
-        // เติมให้ครบ 50
-        patternList = [...initialPatterns];
-        for(let i = patternList.length + 1; i <= 50; i++) {
-            patternList.push({ name: "FX-" + i, code: "m (0099,ab,wh,u10,0)" });
-        }
-
-        const presetGrid = document.getElementById('presetGrid');
         const liveInput = document.getElementById('liveInput');
+        const presetGrid = document.getElementById('presetGrid');
 
-        // 2. ฟังก์ชันวาดปุ่มใหม่ทั้งหมด
+        // 1. วาดปุ่มจากข้อมูลที่มี
         function renderButtons() {
-            presetGrid.innerHTML = ''; // ล้างค่าเก่า
-            patternList.forEach((item, index) => {
+            presetGrid.innerHTML = '';
+            patterns.forEach((code, index) => {
                 const btn = document.createElement('div');
-                btn.className = 'btn-fx';
-                btn.innerText = item.name;
-                btn.setAttribute('data-code', item.code); // เก็บโค้ดไว้ใน attribute
-                
+                btn.className = 'btn-fx' + (selectedIndex === index ? ' active' : '');
+                btn.innerText = "FX " + (index + 1);
                 btn.onclick = () => {
-                    document.querySelectorAll('.btn-fx').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    loadPreset(item.code);
+                    selectedIndex = index;
+                    liveInput.value = patterns[index];
+                    renderButtons();
+                    sendBluetooth(patterns[index]); // เล่นทันที
                 };
                 presetGrid.appendChild(btn);
             });
         }
 
-        // 3. เริ่มระบบลากวาง (Sortable)
-        const sortable = new Sortable(presetGrid, {
-            animation: 150, // ความเร็วตอนสลับที่ (ms)
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            delay: 200, // ต้องกดค้างไว้ 200ms ถึงจะเริ่มลาก (กันพลาดตอนจะแค่คลิกเปลี่ยนลาย)
-            delayOnTouchOnly: true, // ใช้เฉพาะบนมือถือ
-            onEnd: function (evt) {
-                // เมื่อลากวางเสร็จ ให้สลับลำดับใน Array patternList ตามจริง
-                const itemEl = patternList.splice(evt.oldIndex, 1)[0];
-                patternList.splice(evt.newIndex, 0, itemEl);
-                
-                console.log("New Order Saved!");
-                // คุณสามารถเพิ่มโค้ดบันทึกลำดับใหม่ลงใน LocalStorage ตรงนี้ได้
-            }
-        });
+        // 2. เมื่อกด Save: ส่งคำสั่งพิเศษไปให้ ESP32 บันทึก
+        document.getElementById('saveToBoardBtn').onclick = () => {
+            if (selectedIndex === -1) return alert("โปรดเลือกปุ่มก่อนบันทึก");
+            const newCode = liveInput.value;
+            patterns[selectedIndex] = newCode;
+            // ส่งคำสั่งรูปแบบ "S[index]:[code]" เช่น "S5:(0010,re...)"
+            sendBluetooth("S" + selectedIndex + ":" + newCode);
+            alert("บันทึกลง ESP32 สำเร็จ!");
+        };
 
-        function loadPreset(cmd) {
-            let s = document.getElementById('speedSlider').value;
-            let finalCmd = (cmd === "off") ? "off" : s + " " + cmd;
-            liveInput.value = finalCmd;
-            sendBluetooth(finalCmd);
+        // 3. ระบบเชื่อมต่อและ Sync ข้อมูลกลับ
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'PocketDJ-' }],
+                    optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
+                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+
+                // เริ่มการฟังข้อมูลที่ส่งกลับมาจากบอร์ด
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+
+                document.getElementById('status').innerText = "● Connected Syncing...";
+                // ส่งคำสั่งขอข้อมูลทั้งหมดจากบอร์ด
+                sendBluetooth("GET_ALL"); 
+
+            } catch (e) { console.log(e); }
+        };
+
+        function handleNotifications(event) {
+            let value = new TextDecoder().decode(event.target.value);
+            // รับข้อมูลรูปแบบ "D[index]:[code]"
+            if (value.startsWith("D")) {
+                let parts = value.substring(1).split(":");
+                let idx = parseInt(parts[0]);
+                let code = parts[1];
+                patterns[idx] = code;
+                renderButtons();
+                document.getElementById('status').innerText = "● Ready (Synced " + (idx+1) + "/50)";
+            }
         }
 
-        renderButtons();
-
-        // --- ระบบ Bluetooth (ตัดมาเฉพาะส่วนส่ง) ---
-        let characteristic;
         async function sendBluetooth(val) {
             if (!characteristic) return;
             try {
@@ -131,30 +117,7 @@
             } catch (e) { console.log(e); }
         }
 
-        // สไลด์ความเร็ว
-        document.getElementById('speedSlider').oninput = function() {
-            document.getElementById('speedVal').innerText = this.value;
-            if(liveInput.value && liveInput.value !== "off") {
-                let updated = this.value + liveInput.value.substring(1);
-                liveInput.value = updated;
-                sendBluetooth(updated);
-            }
-        };
-
-        // ปุ่มเชื่อมต่อ (ย่อ)
-        document.getElementById('connectBtn').onclick = async () => {
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: 'PocketDJ-' }],
-                    optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
-                });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
-                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                document.getElementById('status').innerText = "● Connected: " + device.name;
-                document.getElementById('status').style.color = "#00e676";
-            } catch (e) { alert("Bluetooth Error"); }
-        };
+        renderButtons();
     </script>
 </body>
 </html>
