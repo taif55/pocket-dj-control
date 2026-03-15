@@ -17,7 +17,7 @@
             border-radius: 12px; padding: 12px; font-size: 15px; margin-bottom: 5px; font-family: 'Courier New', monospace;
             resize: none; outline: none; box-sizing: border-box;
         }
-        #saveIndicator { font-size: 11px; height: 15px; margin-bottom: 10px; color: #666; }
+        #saveIndicator { font-size: 11px; height: 15px; margin-bottom: 10px; color: #666; font-weight: bold; }
 
         .slider-box { background: #252525; padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #333; }
         .slider-header { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 8px; }
@@ -60,8 +60,9 @@
     <script>
         let device, characteristic;
         let selectedIndex = -1;
-        let patterns = Array(50).fill(""); 
-        let buttonOrder = Array.from({length: 50}, (_, i) => i); // [0, 1, 2...49]
+        // ปรับ patterns ให้เก็บเป็น Object เพื่อรองรับทั้ง code และ speed
+        let patterns = Array.from({length: 50}, () => ({ code: "", speed: 5 }));
+        let buttonOrder = Array.from({length: 50}, (_, i) => i); 
         let autoSaveTimeout = null;
 
         const liveInput = document.getElementById('liveInput');
@@ -77,33 +78,36 @@
                 const btn = document.createElement('div');
                 btn.className = 'btn-fx' + (selectedIndex === originalIdx ? ' active' : '');
                 btn.innerText = "FX " + (originalIdx + 1);
-                btn.setAttribute('data-id', originalIdx); // จำ Index เดิมไว้
+                btn.setAttribute('data-id', originalIdx); 
                 
                 btn.onclick = () => {
                     selectedIndex = originalIdx;
-                    liveInput.value = patterns[originalIdx];
+                    const data = patterns[originalIdx];
+                    
+                    // ดึงค่ามาแสดงผล
+                    liveInput.value = data.code;
+                    speedSlider.value = data.speed;
+                    speedDisplay.innerText = "Speed: " + data.speed;
+                    
                     renderButtons();
-                    sendBluetooth(patterns[originalIdx]);
+                    sendBluetooth(data.code); // เล่นลายไฟทันที
                 };
                 presetGrid.appendChild(btn);
             });
         }
 
-        // ระบบลากวางพร้อมบันทึกลำดับไปที่ ESP32
+        // ระบบลากวางพร้อมบันทึกลำดับ
         new Sortable(presetGrid, {
             animation: 150,
             ghostClass: 'sortable-ghost',
             delay: 200, 
             delayOnTouchOnly: true,
             onEnd: function () {
-                // อ่านลำดับใหม่จากหน้าจอ
                 const newOrder = Array.from(presetGrid.children).map(el => parseInt(el.getAttribute('data-id')));
                 buttonOrder = newOrder;
-                
-                // ส่งลำดับไปเซฟที่ ESP32: "ORDER:0,2,1..."
                 saveIndicator.innerText = "Saving Order...";
                 sendBluetooth("ORDER:" + buttonOrder.join(','));
-                setTimeout(() => { saveIndicator.innerText = "Order Saved"; }, 1000);
+                setTimeout(() => { saveIndicator.innerText = ""; }, 1000);
             }
         });
 
@@ -111,12 +115,17 @@
         function handleUpdate() {
             if (selectedIndex === -1) return;
             let code = liveInput.value;
-            patterns[selectedIndex] = code;
+            let speed = speedSlider.value;
+            
+            patterns[selectedIndex].code = code;
+            patterns[selectedIndex].speed = speed;
+            
             sendBluetooth(code);
 
             saveIndicator.innerText = "Writing to ESP32...";
             clearTimeout(autoSaveTimeout);
             autoSaveTimeout = setTimeout(() => {
+                // ส่งคำสั่งเซฟ S[index]:[code] บอร์ดจะบันทึกความเร็วจากตัวเลขหน้าสุดให้อัตโนมัติ
                 sendBluetooth("S" + selectedIndex + ":" + code); 
                 saveIndicator.innerText = "✅ Saved to Board";
                 setTimeout(() => { saveIndicator.innerText = ""; }, 1500);
@@ -139,7 +148,7 @@
             }
         };
 
-        // 3. Bluetooth & Sync (ORD: ลำดับ, D: ข้อมูล)
+        // 3. Bluetooth & Sync (ORD: ลำดับ, D:speed:code)
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({
@@ -154,7 +163,6 @@
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     
-                    // รับลำดับปุ่ม
                     if (val.startsWith("ORD:")) {
                         let ordStr = val.substring(4);
                         if (ordStr) {
@@ -163,11 +171,15 @@
                         }
                     }
                     
-                    // รับข้อมูลลายไฟ
+                    // รับข้อมูลลายไฟ D[idx]:[speed]:[code]
                     if (val.startsWith("D")) {
                         let parts = val.substring(1).split(":");
                         let idx = parseInt(parts[0]);
-                        patterns[idx] = parts[1];
+                        let speed = parts[1];
+                        let code = parts[2] || "";
+                        
+                        patterns[idx] = { code: code, speed: speed };
+                        
                         renderButtons();
                         document.getElementById('status').innerText = "● Syncing (" + (idx+1) + "/50)";
                         if(idx === 49) {
