@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ - Loop Marker Pro</title>
+    <title>Pocket DJ - Loop Studio Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow: hidden; }
-        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
         .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 15px #00e676; }
         .pad-btn.has-code { border-color: #00e676; }
 
-        /* Timeline Workspace */
+        /* Timeline Area */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
-        #timelineContent { position: relative; height: 100%; width: 1200px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
-        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
+        #timelineContent { position: relative; height: 100%; width: 1500px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         
-        /* ใหม่! เส้นสีเขียวบอกจุดจบ Loop */
+        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
         
         .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
@@ -25,14 +24,14 @@
         .slider-box { background: #121212; padding: 10px; border-radius: 15px; border: 1px solid #252525; }
         .led-dot { font-size: 8px; height: 28px; background: #111; border: 1px solid #222; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
         .led-dot.active { background: #00e676; color: black; font-weight: bold; }
-        .color-dot { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; transition: 0.1s; cursor: pointer; }
+        .color-dot { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
         .color-dot.active { border-color: white; transform: scale(1.1); box-shadow: 0 0 10px currentColor; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="consoleView" class="max-w-xl mx-auto">
-        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800">
+        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
             <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
             <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
         </div>
@@ -41,29 +40,29 @@
 
     <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
         <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
-            <button onclick="closePopup()" class="text-gray-500 font-bold text-xs uppercase">Back</button>
+            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
             <div class="flex space-x-2">
                 <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg">PLAY</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black italic uppercase">Del</button>
+                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Del</button>
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase">Save</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase font-black">Save</button>
         </div>
 
         <div id="timelineViewport" onclick="handleTimelineClick(event)">
             <div id="timelineContent">
                 <div id="playhead"></div>
-                <div id="loopLine"></div> <div id="trackArea" class="relative h-full py-6"></div>
+                <div id="loopLine"></div>
+                <div id="trackArea" class="relative h-full py-6"></div>
             </div>
         </div>
         <div id="timeText" class="bg-black text-[10px] text-center p-1 text-gray-500 font-mono">PLAYHEAD: 0.0s</div>
 
-        <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-3 opacity-30 pointer-events-none pb-24">
-            
+        <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-3 opacity-30 pointer-events-none pb-12">
             <div class="slider-box">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Color Selection</span>
-                    <input type="text" id="customColor" placeholder="Mix: bl2re" class="bg-black border border-gray-800 px-2 py-1 rounded text-[10px] text-green-500 outline-none w-24 text-center font-mono" oninput="updateSelectedClip FromInput()">
+                    <span class="text-[10px] font-black text-gray-400 uppercase">Color selection</span>
+                    <input type="text" id="customColor" placeholder="bl2re" class="bg-black border border-gray-800 px-2 py-1 rounded text-[10px] text-green-500 outline-none w-20 text-center" oninput="updateSelectedClip()">
                 </div>
                 <div id="colorPalette" class="flex flex-wrap gap-2 justify-center"></div>
             </div>
@@ -73,7 +72,7 @@
                     <div class="text-[9px] text-gray-500 mb-1 font-bold uppercase">Brightness</div>
                     <div class="flex items-center justify-center space-x-3">
                         <button onclick="adjBright(-5)" class="bg-gray-800 w-8 h-8 rounded-lg">-</button>
-                        <input type="number" id="cBright" value="10" class="bg-transparent text-center font-black text-xl w-12 outline-none" oninput="updateSelectedClip()">
+                        <input type="number" id="cBright" value="10" class="bg-transparent text-center font-black text-xl w-12 outline-none">
                         <button onclick="adjBright(5)" class="bg-gray-800 w-8 h-8 rounded-lg">+</button>
                     </div>
                 </div>
@@ -85,7 +84,7 @@
                 </div>
             </div>
 
-            <div class="slider-box pb-6">
+            <div class="slider-box pb-4">
                 <div class="flex justify-between text-[9px] mb-1 font-black text-gray-500"><span>LEDs (1-300)</span><button onclick="clearLEDs()" class="text-red-500 uppercase">Clear</button></div>
                 <div id="ledGrid" class="grid grid-cols-10 gap-1 h-32 overflow-y-auto bg-black p-2 rounded-lg"></div>
             </div>
@@ -93,10 +92,10 @@
             <div class="grid grid-cols-2 gap-2">
                 <div class="slider-box flex items-center justify-center space-x-2" onclick="document.getElementById('cMirror').click()">
                     <input type="checkbox" id="cMirror" class="accent-green-500" onchange="updateSelectedClip()">
-                    <span class="text-[10px] font-bold uppercase tracking-tighter">Mirror Mode</span>
+                    <span class="text-[10px] font-bold uppercase">Mirror</span>
                 </div>
                 <div class="slider-box text-center">
-                    <div class="text-[9px] text-gray-500 mb-1 font-bold uppercase">Loop</div>
+                    <div class="text-[9px] text-gray-500 mb-1 font-bold">LOOP</div>
                     <input type="number" id="cLoop" value="1" class="bg-transparent w-full text-center font-black text-xl" oninput="updateSelectedClip()">
                 </div>
             </div>
@@ -109,20 +108,25 @@
         let clips = []; 
         let selectedClipId = null;
         let playheadTime = 0;
-        const pxPerSec = 100;
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
-
-        // ใหม่! ระบบ Play/Stop และ Loop Line
         let isPlaying = false;
         let playInterval;
         let startAnimateTime;
-        let currentLoopLimit = 10.0; // ค่าเริ่มต้น
+        let currentLoopLimit = 1.0;
+        const pxPerSec = 100;
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
+
+        // --- แก้ไขจุดเสี่ยง Error ---
+        function safeSetTimeText(text) {
+            const el = document.getElementById('timeText');
+            if (el) el.innerText = text;
+        }
 
         function togglePlay() {
+            if (!characteristic) return alert("Connect First!");
             const btn = document.getElementById('playBtn');
-            if (!characteristic) return alert("Connect BT First");
             if (!isPlaying) {
-                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600');
+                isPlaying = true;
+                btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600');
                 startAnimateTime = performance.now() - (playheadTime * 1000);
                 playInterval = requestAnimationFrame(animatePlayhead);
             } else { stopPlayback(); }
@@ -131,7 +135,7 @@
         function stopPlayback() {
             isPlaying = false;
             const btn = document.getElementById('playBtn');
-            btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-blue-600');
+            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-blue-600'); }
             cancelAnimationFrame(playInterval);
         }
 
@@ -140,57 +144,49 @@
             let elapsed = (currentTime - startAnimateTime) / 1000;
             if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; }
             playheadTime = elapsed;
-            updatePlayheadUI(false); // อัปเดต UI โดยไม่ส่ง livePre ตลอด
+            updatePlayheadUI();
             playInterval = requestAnimationFrame(animatePlayhead);
         }
 
-        function updatePlayheadUI(sendBT = false) {
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
+        function updatePlayheadUI() {
+            const ph = document.getElementById('playhead');
+            if (ph) ph.style.left = (playheadTime * pxPerSec) + 'px';
+            safeSetTimeText(`PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`);
             checkActiveClips(playheadTime);
         }
 
-        function checkActiveClips(currentTime) {
+        function checkActiveClips(time) {
             clips.forEach(c => {
-                const clipEl = document.getElementById(`clip-${c.id}`);
-                if (!clipEl) return;
-                const active = currentTime >= c.start && currentTime <= (c.start + c.duration);
-                clipEl.style.boxShadow = active ? "0 0 20px #00e676" : "none";
-                clipEl.style.transform = active ? "scale(1.03)" : "scale(1)";
-                clipEl.style.opacity = active ? "1" : "0.7";
+                const el = document.getElementById(`clip-${c.id}`);
+                if (!el) return;
+                const active = time >= c.start && time <= (c.start + c.duration);
+                el.style.boxShadow = active ? "0 0 20px #00e676" : "none";
+                el.style.transform = active ? "scale(1.05)" : "scale(1)";
+                el.style.opacity = active ? "1" : "0.7";
             });
         }
 
         function updateLoopLine() {
-            let maxClipTime = 0;
-            clips.forEach(c => {
-                let endTime = c.start + c.duration;
-                if (endTime > maxClipTime) maxClipTime = endTime;
-            });
-            // อัปเดตจุดจบ Loop (ถ้าไม่มีก้อนไฟให้เริ่ม loop ใหม่ที่ 1s)
-            currentLoopLimit = maxClipTime > 0 ? maxClipTime : 1.0; 
+            let maxT = 0;
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            currentLoopLimit = maxT > 0 ? maxT : 1.0;
             const ll = document.getElementById('loopLine');
-            ll.style.left = (currentLoopLimit * pxPerSec) + 'px';
-            ll.style.display = clips.length > 0 ? 'block' : 'none';
+            if (ll) {
+                ll.style.left = (currentLoopLimit * pxPerSec) + 'px';
+                ll.style.display = clips.length > 0 ? 'block' : 'none';
+            }
         }
 
-        // --- Core Logic ---
-        function initColors() {
-            const p = document.getElementById('colorPalette'); p.innerHTML = '';
-            Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'color-dot'; d.style.backgroundColor = colorMap[k]; d.id = `palette-${k}`;
-                d.onclick = () => { const clip = clips.find(x => x.id === selectedClipId); if (clip) { clip.color = k; document.getElementById('customColor').value = k; updateSelectedClip(); } };
-                p.appendChild(d);
-            });
-        }
-
-        function adjBright(v) { const input = document.getElementById('cBright'); input.value = Math.max(0, Math.min(99, parseInt(input.value) + v)); updateSelectedClip(); }
-
+        // --- Core Studio Logic ---
         function renderClips() {
             const area = document.getElementById('trackArea'); area.innerHTML = '';
             clips.forEach(c => {
-                const div = document.createElement('div'); div.id = `clip-${c.id}`; div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
-                div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; div.style.top = (c.track * 40) + 'px';
+                const div = document.createElement('div');
+                div.id = `clip-${c.id}`;
+                div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
+                div.style.left = (c.start * pxPerSec) + 'px';
+                div.style.width = (c.duration * pxPerSec) + 'px';
+                div.style.top = (c.track * 40) + 'px';
                 div.innerText = c.color.toUpperCase();
                 
                 if(c.color.includes('2')) {
@@ -204,13 +200,18 @@
                 interact(div).draggable({ listeners: { move(e) { c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); renderClips(); livePre(); } } })
                             .resizable({ edges: { right: true }, listeners: { move(e) { c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); renderClips(); livePre(); } } });
             });
-            updateLoopLine(); // อัปเดตเส้นเขียวทุกครั้งที่วาดก้อนใหม่
+            updateLoopLine();
         }
 
         function selectClip(id) {
             selectedClipId = id; const c = clips.find(x => x.id === id);
-            const panel = document.getElementById('editorPanel'); panel.style.opacity = "1"; panel.style.pointerEvents = "auto";
-            document.getElementById('cBright').value = c.bright; document.getElementById('cFX').value = c.fx; document.getElementById('customColor').value = c.color; document.getElementById('cLoop').value = c.loop; document.getElementById('cMirror').checked = c.mirror;
+            const panel = document.getElementById('editorPanel');
+            panel.style.opacity = "1"; panel.style.pointerEvents = "auto";
+            document.getElementById('cBright').value = c.bright;
+            document.getElementById('cFX').value = c.fx;
+            document.getElementById('customColor').value = c.color;
+            document.getElementById('cLoop').value = c.loop;
+            document.getElementById('cMirror').checked = c.mirror;
             document.querySelectorAll('.color-dot').forEach(d => d.classList.toggle('active', d.id === `palette-${c.color}`));
             renderLEDGrid(); renderClips();
         }
@@ -218,8 +219,21 @@
         function updateSelectedClip() {
             if(!selectedClipId) return;
             const c = clips.find(x => x.id === selectedClipId);
-            c.bright = document.getElementById('cBright').value; c.fx = document.getElementById('cFX').value; c.color = document.getElementById('customColor').value; c.loop = document.getElementById('cLoop').value; c.mirror = document.getElementById('cMirror').checked;
+            c.bright = document.getElementById('cBright').value;
+            c.fx = document.getElementById('cFX').value;
+            c.color = document.getElementById('customColor').value;
+            c.loop = document.getElementById('cLoop').value;
+            c.mirror = document.getElementById('cMirror').checked;
             renderClips(); livePre();
+        }
+
+        function initColors() {
+            const p = document.getElementById('colorPalette'); p.innerHTML = '';
+            Object.keys(colorMap).forEach(k => {
+                const d = document.createElement('div'); d.className = 'color-dot'; d.style.backgroundColor = colorMap[k]; d.id = `palette-${k}`;
+                d.onclick = () => { const c = clips.find(x => x.id === selectedClipId); if (c) { c.color = k; document.getElementById('customColor').value = k; updateSelectedClip(); } };
+                p.appendChild(d);
+            });
         }
 
         function addClipAtPlayhead() {
@@ -245,12 +259,11 @@
         function handleTimelineClick(e) {
             const rect = document.getElementById('timelineContent').getBoundingClientRect();
             playheadTime = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
+            updatePlayheadUI();
         }
 
         async function livePre() {
-            if(!characteristic || isPlaying) return; // ไม่ส่ง livePre ซ้ำซ้อนตอนกด PLAY
+            if(!characteristic || isPlaying) return;
             let code = "5";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
@@ -273,8 +286,7 @@
         }
 
         function openPopup(idx) {
-            selectedIdx = idx;
-            clips = [];
+            selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
             let brackets = rawCode.match(/m?\(([^)]+)\)/g);
             if (brackets) {
@@ -291,14 +303,14 @@
                 });
             }
             document.getElementById('modal').classList.remove('hidden');
-            initColors();
-            renderClips();
+            initColors(); renderClips();
             if(clips.length > 0) selectClip(clips[0].id);
         }
 
         function closePopup() { stopPlayback(); document.getElementById('modal').classList.add('hidden'); }
+        function adjBright(v) { const input = document.getElementById('cBright'); input.value = Math.max(0, Math.min(99, parseInt(input.value) + v)); updateSelectedClip(); }
         function clearLEDs() { const c = clips.find(x => x.id === selectedClipId); if(c) { c.target = "a"; renderLEDGrid(); updateSelectedClip(); } }
-        
+
         function renderPads() {
             const g = document.getElementById('padGrid'); g.innerHTML = '';
             for(let i=0; i<60; i++) {
@@ -313,8 +325,16 @@
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                document.getElementById('status').innerText = "● ONLINE";
-                document.getElementById('status').className = "text-green-500 font-black uppercase";
+                document.getElementById('connectBtn').innerText = "ONLINE";
+                await characteristic.startNotifications();
+                characteristic.addEventListener('characteristicvaluechanged', (e) => {
+                    let val = new TextDecoder().decode(e.target.value);
+                    if (val.startsWith("D")) {
+                        let p = val.substring(1).split(":");
+                        patterns[parseInt(p[0])].code = p[2] || "";
+                        renderPads();
+                    }
+                });
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
             } catch (e) { alert(e.message); }
         };
