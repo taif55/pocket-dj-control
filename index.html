@@ -3,138 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pocket DJ Web Controller</title>
+    <title>Pocket DJ - Pocket UI Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .slider-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 5px; }
-        .command-card { transition: all 0.2s; border-left: 5px solid #3b82f6; }
-        .command-card:hover { transform: scale(1.02); }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; }
+        .slider-box { background: #1e1e1e; padding: 12px; border-radius: 12px; border: 1px solid #333; margin-bottom: 10px; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 4px; }
+        input[type=range] { width: 100%; accent-color: #00e676; cursor: pointer; }
+        .command-card { background: #1e1e1e; border-left: 4px solid #00e676; transition: 0.2s; }
+        .command-card:active { transform: scale(0.98); }
+        #status { font-size: 12px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-4">
+<body class="p-4">
 
     <div class="max-w-md mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-blue-400">Pocket DJ UI</h1>
-            <button id="btnConnect" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-full text-sm transition">
-                Connect BLE
-            </button>
-        </header>
+        <h3 class="text-xl font-bold text-center mb-2">🎛️ Pocket DJ Master</h3>
+        <div id="status" class="text-center text-red-500">● Disconnected</div>
+        
+        <button id="connectBtn" class="w-full bg-green-500 text-black font-bold py-3 rounded-xl mb-6 shadow-lg">
+            CONNECT & SYNC
+        </button>
 
-        <div id="commandContainer" class="space-y-3 mb-20">
-            <p class="text-gray-500 text-center py-10">ยังไม่มีคำสั่ง กดปุ่ม + เพื่อเพิ่ม</p>
+        <div id="commandContainer" class="space-y-3 mb-24">
+            <p class="text-gray-500 text-center py-10 text-sm">ยังไม่มีคำสั่ง กดปุ่ม + เพื่อเริ่มออกแบบ</p>
         </div>
 
-        <div class="fixed bottom-6 left-0 right-0 flex justify-center space-x-4 px-4">
-            <button onclick="openPopup()" class="bg-green-600 w-14 h-14 rounded-full shadow-lg text-3xl">+</button>
-            <button onclick="sendToESP()" class="bg-blue-600 flex-1 rounded-full shadow-lg font-bold uppercase tracking-widest">Send to ESP32</button>
+        <div class="fixed bottom-6 left-0 right-0 flex justify-center space-x-4 px-6">
+            <button onclick="openPopup()" class="bg-green-500 text-black w-14 h-14 rounded-full text-3xl shadow-2xl font-bold">+</button>
+            <button onclick="sendToESP()" class="bg-blue-600 flex-1 rounded-full font-bold uppercase tracking-widest shadow-xl">Send to ESP32</button>
         </div>
     </div>
 
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 w-full max-w-md rounded-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h2 id="modalTitle" class="text-xl font-bold mb-4">ออกแบบลายไฟ</h2>
+    <div id="modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-gray-800 w-full max-w-sm rounded-3xl p-6 overflow-y-auto max-h-[90vh] border border-gray-700">
+            <h2 id="modalTitle" class="text-lg font-bold mb-4 text-green-400 text-center">ออกแบบลายไฟ</h2>
             
-            <div class="space-y-4">
-                <div>
-                    <label class="slider-label"><span>เวลาเริ่ม (Start)</span><span id="v1">0</span></label>
-                    <input type="range" id="s1" min="0" max="99" value="0" class="w-full" oninput="v1.innerText=this.value">
+            <div class="space-y-1">
+                <div class="slider-box">
+                    <div class="slider-header"><span>เริ่ม (Start)</span><span id="v1" class="text-green-400">0</span></div>
+                    <input type="range" id="s1" min="0" max="99" value="0" oninput="v1.innerText=this.value">
                 </div>
-                <div>
-                    <label class="slider-label"><span>ความสว่าง (Brightness)</span><span id="v2">10</span></label>
-                    <input type="range" id="s2" min="0" max="99" value="10" class="w-full" oninput="v2.innerText=this.value">
+                <div class="slider-box">
+                    <div class="slider-header"><span>สว่าง (Bright)</span><span id="v2" class="text-green-400">10</span></div>
+                    <input type="range" id="s2" min="0" max="99" value="10" oninput="v2.innerText=this.value">
                 </div>
-                <div>
-                    <label class="slider-label"><span>ชื่อหลอด (ID)</span><span id="v3">1</span></label>
-                    <input type="range" id="s3" min="1" max="68" value="1" class="w-full" oninput="v3.innerText=this.value">
-                </div>
-                <div>
-                    <label class="text-sm">Group (เช่น a, b1, cd)</label>
-                    <input type="text" id="s4" value="a" class="w-full bg-gray-700 p-2 rounded mt-1 outline-none border border-gray-600 focus:border-blue-500 text-center">
-                </div>
-                <div>
-                    <label class="text-sm">สี (Color Code)</label>
-                    <select id="s5" class="w-full bg-gray-700 p-2 rounded mt-1">
-                        <option value="re">Red</option><option value="gr">Green</option>
-                        <option value="bl" selected>Blue</option><option value="ye">Yellow</option>
-                        <option value="wh">White</option><option value="or">Orange</option>
-                        <option value="pu">Purple</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-sm">Effect (u, f, i, s, b, r)</label>
-                    <select id="s6" class="w-full bg-gray-700 p-2 rounded mt-1">
-                        <option value="u" selected>Fade Up/Down (u)</option>
-                        <option value="f">Fade Out (f)</option>
-                        <option value="s">Strobe (s)</option>
-                        <option value="b">Blink (b)</option>
-                        <option value="o">Static (o)</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-sm">เล่น (วินาที)</label>
-                        <input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-gray-700 p-2 rounded mt-1 text-center">
-                    </div>
-                    <div>
-                        <label class="text-sm">พัก (วินาที)</label>
-                        <input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-gray-700 p-2 rounded mt-1 text-center">
-                    </div>
-                </div>
-                <div>
-                    <label class="slider-label"><span>จำนวนครั้ง (Loop)</span><span id="v9">1</span></label>
-                    <input type="range" id="s9" min="0" max="20" value="1" class="w-full" oninput="v9.innerText=this.value">
+                <div class="slider-box">
+                    <div class="slider-header"><span>หลอดไฟ (ID)</span><span id="v3" class="text-green-400">1</span></div>
+                    <input type="range" id="s3" min="1" max="68" value="1" oninput="v3.innerText=this.value">
                 </div>
                 
-                <div class="flex items-center space-x-2 py-2">
-                    <input type="checkbox" id="sMirror" class="w-5 h-5">
-                    <label for="sMirror">Mirror Mode (m)</label>
+                <div class="grid grid-cols-2 gap-2 py-2">
+                    <input type="text" id="s4" placeholder="Group (a)" class="bg-gray-900 p-2 rounded-lg text-center border border-gray-700">
+                    <select id="s5" class="bg-gray-900 p-2 rounded-lg border border-gray-700">
+                        <option value="bl">Blue</option><option value="re">Red</option><option value="gr">Green</option>
+                        <option value="ye">Yellow</option><option value="wh">White</option><option value="pu">Purple</option>
+                    </select>
+                </div>
+
+                <div class="slider-box">
+                    <div class="slider-header"><span>Effect</span><span id="v6" class="text-green-400">u</span></div>
+                    <select id="s6" class="w-full bg-transparent text-sm outline-none" onchange="v6.innerText=this.value">
+                        <option value="u">Fade Up/Down (u)</option><option value="f">Fade Out (f)</option>
+                        <option value="s">Strobe (s)</option><option value="o">Static (o)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="slider-box">
+                        <div class="slider-header"><span>เล่น (s)</span></div>
+                        <input type="number" id="s7" value="1.0" step="0.1" class="bg-transparent w-full text-center outline-none">
+                    </div>
+                    <div class="slider-box">
+                        <div class="slider-header"><span>พัก (s)</span></div>
+                        <input type="number" id="s8" value="0.0" step="0.1" class="bg-transparent w-full text-center outline-none">
+                    </div>
+                </div>
+
+                <div class="slider-box">
+                    <div class="slider-header"><span>จำนวนครั้ง</span><span id="v9" class="text-green-400">1</span></div>
+                    <input type="range" id="s9" min="0" max="20" value="1" oninput="v9.innerText=this.value">
+                </div>
+                
+                <div class="flex items-center space-x-2 p-2">
+                    <input type="checkbox" id="sMirror" class="w-5 h-5 accent-green-500">
+                    <label class="text-sm">Mirror Mode (m)</label>
                 </div>
             </div>
 
-            <div class="flex space-x-3 mt-6">
-                <button onclick="closePopup()" class="flex-1 py-3 bg-gray-700 rounded-xl">Cancel</button>
-                <button onclick="saveCommand()" class="flex-1 py-3 bg-blue-600 rounded-xl font-bold">Save</button>
+            <div class="flex space-x-3 mt-4">
+                <button onclick="closePopup()" class="flex-1 py-3 bg-gray-700 rounded-xl text-sm">Cancel</button>
+                <button onclick="saveCommand()" class="flex-1 py-3 bg-green-500 text-black font-bold rounded-xl text-sm">SAVE</button>
             </div>
         </div>
     </div>
 
     <script>
-        let bleDevice;
-        let bleCharacteristic;
+        let device, characteristic;
         let commandList = [];
         let editingIndex = null;
 
-        const SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
-        const CHARACTERISTIC_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb";
-
-        // --- BLE Functions ---
-        async function connectBLE() {
+        // ดึงฟังก์ชันเชื่อมต่อจากของเดิมมาปรับปรุง
+        document.getElementById('connectBtn').onclick = async () => {
             try {
-                bleDevice = await navigator.bluetooth.requestDevice({
+                device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'PocketDJ-' }],
-                    optionalServices: [SERVICE_UUID]
+                    optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
                 });
-                const server = await bleDevice.gatt.connect();
-                const service = await server.getService(SERVICE_UUID);
-                bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-                document.getElementById('btnConnect').innerText = "Connected ✅";
-                document.getElementById('btnConnect').classList.replace('bg-blue-600', 'bg-green-600');
-            } catch (error) {
-                console.log(error);
-                alert("การเชื่อมต่อล้มเหลว");
+                const server = await device.gatt.connect();
+                // เรียกใช้แบบ Primary Service ตรงๆ เหมือนของเดิมที่ใช้ได้
+                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
+                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+
+                document.getElementById('status').innerText = "● Connected";
+                document.getElementById('status').style.color = "#00e676";
+                document.getElementById('connectBtn').innerText = "CONNECTED ✅";
+                document.getElementById('connectBtn').style.background = "#333";
+                document.getElementById('connectBtn').style.color = "#00e676";
+            } catch (e) { 
+                console.log(e); 
+                alert("Connect Error: " + e.message);
             }
-        }
+        };
 
-        document.getElementById('btnConnect').addEventListener('click', connectBLE);
-
-        // --- Logic Functions ---
         function openPopup(index = null) {
             editingIndex = index;
             if (index !== null) {
                 const c = commandList[index];
-                document.getElementById('modalTitle').innerText = "แก้ไขคำสั่งที่ " + (index + 1);
-                // Load values to UI
+                document.getElementById('modalTitle').innerText = "แก้ไขชุดที่ " + (index + 1);
                 document.getElementById('s1').value = c.startTime; v1.innerText = c.startTime;
                 document.getElementById('s2').value = c.brightness; v2.innerText = c.brightness;
                 document.getElementById('s3').value = c.ledId; v3.innerText = c.ledId;
@@ -146,21 +142,19 @@
                 document.getElementById('s9').value = c.repeat;
                 document.getElementById('sMirror').checked = c.isMirror;
             } else {
-                document.getElementById('modalTitle').innerText = "เพิ่มคำสั่งใหม่";
+                document.getElementById('modalTitle').innerText = "เพิ่มชุดคำสั่งใหม่";
             }
             document.getElementById('modal').classList.remove('hidden');
         }
 
-        function closePopup() {
-            document.getElementById('modal').classList.add('hidden');
-        }
+        function closePopup() { document.getElementById('modal').classList.add('hidden'); }
 
         function saveCommand() {
             const cmd = {
                 startTime: document.getElementById('s1').value,
                 brightness: document.getElementById('s2').value,
                 ledId: document.getElementById('s3').value,
-                group: document.getElementById('s4').value,
+                group: document.getElementById('s4').value || "a",
                 color: document.getElementById('s5').value,
                 effect: document.getElementById('s6').value,
                 duration: document.getElementById('s7').value,
@@ -169,64 +163,47 @@
                 isMirror: document.getElementById('sMirror').checked
             };
 
-            if (editingIndex !== null) {
-                commandList[editingIndex] = cmd;
-            } else {
-                commandList.push(cmd);
-            }
+            if (editingIndex !== null) commandList[editingIndex] = cmd;
+            else commandList.push(cmd);
+            
             renderList();
             closePopup();
         }
 
-        function deleteCommand(index) {
-            commandList.splice(index, 1);
-            renderList();
-        }
-
         function renderList() {
             const container = document.getElementById('commandContainer');
-            if (commandList.length === 0) {
-                container.innerHTML = `<p class="text-gray-500 text-center py-10">ยังไม่มีคำสั่ง กดปุ่ม + เพื่อเพิ่ม</p>`;
-                return;
-            }
-
             container.innerHTML = '';
             commandList.forEach((c, i) => {
                 const div = document.createElement('div');
-                div.className = "command-card bg-gray-800 p-4 rounded-xl flex justify-between items-center";
+                div.className = "command-card p-4 rounded-2xl flex justify-between items-center";
                 div.innerHTML = `
-                    <div onclick="openPopup(${i})" class="flex-1 cursor-pointer">
-                        <div class="font-bold text-blue-300">#${i+1} [Time: ${c.startTime/10}s]</div>
-                        <div class="text-sm text-gray-400">Grp: ${c.group} | Color: ${c.color} | FX: ${c.effect}</div>
+                    <div onclick="openPopup(${i})" class="flex-1">
+                        <div class="text-xs text-green-400 font-bold uppercase">วงเล็บที่ ${i+1} ${c.isMirror ? '(Mirror)' : ''}</div>
+                        <div class="text-lg font-bold">T: ${c.startTime/10}s | ${c.group} | ${c.color}</div>
                     </div>
-                    <button onclick="deleteCommand(${i})" class="text-red-500 px-2 text-xl">&times;</button>
+                    <button onclick="commandList.splice(${i},1); renderList();" class="text-red-500 text-2xl font-bold px-2">&times;</button>
                 `;
                 container.appendChild(div);
             });
         }
 
         async function sendToESP() {
-            if (!bleCharacteristic) return alert("กรุณาเชื่อมต่อ Bluetooth ก่อน");
+            if (!characteristic) return alert("เชื่อมต่อ Bluetooth ก่อนนะครับ");
             
-            let finalStr = "5"; // Speed หลัก (คุณสามารถเพิ่มสไลด์ความเร็วหลักในหน้าหลักได้)
-            
+            let finalStr = "5"; // เลขความเร็วหน้าสุด
             commandList.forEach(c => {
                 let m = c.isMirror ? 'm' : '';
                 let s = c.startTime.toString().padStart(2, '0');
                 let b = c.brightness.toString().padStart(2, '0');
                 let dur = (parseFloat(c.duration) * 10).toString().padStart(2, '0');
                 let off = (parseFloat(c.pause) * 10).toString().padStart(2, '0');
-                
                 finalStr += `${m}(${s}${b},${c.group},${c.color},${c.effect}${dur}${off},${c.repeat})`;
             });
 
-            console.log("Sending:", finalStr);
             try {
-                await bleCharacteristic.writeValue(new TextEncoder().encode(finalStr));
-                alert("ส่งข้อมูลเรียบร้อย!");
-            } catch (e) {
-                alert("Error: " + e.message);
-            }
+                await characteristic.writeValue(new TextEncoder().encode(finalStr));
+                alert("ส่งสำเร็จ! ลายไฟเปลี่ยนแล้ว");
+            } catch (e) { alert("ส่งไม่สำเร็จ: " + e.message); }
         }
     </script>
 </body>
