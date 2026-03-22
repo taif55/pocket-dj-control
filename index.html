@@ -3,272 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pocket DJ - Ultimate Sync</title>
+    <title>Pocket DJ - Console Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #080808; color: white; user-select: none; }
-        .slider-box { background: #151515; padding: 12px; border-radius: 18px; border: 1px solid #222; margin-bottom: 8px; }
-        .led-dot { transition: 0.1s; border: 1px solid #222; font-size: 9px; display: flex; align-items: center; justify-content: center; height: 32px; border-radius: 6px; background: #111; }
-        .led-dot.active { background: #00e676; color: black; font-weight: bold; box-shadow: 0 0 12px #00e676; border-color: #fff; }
-        input[type=range] { width: 100%; accent-color: #00e676; cursor: pointer; }
-        #status { font-size: 10px; letter-spacing: 1px; font-weight: bold; }
-        .layer-card { background: #111; border-left: 4px solid #00e676; border-radius: 12px; padding: 12px; margin-bottom: 8px; border-top: 1px solid #222; border-right: 1px solid #222; border-bottom: 1px solid #222; }
+        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; }
+        .pad-btn { background: #1a1a1a; border: 1px solid #333; transition: 0.2s; aspect-ratio: 1/1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; position: relative; }
+        .pad-btn.active { background: #00e676; color: black; border-color: #fff; box-shadow: 0 0 15px #00e676; z-index: 10; }
+        .pad-btn:active { transform: scale(0.95); }
+        .pad-label { font-size: 10px; font-weight: bold; margin-top: 4px; opacity: 0.6; }
+        .slider-box { background: #151515; padding: 10px; border-radius: 15px; border: 1px solid #222; margin-bottom: 8px; }
+        .led-dot { font-size: 8px; height: 28px; background: #111; border: 1px solid #222; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .led-dot.active { background: #00e676; color: black; box-shadow: 0 0 8px #00e676; }
+        input[type=range] { accent-color: #00e676; }
+        .ghost { opacity: 0.4; background: #00e676 !important; }
+        #codeEditor { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2; }
     </style>
 </head>
-<body class="p-4 pb-32">
+<body class="p-4">
 
-    <div class="max-w-md mx-auto">
-        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-3 rounded-2xl border border-gray-800">
+    <div class="max-w-xl mx-auto">
+        <div class="flex justify-between items-center mb-4 bg-gray-900/80 p-4 rounded-2xl border border-gray-800 shadow-2xl">
             <div>
-                <h1 class="text-lg font-black text-green-500 tracking-tighter">POCKET DJ PRO</h1>
-                <div id="status" class="text-red-500 uppercase">● Offline</div>
+                <h1 class="text-xl font-black text-green-500 tracking-tighter">POCKET DJ CONSOLE</h1>
+                <div id="status" class="text-[10px] text-red-500 font-bold uppercase tracking-widest">● Disconnected</div>
             </div>
-            <select id="profile" onchange="changeProfile()" class="bg-black text-[10px] border border-gray-700 p-2 rounded-lg outline-none uppercase font-bold text-gray-400">
-                <option value="68">Small (68 LED)</option>
-                <option value="300">Large (300 LED)</option>
-            </select>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-lg active:scale-90 transition">CONNECT</button>
         </div>
 
-        <button id="connectBtn" class="w-full bg-green-500 text-black font-black py-4 rounded-2xl mb-6 shadow-lg active:scale-95 transition">
-            CONNECT & SYNC BOARD
-        </button>
-
-        <div id="listContainer"></div>
+        <div id="padGrid" class="grid grid-cols-5 gap-2 mb-24">
+            </div>
     </div>
 
-    <div class="fixed bottom-8 left-0 right-0 flex justify-center space-x-4 px-8 z-40">
-        <button onclick="openPopup()" class="bg-green-500 text-black w-16 h-16 rounded-full text-4xl shadow-2xl font-bold active:scale-90 transition">+</button>
-        <button id="updateBtn" onclick="sendToESP()" class="bg-blue-600 flex-1 rounded-2xl font-bold uppercase tracking-widest active:bg-blue-500 shadow-xl">Update Board</button>
-    </div>
-
-    <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-[#111] w-full max-w-sm rounded-3xl p-6 overflow-y-auto max-h-[90vh] border border-gray-800 shadow-2xl">
-            <h2 class="text-center font-black text-green-400 mb-4 tracking-widest uppercase">Layer Designer</h2>
+    <div id="modal" class="fixed inset-0 bg-black/98 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-[#0f0f0f] w-full max-w-md rounded-3xl p-6 overflow-y-auto max-h-[95vh] border border-gray-800">
+            <h2 id="modalTitle" class="text-center font-black text-green-400 mb-4 tracking-widest uppercase italic">Edit FX Slot</h2>
             
+            <div class="slider-box bg-black/50">
+                <div class="text-[10px] text-green-500 font-bold mb-1 uppercase tracking-tighter">Raw Code Editor</div>
+                <textarea id="codeEditor" class="w-full bg-black text-green-400 p-3 rounded-xl border border-gray-800 outline-none h-20" placeholder="(StartBright,Target,Color,FXDurOff,Loop)" oninput="syncFromCode()"></textarea>
+            </div>
+
             <div class="slider-box">
-                <div class="flex justify-between text-[10px] mb-2 uppercase font-bold text-gray-500">
-                    <span>Select LEDs</span>
-                    <button onclick="clearSelectedLEDs()" class="text-red-500">Clear All</button>
+                <div class="flex justify-between text-[9px] mb-2 uppercase font-black text-gray-500">
+                    <span>LED Grid (1-300)</span>
+                    <button onclick="clearLEDs()" class="text-red-500">Clear</button>
                 </div>
-                <div id="ledGrid" class="grid grid-cols-8 gap-1 h-44 overflow-y-auto p-2 bg-black rounded-xl border border-gray-800"></div>
+                <div id="ledGrid" class="grid grid-cols-10 gap-1 h-32 overflow-y-auto p-2 bg-black rounded-lg border border-gray-900"></div>
             </div>
 
             <div class="space-y-1">
-                <div class="slider-box">
-                    <div class="flex justify-between text-[10px] text-gray-400 font-bold uppercase"><span>Start Time</span><span id="v1" class="text-green-500">0</span></div>
-                    <input type="range" id="s1" min="0" max="99" value="0" oninput="v1.innerText=this.value; livePre();">
-                </div>
-                <div class="slider-box">
-                    <div class="flex justify-between text-[10px] text-gray-400 font-bold uppercase"><span>Brightness</span><span id="v2" class="text-green-500">10</span></div>
-                    <input type="range" id="s2" min="0" max="99" value="10" oninput="v2.innerText=this.value; livePre();">
-                </div>
-                <div class="grid grid-cols-2 gap-2 py-1">
-                    <input type="text" id="s4" placeholder="Group (a,b)" class="bg-black border border-gray-800 p-3 rounded-xl text-center text-sm outline-none" oninput="livePre();">
-                    <select id="s5" class="bg-black border border-gray-800 p-3 rounded-xl text-sm outline-none font-bold" onchange="livePre();">
-                        <option value="bl">Blue</option><option value="re">Red</option><option value="gr">Green</option><option value="ye">Yellow</option><option value="wh">White</option><option value="pu">Purple</option><option value="aq">Aqua</option>
-                    </select>
-                </div>
-                <div class="slider-box">
-                    <select id="s6" class="w-full bg-transparent outline-none text-sm font-black uppercase text-center text-green-400" onchange="livePre();">
-                        <option value="u">Effect: Fade Up/Down</option><option value="f">Effect: Fade Out</option><option value="s">Effect: Strobe</option><option value="o">Effect: Static</option><option value="b">Effect: Blink</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="slider-box"><div class="text-[9px] text-gray-500">START (S)</div><input type="range" id="s1" min="0" max="99" value="0" oninput="livePre(); updateCode();"></div>
+                    <div class="slider-box"><div class="text-[9px] text-gray-500">BRIGHT</div><input type="range" id="s2" min="0" max="99" value="10" oninput="livePre(); updateCode();"></div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="slider-box"><div class="text-[9px] text-gray-500 uppercase text-center">Dur (s)</div><input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-transparent text-center font-bold" oninput="livePre();"></div>
-                    <div class="slider-box"><div class="text-[9px] text-gray-500 uppercase text-center">Off (s)</div><input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-transparent text-center font-bold" oninput="livePre();"></div>
+                    <input type="text" id="s4" placeholder="Group" class="bg-black border border-gray-800 p-2 rounded-xl text-center text-sm outline-none" oninput="livePre(); updateCode();">
+                    <select id="s5" class="bg-black border border-gray-800 p-2 rounded-xl text-sm outline-none font-bold" onchange="livePre(); updateCode();">
+                        <option value="bl">Blue</option><option value="re">Red</option><option value="gr">Green</option><option value="ye">Yellow</option><option value="wh">White</option><option value="pu">Purple</option>
+                    </select>
                 </div>
                 <div class="slider-box">
-                    <div class="flex justify-between text-[10px] text-gray-400 font-bold uppercase"><span>Loop</span><span id="v9" class="text-green-500">1</span></div>
-                    <input type="range" id="s9" min="0" max="20" value="1" oninput="v9.innerText=this.value; livePre();">
+                    <select id="s6" class="w-full bg-transparent text-sm font-black text-center text-green-400" onchange="livePre(); updateCode();">
+                        <option value="u">Fade Up/Down</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="o">Static</option><option value="b">Blink</option>
+                    </select>
                 </div>
-                <div class="flex items-center justify-center space-x-2 p-3 bg-gray-900 rounded-2xl active:bg-gray-800 transition" onclick="document.getElementById('sM').click()">
-                    <input type="checkbox" id="sM" class="w-5 h-5 accent-green-500" onchange="livePre();">
-                    <label class="text-[10px] font-black uppercase tracking-widest">Mirror Mode</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="slider-box"><input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-transparent text-center text-xs" oninput="livePre(); updateCode();"></div>
+                    <div class="slider-box"><input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-transparent text-center text-xs" oninput="livePre(); updateCode();"></div>
+                    <div class="slider-box"><input type="number" id="s9" value="1" class="w-full bg-transparent text-center text-xs" oninput="livePre(); updateCode();"></div>
                 </div>
             </div>
 
             <div class="flex space-x-3 mt-6">
-                <button onclick="closePopup()" class="flex-1 py-4 bg-gray-800 rounded-2xl text-[10px] font-bold text-gray-500 uppercase tracking-widest">Cancel</button>
-                <button onclick="saveLayer()" class="flex-1 py-4 bg-green-500 text-black font-black rounded-2xl text-[10px] uppercase tracking-widest">Save Layer</button>
+                <button onclick="closePopup()" class="flex-1 py-4 bg-gray-900 rounded-2xl text-[10px] font-bold text-gray-500 uppercase tracking-widest">Close</button>
+                <button onclick="saveAndSend()" class="flex-1 py-4 bg-green-500 text-black font-black rounded-2xl text-[10px] uppercase tracking-widest">Save & Sync</button>
             </div>
         </div>
     </div>
 
     <script>
         let device, characteristic;
-        let layers = [];
-        let editingIdx = null;
+        let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        let selectedIdx = -1;
         let selectedLEDs = new Set();
-        let currentMaxLEDs = 68;
+        let pressTimer;
 
-        const SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
-        const CHARACTERISTIC_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb";
-
-        function changeProfile() {
-            currentMaxLEDs = parseInt(document.getElementById('profile').value);
-            genGrid();
+        // 1. สร้างปุ่ม 60 Pads
+        function renderPads() {
+            const grid = document.getElementById('padGrid');
+            grid.innerHTML = '';
+            patterns.forEach((p, index) => {
+                const btn = document.createElement('div');
+                btn.className = `pad-btn ${p.code ? 'border-green-900' : 'opacity-40'}`;
+                btn.innerHTML = `<span class="text-xs font-black">${index + 1}</span><span class="pad-label">FX</span>`;
+                btn.setAttribute('data-index', index);
+                
+                // ระบบกดปกติ = เล่นลายไฟ
+                btn.onpointerdown = (e) => {
+                    pressTimer = setTimeout(() => openPopup(index), 600); // กดค้าง 0.6 วิ = Edit
+                };
+                btn.onpointerup = (e) => {
+                    clearTimeout(pressTimer);
+                    if (selectedIdx !== index) playFX(index);
+                };
+                
+                grid.appendChild(btn);
+            });
         }
 
-        function genGrid() {
+        // ระบบลากวาง (Sortable)
+        new Sortable(document.getElementById('padGrid'), {
+            animation: 150, ghostClass: 'ghost', delay: 100,
+            onEnd: (evt) => {
+                const item = patterns.splice(evt.oldIndex, 1)[0];
+                patterns.splice(evt.newIndex, 0, item);
+                // ส่งลำดับใหม่ไปบอร์ดได้ที่นี่ถ้าต้องการ
+            }
+        });
+
+        // 2. ระบบเชื่อมต่อ
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
+                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+                document.getElementById('status').innerText = "● Connected: Online";
+                document.getElementById('status').className = "text-green-500 font-bold uppercase tracking-widest";
+                
+                // Sync ข้อมูลจากบอร์ด
+                await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
+            } catch (e) { alert(e.message); }
+        };
+
+        // 3. ระบบเล่นลายไฟ
+        async function playFX(index) {
+            if (!characteristic || !patterns[index].code) return;
+            selectedIdx = index;
+            document.querySelectorAll('.pad-btn').forEach((b, i) => b.classList.toggle('active', i === index));
+            await characteristic.writeValue(new TextEncoder().encode("5" + patterns[index].code));
+        }
+
+        // 4. Designer Logic
+        function openPopup(index) {
+            selectedIdx = index;
+            const p = patterns[index];
+            document.getElementById('modalTitle').innerText = "Slot " + (index + 1);
+            document.getElementById('codeEditor').value = p.code;
+            syncFromCode(); // แยกโค้ดลงสไลด์
+            genLEDGrid();
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function updateCode() {
+            let s = document.getElementById('s1').value.padStart(2, '0');
+            let b = document.getElementById('s2').value.padStart(2, '0');
+            let grp = document.getElementById('s4').value.trim();
+            let target = selectedLEDs.size > 0 ? Array.from(selectedLEDs).sort((a,b)=>a-b).map(id => `<${id}>`).join('') : (grp || "a");
+            let fx = document.getElementById('s6').value;
+            let d = (parseFloat(document.getElementById('s7').value)*10).toString().padStart(2,'0');
+            let o = (parseFloat(document.getElementById('s8').value)*10).toString().padStart(2,'0');
+            let lp = document.getElementById('s9').value;
+            let col = document.getElementById('s5').value;
+            
+            document.getElementById('codeEditor').value = `(${s}${b},${target},${col},${fx}${d}${o},${lp})`;
+        }
+
+        function syncFromCode() {
+            let code = document.getElementById('codeEditor').value;
+            if (!code.startsWith('(')) return;
+            let content = code.replace('(','').replace(')','');
+            let p = content.split(',');
+            if (p.length < 5) return;
+
+            document.getElementById('s1').value = p[0].substring(0,2);
+            document.getElementById('s2').value = p[0].substring(2,4);
+            document.getElementById('s4').value = p[1].includes('<') ? "" : p[1];
+            document.getElementById('s5').value = p[2];
+            document.getElementById('s6').value = p[3].charAt(0);
+            document.getElementById('s7').value = parseInt(p[3].substring(1,3))/10;
+            document.getElementById('s8').value = parseInt(p[3].substring(3,5))/10;
+            document.getElementById('s9').value = p[4];
+
+            selectedLEDs.clear();
+            const ids = p[1].match(/\d+/g);
+            if(ids) ids.forEach(id => selectedLEDs.add(parseInt(id)));
+            genLEDGrid();
+        }
+
+        async function saveAndSend() {
+            const code = document.getElementById('codeEditor').value;
+            patterns[selectedIdx].code = code;
+            if (characteristic) {
+                // ส่งคำสั่งเซฟ S[slot]:(code) ไปที่บอร์ด
+                await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
+            }
+            renderPads();
+            closePopup();
+        }
+
+        function genLEDGrid() {
             const grid = document.getElementById('ledGrid');
             grid.innerHTML = '';
-            for (let i = 1; i <= currentMaxLEDs; i++) {
+            for (let i = 1; i <= 300; i++) {
                 const dot = document.createElement('div');
                 dot.innerText = i;
                 dot.className = `led-dot ${selectedLEDs.has(i) ? 'active' : ''}`;
-                dot.id = `led-${i}`;
                 dot.onclick = () => {
-                    if (selectedLEDs.has(i)) { selectedLEDs.delete(i); dot.classList.remove('active'); }
-                    else { selectedLEDs.add(i); dot.classList.add('active'); }
-                    livePre();
+                    if (selectedLEDs.has(i)) selectedLEDs.delete(i);
+                    else selectedLEDs.add(i);
+                    genLEDGrid(); updateCode(); livePre();
                 };
                 grid.appendChild(dot);
             }
         }
 
-        function clearSelectedLEDs() {
-            selectedLEDs.clear();
-            document.querySelectorAll('.led-dot').forEach(d => d.classList.remove('active'));
-            livePre();
-        }
-
-        document.getElementById('connectBtn').onclick = async () => {
-            try {
-                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: [SERVICE_UUID] });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-
-                document.getElementById('status').innerText = "● Connected: Syncing...";
-                document.getElementById('status').className = "text-green-500";
-                
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', (e) => {
-                    let val = new TextDecoder().decode(e.target.value);
-                    if (val.startsWith("SYNC_NOW:")) {
-                        importData(val.substring(9));
-                    }
-                });
-
-                await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
-            } catch (e) { alert("BT Error: " + e.message); }
-        };
-
-        function buildBracket(l) {
-            let m = l.isMirror ? 'm' : '';
-            let s = l.startTime.toString().padStart(2, '0');
-            let b = l.brightness.toString().padStart(2, '0');
-            let d = (parseFloat(l.duration)*10).toString().padStart(2,'0');
-            let o = (parseFloat(l.pause)*10).toString().padStart(2,'0');
-            return `${m}(${s}${b},${l.target},${l.color},${l.effect}${d}${o},${l.loop})`;
-        }
-
         async function livePre() {
-            if (!characteristic) return;
-            let target = selectedLEDs.size > 0 ? Array.from(selectedLEDs).map(id => `<${id}>`).join('') : (document.getElementById('s4').value.trim() || "a");
-            let current = {
-                startTime: document.getElementById('s1').value,
-                brightness: document.getElementById('s2').value,
-                target: target,
-                color: document.getElementById('s5').value,
-                effect: document.getElementById('s6').value,
-                duration: document.getElementById('s7').value,
-                pause: document.getElementById('s8').value,
-                loop: document.getElementById('s9').value,
-                isMirror: document.getElementById('sM').checked
-            };
-
-            let allStr = "5";
-            layers.forEach((l, i) => { if (i !== editingIdx) allStr += buildBracket(l); });
-            allStr += buildBracket(current);
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(allStr)); } catch (e) {}
-        }
-
-        function saveLayer() {
-            let target = selectedLEDs.size > 0 ? Array.from(selectedLEDs).map(id => `<${id}>`).join('') : (document.getElementById('s4').value.trim() || "a");
-            const data = {
-                startTime: document.getElementById('s1').value, brightness: document.getElementById('s2').value,
-                target: target, color: document.getElementById('s5').value, effect: document.getElementById('s6').value,
-                duration: document.getElementById('s7').value, pause: document.getElementById('s8').value,
-                loop: document.getElementById('s9').value, isMirror: document.getElementById('sM').checked
-            };
-            if (editingIdx !== null) layers[editingIdx] = data;
-            else layers.push(data);
-            renderList();
-            closePopup();
-        }
-
-        function renderList() {
-            const container = document.getElementById('listContainer');
-            container.innerHTML = '';
-            layers.forEach((l, i) => {
-                const div = document.createElement('div');
-                div.className = "layer-card flex justify-between items-center active:scale-95 transition cursor-pointer";
-                div.innerHTML = `
-                    <div onclick="openPopup(${i})" class="flex-1">
-                        <div class="text-[9px] text-green-500 font-black uppercase">Layer ${i+1}</div>
-                        <div class="text-xs font-bold uppercase">${l.target.length > 15 ? l.target.substring(0,15)+'...' : l.target} | ${l.color} | FX: ${l.effect}</div>
-                    </div>
-                    <button onclick="layers.splice(${i},1); renderList();" class="text-red-500 text-xl font-black px-2">&times;</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function importData(raw) {
-            layers = [];
-            let startIndex = 0;
-            while (true) {
-                let o = raw.indexOf('(', startIndex), c = raw.indexOf(')', o);
-                if (o === -1 || c === -1) break;
-                let m = raw.substring(startIndex, o).includes('m');
-                let content = raw.substring(o+1, c);
-                let p = content.split(',');
-                layers.push({
-                    startTime: parseInt(p[0].substring(0,2)), brightness: parseInt(p[0].substring(2,4)),
-                    target: p[1], color: p[2], effect: p[3].charAt(0),
-                    duration: parseInt(p[3].substring(1,3))/10, pause: parseInt(p[3].substring(3,5))/10,
-                    loop: parseInt(p[4]), isMirror: m
-                });
-                startIndex = c + 1;
+            if (characteristic) {
+                await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + document.getElementById('codeEditor').value));
             }
-            renderList();
-            document.getElementById('status').innerText = "● Connected: Ready";
         }
 
-        async function sendToESP() {
-            if (!characteristic) return alert("Connect First");
-            let allStr = "5";
-            layers.forEach(l => allStr += buildBracket(l));
-            try { await characteristic.writeValue(new TextEncoder().encode(allStr)); alert("Board Updated!"); } catch (e) { alert(e.message); }
-        }
+        function closePopup() { document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
+        function clearLEDs() { selectedLEDs.clear(); genLEDGrid(); updateCode(); livePre(); }
 
-        function openPopup(index = null) {
-            editingIdx = index;
-            selectedLEDs.clear();
-            if (index !== null) {
-                const l = layers[index];
-                document.getElementById('s1').value = l.startTime;
-                document.getElementById('s2').value = l.brightness;
-                document.getElementById('s4').value = l.target.includes('<') ? "" : l.target;
-                document.getElementById('s5').value = l.color;
-                document.getElementById('s6').value = l.effect;
-                document.getElementById('s7').value = l.duration;
-                document.getElementById('s8').value = l.pause;
-                document.getElementById('s9').value = l.loop;
-                document.getElementById('sM').checked = l.isMirror;
-                if (l.target.includes('<')) {
-                    const ids = l.target.match(/\d+/g);
-                    if(ids) ids.forEach(id => selectedLEDs.add(parseInt(id)));
-                }
-            }
-            genGrid();
-            document.getElementById('modal').classList.remove('hidden');
-        }
-
-        function closePopup() { document.getElementById('modal').classList.add('hidden'); }
-        
-        genGrid();
+        renderPads();
     </script>
 </body>
 </html>
