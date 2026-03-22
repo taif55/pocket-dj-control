@@ -3,71 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ - Ultimate Console</title>
+    <title>Pocket DJ - Pro Sequencer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
-        
-        /* Main Console Styles */
-        .pad-btn { background: #151515; border: 1px solid #222; aspect-ratio: 1/1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; transition: 0.1s; cursor: pointer; }
-        .pad-btn.active { background: #00e676; color: black; border-color: #fff; box-shadow: 0 0 20px #00e676; z-index: 10; transform: scale(1.05); }
+        .pad-btn { background: #151515; border: 1px solid #222; aspect-ratio: 1/1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.1s; cursor: pointer; }
+        .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 20px #00e676; transform: scale(1.05); z-index: 10; }
         .pad-btn.has-code { border-color: #00e676; opacity: 1; }
         .pad-btn:not(.has-code) { opacity: 0.4; }
-        .pad-label { font-size: 9px; font-weight: 800; margin-top: 2px; opacity: 0.5; text-transform: uppercase; }
-
-        /* Full Screen Modal Styles */
-        #modal { background: #050505; transition: 0.3s; }
         .slider-box { background: #121212; padding: 12px; border-radius: 20px; border: 1px solid #252525; margin-bottom: 10px; }
-        .led-dot { font-size: 8px; height: 32px; background: #111; border: 1px solid #222; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
+        .led-dot { font-size: 8px; height: 32px; background: #111; border: 1px solid #222; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
         .led-dot.active { background: #00e676; color: black; box-shadow: 0 0 10px #00e676; font-weight: bold; border-color: white; }
-        
-        /* Timeline Scroll */
-        #timelineScroll { scroll-snap-type: y mandatory; -ms-overflow-style: none; scrollbar-width: none; }
+        #timelineScroll { scroll-snap-type: y mandatory; scrollbar-width: none; }
         #timelineScroll::-webkit-scrollbar { display: none; }
-        .timeline-item { scroll-snap-align: center; height: 40px; display: flex; align-items: center; justify-content: center; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 10px; margin-bottom: 4px; border: 1px solid transparent; }
+        .timeline-item { scroll-snap-align: center; height: 40px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 11px; border-radius: 10px; transition: 0.2s; }
         .timeline-item.active { background: #00e676; color: black; font-weight: 900; font-size: 14px; border-color: white; }
-        
-        /* Quick Color Palette */
-        .color-palette-btn { width: 100%; height: 35px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
+        .color-palette-btn { width: 100%; height: 35px; border-radius: 10px; border: 2px solid transparent; }
         .color-palette-btn.active { border-color: white; box-shadow: 0 0 10px currentColor; transform: scale(1.1); }
-        
-        input[type=range] { accent-color: #00e676; height: 10px; }
-        .ghost { opacity: 0.3; background: #00e676 !important; }
+        input[type=range] { accent-color: #00e676; }
+        .layer-tab { transition: 0.2s; position: relative; }
+        .layer-tab.active { background: #00e676; color: black; font-weight: 900; box-shadow: 0 0 10px #00e676; }
     </style>
 </head>
 <body class="p-4">
 
-    <div class="max-w-xl mx-auto">
+    <div id="consoleView" class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-2xl">
             <div>
-                <h1 class="text-xl font-black text-green-500 tracking-tighter italic">POCKET DJ PRO</h1>
+                <h1 class="text-xl font-black text-green-500 italic">POCKET DJ PRO</h1>
                 <div id="status" class="text-[9px] text-red-500 font-black uppercase tracking-widest">● Disconnected</div>
             </div>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2.5 rounded-2xl shadow-lg active:scale-90 transition">CONNECT</button>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2.5 rounded-2xl active:scale-90 transition">CONNECT</button>
         </div>
-
-        <div id="padGrid" class="grid grid-cols-5 gap-3 mb-32">
-            </div>
+        <div id="padGrid" class="grid grid-cols-5 gap-3 mb-32"></div>
     </div>
 
-    <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col">
-        <div class="flex justify-between items-center p-5 bg-[#0a0a0a] border-b border-gray-800">
-            <button onclick="closePopup()" class="text-gray-500 font-bold uppercase text-xs tracking-widest">Cancel</button>
-            <h2 id="modalTitle" class="font-black text-green-400 uppercase italic tracking-widest">Slot Edit</h2>
-            <button onclick="saveAndSend()" class="text-green-500 font-black uppercase text-xs tracking-widest">Done</button>
+    <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
+        <div class="flex justify-between items-center p-5 border-b border-gray-800 bg-gray-900/30">
+            <button onclick="closePopup()" class="text-gray-500 font-bold uppercase text-xs">Cancel</button>
+            <h2 id="modalTitle" class="font-black text-green-400 uppercase italic">Edit Slot</h2>
+            <button onclick="saveAndSend()" class="text-green-500 font-black uppercase text-xs">Done</button>
         </div>
 
         <div class="flex flex-1 overflow-hidden p-3 space-x-3">
             <div class="flex-1 overflow-y-auto space-y-4 pr-1 pb-10">
                 
-                <div class="slider-box bg-black/40">
-                    <div class="text-[9px] text-green-500 font-black mb-2 uppercase text-center tracking-widest">Raw Code Editor</div>
-                    <textarea id="codeEditor" class="w-full bg-black text-green-400 p-3 rounded-2xl border border-gray-800 outline-none h-20 text-xs text-center font-mono" oninput="syncFromCode()"></textarea>
+                <div class="slider-box bg-green-900/10 border-green-900/30">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[9px] text-green-500 font-black uppercase">Layers Navigation</span>
+                        <button onclick="addNewLayer()" class="bg-green-600 text-black text-[9px] px-3 py-1.5 rounded-xl font-black">+ ADD LAYER</button>
+                    </div>
+                    <div id="layerTabs" class="flex flex-wrap gap-2 mb-3"></div>
+                    <textarea id="codeEditor" class="w-full bg-black text-green-400 p-3 rounded-2xl border border-gray-800 outline-none h-16 text-[10px] font-mono mb-1" oninput="syncFromCode()"></textarea>
                 </div>
 
                 <div class="slider-box">
-                    <div class="flex justify-between text-[10px] mb-2 uppercase font-black text-gray-500">
+                    <div class="flex justify-between text-[10px] mb-2 font-black text-gray-500 uppercase">
                         <span>LED Grid (1-300)</span>
                         <button onclick="clearLEDs()" class="text-red-500">Clear</button>
                     </div>
@@ -76,38 +68,31 @@
 
                 <div class="space-y-3">
                     <div class="slider-box">
-                        <div class="flex justify-between text-[10px] text-gray-400 font-black uppercase mb-2"><span>Brightness</span><span id="v2" class="text-green-400">10</span></div>
-                        <input type="range" id="s2" min="0" max="99" value="10" class="w-full h-10" oninput="v2.innerText=this.value; livePre(); updateCode();">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-black uppercase mb-1"><span>Brightness</span><span id="v2" class="text-green-400">10</span></div>
+                        <input type="range" id="s2" min="0" max="99" value="10" class="w-full h-10" oninput="v2.innerText=this.value; updateCode(); livePre();">
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gray-900 border border-gray-800 p-1 rounded-2xl h-14"><input type="text" id="s4" placeholder="Group" class="w-full h-full bg-transparent text-center text-sm font-bold outline-none" oninput="updateCode(); livePre();"></div>
                         <div class="bg-gray-900 border border-gray-800 p-1 rounded-2xl h-14">
-                            <input type="text" id="s4" placeholder="Group" class="w-full h-full bg-transparent text-center text-sm font-bold outline-none" oninput="livePre(); updateCode();">
-                        </div>
-                        <div class="bg-gray-900 border border-gray-800 p-1 rounded-2xl h-14">
-                            <select id="s6" class="w-full h-full bg-transparent text-xs font-black text-center text-green-400 uppercase outline-none" onchange="livePre(); updateCode();">
+                            <select id="s6" class="w-full h-full bg-transparent text-xs font-black text-center text-green-400 uppercase outline-none" onchange="updateCode(); livePre();">
                                 <option value="u">Fade Up</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="o">Static</option><option value="b">Blink</option>
                             </select>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-3 gap-3">
-                        <div class="slider-box"><div class="text-[8px] text-gray-500 text-center font-bold mb-1 uppercase">Dur</div><input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="livePre(); updateCode();"></div>
-                        <div class="slider-box"><div class="text-[8px] text-gray-500 text-center font-bold mb-1 uppercase">Off</div><input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="livePre(); updateCode();"></div>
-                        <div class="slider-box"><div class="text-[8px] text-gray-500 text-center font-bold mb-1 uppercase">Loop</div><input type="number" id="s9" value="1" class="w-full bg-transparent text-center font-black text-xl" oninput="livePre(); updateCode();"></div>
+                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">DUR</div><input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
+                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">OFF</div><input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
+                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">LOOP</div><input type="number" id="s9" value="1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
                     </div>
                 </div>
             </div>
 
             <div class="w-16 flex flex-col space-y-4 bg-gray-900/40 p-2 rounded-3xl border border-gray-800">
                 <div class="text-[8px] text-gray-500 text-center font-black uppercase">Time</div>
-                <div id="timelineScroll" class="flex-1 overflow-y-auto space-y-2">
-                    </div>
+                <div id="timelineScroll" class="flex-1 overflow-y-auto space-y-2"></div>
                 <input type="hidden" id="s1" value="0">
-
                 <div class="text-[8px] text-gray-500 text-center font-black uppercase border-t border-gray-800 pt-4">Color</div>
-                <div id="colorPalette" class="space-y-3 pb-2">
-                    </div>
+                <div id="colorPalette" class="space-y-3 pb-2"></div>
             </div>
         </div>
     </div>
@@ -116,10 +101,10 @@
         let device, characteristic;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         let selectedIdx = -1;
+        let currentLayerIdx = 0;
         let selectedLEDs = new Set();
         let pressTimer;
 
-        // 1. สร้าง DJ Pads 60 ปุ่ม
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -127,47 +112,32 @@
                 const btn = document.createElement('div');
                 btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
                 btn.innerHTML = `<span class="text-xs font-black">${index + 1}</span><span class="pad-label">FX</span>`;
-                
-                btn.onpointerdown = () => { pressTimer = setTimeout(() => openPopup(index), 600); };
-                btn.onpointerup = () => {
-                    clearTimeout(pressTimer);
-                    if (selectedIdx !== index) playFX(index);
-                };
+                btn.onpointerdown = () => pressTimer = setTimeout(() => openPopup(index), 600);
+                btn.onpointerup = () => { clearTimeout(pressTimer); if (selectedIdx !== index) playFX(index); };
                 grid.appendChild(btn);
             });
         }
 
-        // ระบบลากสลับตำแหน่ง (Sortable)
-        new Sortable(document.getElementById('padGrid'), {
-            animation: 200, ghostClass: 'ghost', delay: 150, delayOnTouchOnly: true,
-            onEnd: (evt) => {
-                const item = patterns.splice(evt.oldIndex, 1)[0];
-                patterns.splice(evt.newIndex, 0, item);
-                renderPads();
-            }
-        });
+        new Sortable(document.getElementById('padGrid'), { animation: 200, ghostClass: 'ghost', delay: 150, onEnd: (evt) => {
+            const item = patterns.splice(evt.oldIndex, 1)[0];
+            patterns.splice(evt.newIndex, 0, item);
+            renderPads();
+        }});
 
-        // 2. ระบบเชื่อมต่อ
         document.getElementById('connectBtn').onclick = async () => {
             try {
-                device = await navigator.bluetooth.requestDevice({ 
-                    filters: [{ namePrefix: 'PocketDJ-' }], 
-                    optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] 
-                });
+                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                
                 document.getElementById('status').innerText = "● Connected: Online";
                 document.getElementById('status').className = "text-green-500 font-black uppercase";
-                
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     if (val.startsWith("D")) {
                         let parts = val.substring(1).split(":");
-                        let idx = parseInt(parts[0]);
-                        patterns[idx].code = parts[2] || "";
+                        patterns[parseInt(parts[0])].code = parts[2] || "";
                         renderPads();
                     }
                 });
@@ -175,7 +145,6 @@
             } catch (e) { alert(e.message); }
         };
 
-        // 3. ระบบเล่นลายไฟ
         async function playFX(index) {
             if (!characteristic || !patterns[index].code) return;
             selectedIdx = index;
@@ -183,14 +152,41 @@
             await characteristic.writeValue(new TextEncoder().encode("5" + patterns[index].code));
         }
 
-        // 4. Designer Logic
         function openPopup(index) {
             selectedIdx = index;
-            const p = patterns[index];
+            currentLayerIdx = 0;
             document.getElementById('modalTitle').innerText = "Edit Slot " + (index + 1);
-            document.getElementById('codeEditor').value = p.code || "(0010,a,bl,u1005,1)";
-            syncFromCode(); 
+            document.getElementById('codeEditor').value = patterns[index].code || "(0099,a,bl,u1005,1)";
+            syncFromCode();
             document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function syncFromCode() {
+            let fullCode = document.getElementById('codeEditor').value.trim();
+            let brackets = fullCode.match(/\(([^)]+)\)/g) || ["(0099,a,bl,u1005,1)"];
+            if (!brackets[currentLayerIdx]) currentLayerIdx = brackets.length - 1;
+
+            let content = brackets[currentLayerIdx].replace('(', '').replace(')', '');
+            let p = content.split(',');
+            if (p.length < 5) return;
+
+            let startTime = parseInt(p[0].substring(0, 2));
+            document.getElementById('s1').value = startTime;
+            updateTimelineScroll(startTime);
+            document.getElementById('s2').value = p[0].substring(2, 4);
+            document.getElementById('v2').innerText = p[0].substring(2, 4);
+            document.getElementById('s4').value = p[1].includes('<') ? "" : p[1];
+            setSelectedColor(p[2]);
+            document.getElementById('s6').value = p[3].charAt(0);
+            document.getElementById('s7').value = parseInt(p[3].substring(1, 3)) / 10;
+            document.getElementById('s8').value = parseInt(p[3].substring(3, 5)) / 10;
+            document.getElementById('s9').value = p[4];
+
+            selectedLEDs.clear();
+            const ids = p[1].match(/\d+/g);
+            if (ids) ids.forEach(id => selectedLEDs.add(parseInt(id)));
+            genLEDGrid();
+            updateLayerTabs();
         }
 
         function updateCode() {
@@ -199,48 +195,55 @@
             let grp = document.getElementById('s4').value.trim();
             let target = selectedLEDs.size > 0 ? Array.from(selectedLEDs).sort((a,b)=>a-b).map(id => `<${id}>`).join('') : (grp || "a");
             let fx = document.getElementById('s6').value;
-            let d = (parseFloat(document.getElementById('s7').value)*10).toString().padStart(2,'0');
-            let o = (parseFloat(document.getElementById('s8').value)*10).toString().padStart(2,'0');
+            let d = (parseFloat(document.getElementById('s7').value) * 10).toString().padStart(2, '0');
+            let o = (parseFloat(document.getElementById('s8').value) * 10).toString().padStart(2, '0');
             let lp = document.getElementById('s9').value;
             let col = getSelectedColor();
             
-            document.getElementById('codeEditor').value = `(${s}${b},${target},${col},${fx}${d}${o},${lp})`;
+            let newBracket = `(${s}${b},${target},${col},${fx}${d}${o},${lp})`;
+            let editor = document.getElementById('codeEditor');
+            let brackets = editor.value.match(/\(([^)]+)\)/g) || [];
+            
+            if (brackets.length > 0) { brackets[currentLayerIdx] = newBracket; editor.value = brackets.join(''); }
+            else { editor.value = newBracket; }
+            updateLayerTabs();
         }
 
-        function syncFromCode() {
-            let code = document.getElementById('codeEditor').value;
-            if (!code.startsWith('(')) return;
-            let content = code.replace('(','').replace(')','');
-            let p = content.split(',');
-            if (p.length < 5) return;
-
-            let startTime = parseInt(p[0].substring(0,2));
-            document.getElementById('s1').value = startTime;
-            updateTimelineScroll(startTime);
-
-            document.getElementById('s2').value = p[0].substring(2,4);
-            document.getElementById('v2').innerText = p[0].substring(2,4);
-            document.getElementById('s4').value = p[1].includes('<') ? "" : p[1];
-            setSelectedColor(p[2]);
-            document.getElementById('s6').value = p[3].charAt(0);
-            document.getElementById('s7').value = parseInt(p[3].substring(1,3))/10;
-            document.getElementById('s8').value = parseInt(p[3].substring(3,5))/10;
-            document.getElementById('s9').value = p[4];
-
-            selectedLEDs.clear();
-            const ids = p[1].match(/\d+/g);
-            if(ids) ids.forEach(id => selectedLEDs.add(parseInt(id)));
-            genLEDGrid();
+        function updateLayerTabs() {
+            const container = document.getElementById('layerTabs');
+            const brackets = document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || [];
+            container.innerHTML = '';
+            brackets.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `layer-tab px-4 py-2 rounded-xl text-[10px] font-black ${i === currentLayerIdx ? 'active bg-green-500 text-black' : 'bg-gray-800 text-gray-500'}`;
+                btn.innerText = `L${i+1}`;
+                btn.onclick = () => { currentLayerIdx = i; syncFromCode(); };
+                
+                const del = document.createElement('span');
+                del.innerHTML = "&times;";
+                del.className = "ml-2 text-red-500 font-bold";
+                del.onclick = (e) => { e.stopPropagation(); deleteLayer(i); };
+                btn.appendChild(del);
+                container.appendChild(btn);
+            });
         }
 
-        async function saveAndSend() {
-            const code = document.getElementById('codeEditor').value;
-            patterns[selectedIdx].code = code;
-            if (characteristic) {
-                await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
+        function addNewLayer() {
+            document.getElementById('codeEditor').value += "(0099,a,wh,u1005,1)";
+            currentLayerIdx = (document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || []).length - 1;
+            syncFromCode();
+            livePre();
+        }
+
+        function deleteLayer(idx) {
+            let brackets = document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || [];
+            if (brackets.length > 1) {
+                brackets.splice(idx, 1);
+                document.getElementById('codeEditor').value = brackets.join('');
+                currentLayerIdx = 0;
+                syncFromCode();
+                livePre();
             }
-            renderPads();
-            closePopup();
         }
 
         function genLEDGrid() {
@@ -267,60 +270,38 @@
                 item.className = 'timeline-item';
                 item.innerText = (i/10).toFixed(1) + 's';
                 item.id = `time-${i}`;
-                item.onclick = () => {
-                    document.getElementById('s1').value = i;
-                    updateTimelineScroll(i);
-                    updateCode(); livePre();
-                };
+                item.onclick = () => { document.getElementById('s1').value = i; updateTimelineScroll(i); updateCode(); livePre(); };
                 scroll.appendChild(item);
             }
         }
 
-        function updateTimelineScroll(timeIndex) {
+        function updateTimelineScroll(t) {
             document.querySelectorAll('.timeline-item').forEach(el => el.classList.remove('active'));
-            const activeItem = document.getElementById(`time-${timeIndex}`);
-            if(activeItem) {
-                activeItem.classList.add('active');
-                document.getElementById('timelineScroll').scrollTop = activeItem.offsetTop - 150;
-            }
+            const active = document.getElementById(`time-${t}`);
+            if(active) { active.classList.add('active'); document.getElementById('timelineScroll').scrollTop = active.offsetTop - 150; }
         }
 
-        const colorPaletteMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF' };
-        function genColorPalette() {
-            const palette = document.getElementById('colorPalette');
-            palette.innerHTML = '';
-            Object.keys(colorPaletteMap).forEach(key => {
-                const btn = document.createElement('div');
-                btn.className = 'color-palette-btn';
-                btn.style.backgroundColor = colorPaletteMap[key];
-                btn.id = `color-${key}`;
-                btn.onclick = () => { setSelectedColor(key); updateCode(); livePre(); };
-                palette.appendChild(btn);
+        const colors = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF' };
+        function genPalette() {
+            const container = document.getElementById('colorPalette');
+            container.innerHTML = '';
+            Object.keys(colors).forEach(k => {
+                const b = document.createElement('div');
+                b.className = 'color-palette-btn';
+                b.style.backgroundColor = colors[k];
+                b.id = `color-${k}`;
+                b.onclick = () => { setSelectedColor(k); updateCode(); livePre(); };
+                container.appendChild(b);
             });
         }
-        function getSelectedColor() {
-            const active = document.querySelector('.color-palette-btn.active');
-            return active ? active.id.replace('color-', '') : 'bl';
-        }
-        function setSelectedColor(colorCode) {
-            document.querySelectorAll('.color-palette-btn').forEach(el => el.classList.remove('active'));
-            const active = document.getElementById(`color-${colorCode}`);
-            if(active) active.classList.add('active');
-        }
-
-        async function livePre() {
-            if (characteristic) {
-                try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + document.getElementById('codeEditor').value)); } catch(e){}
-            }
-        }
-
+        function getSelectedColor() { return (document.querySelector('.color-palette-btn.active') || {id:'color-bl'}).id.replace('color-', ''); }
+        function setSelectedColor(c) { document.querySelectorAll('.color-palette-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById(`color-${c}`); if(el) el.classList.add('active'); }
+        async function livePre() { if (characteristic) { try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + document.getElementById('codeEditor').value)); } catch(e){} } }
+        function saveAndSend() { patterns[selectedIdx].code = document.getElementById('codeEditor').value; if(characteristic) characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${patterns[selectedIdx].code}`)); renderPads(); closePopup(); }
         function closePopup() { document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
         function clearLEDs() { selectedLEDs.clear(); genLEDGrid(); updateCode(); livePre(); }
 
-        // เริ่มต้นระบบ
-        renderPads();
-        genTimeline();
-        genColorPalette();
+        renderPads(); genTimeline(); genPalette();
     </script>
 </body>
 </html>
