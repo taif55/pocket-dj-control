@@ -74,7 +74,7 @@
                     <div class="text-[9px] text-gray-500 mb-1 font-bold uppercase">Brightness (0-99)</div>
                     <div class="flex items-center justify-center space-x-3">
                         <button onclick="adjBright(-10)" class="bg-gray-800 w-8 h-8 rounded-lg">-</button>
-                        <input type="number" id="cBright" value="50" class="bg-transparent text-center font-black text-xl w-12 outline-none" oninput="updateSelectedClip()">
+                        <input type="number" id="cBright" value="10" class="bg-transparent text-center font-black text-xl w-12 outline-none" oninput="updateSelectedClip()">
                         <button onclick="adjBright(10)" class="bg-gray-800 w-8 h-8 rounded-lg">+</button>
                     </div>
                 </div>
@@ -117,22 +117,17 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- Bluetooth Logic (ปรับปรุงเพื่อลด Error) ---
         document.getElementById('connectBtn').onclick = async () => {
             try {
-                // ค้นหาอุปกรณ์แบบเปิดกว้างขึ้น
                 device = await navigator.bluetooth.requestDevice({ 
                     filters: [{ namePrefix: 'PocketDJ-' }], 
                     optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] 
                 });
-
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-
                 document.getElementById('connectBtn').innerText = "ONLINE";
                 document.getElementById('connectBtn').className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl";
-                
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
@@ -161,7 +156,6 @@
             try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
         }
 
-        // --- Studio UI Logic ---
         function togglePlay() {
             if (!characteristic) return alert("Please Connect First!");
             const btn = document.getElementById('playBtn');
@@ -277,7 +271,8 @@
 
         function addClipAtPlayhead() {
             const id = Date.now();
-            clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "u", bright: 50, loop: 1, mirror: false, track: clips.length % 3 });
+            // แก้ไขค่า bright เริ่มต้นเป็น 10
+            clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "u", bright: 10, loop: 1, mirror: false, track: clips.length % 3 });
             renderClips(); selectClip(id);
         }
 
