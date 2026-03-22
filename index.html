@@ -3,96 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ - Pro Sequencer</title>
+    <title>Pocket DJ - Video Timeline Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
-        .pad-btn { background: #151515; border: 1px solid #222; aspect-ratio: 1/1; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.1s; cursor: pointer; }
-        .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 20px #00e676; transform: scale(1.05); z-index: 10; }
-        .pad-btn.has-code { border-color: #00e676; opacity: 1; }
-        .pad-btn:not(.has-code) { opacity: 0.4; }
-        .slider-box { background: #121212; padding: 12px; border-radius: 20px; border: 1px solid #252525; margin-bottom: 10px; }
-        .led-dot { font-size: 8px; height: 32px; background: #111; border: 1px solid #222; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-        .led-dot.active { background: #00e676; color: black; box-shadow: 0 0 10px #00e676; font-weight: bold; border-color: white; }
-        #timelineScroll { scroll-snap-type: y mandatory; scrollbar-width: none; }
-        #timelineScroll::-webkit-scrollbar { display: none; }
-        .timeline-item { scroll-snap-align: center; height: 40px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 11px; border-radius: 10px; transition: 0.2s; }
-        .timeline-item.active { background: #00e676; color: black; font-weight: 900; font-size: 14px; border-color: white; }
-        .color-palette-btn { width: 100%; height: 35px; border-radius: 10px; border: 2px solid transparent; }
-        .color-palette-btn.active { border-color: white; box-shadow: 0 0 10px currentColor; transform: scale(1.1); }
-        input[type=range] { accent-color: #00e676; }
-        .layer-tab { transition: 0.2s; position: relative; }
-        .layer-tab.active { background: #00e676; color: black; font-weight: 900; box-shadow: 0 0 10px #00e676; }
+        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow: hidden; }
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
+        .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 15px #00e676; }
+        .pad-btn.has-code { border-color: #00e676; }
+
+        /* Timeline Workspace */
+        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 200px; overflow-x: auto; overflow-y: hidden; }
+        #timelineContent { position: relative; height: 100%; width: 1000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
+        .time-label { position: absolute; top: 2px; font-size: 9px; color: #555; pointer-events: none; }
+        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
+        
+        /* Light Clips (Video Style Blocks) */
+        .light-clip { 
+            position: absolute; height: 36px; background: #00e676; color: black; 
+            border-radius: 8px; font-size: 10px; font-weight: 900; display: flex; 
+            align-items: center; justify-content: center; overflow: hidden;
+            touch-action: none; border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.5); text-transform: uppercase;
+        }
+        .light-clip.selected { border: 3px solid white; box-shadow: 0 0 15px #00e676; z-index: 40; }
+        
+        .slider-box { background: #121212; padding: 12px; border-radius: 18px; border: 1px solid #252525; }
+        .led-dot { font-size: 8px; height: 32px; background: #111; border: 1px solid #222; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        .led-dot.active { background: #00e676; color: black; font-weight: bold; box-shadow: 0 0 8px #00e676; border-color: white; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="consoleView" class="max-w-xl mx-auto">
-        <div class="flex justify-between items-center mb-6 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-2xl">
+        <div class="flex justify-between items-center mb-6 bg-gray-900/50 p-4 rounded-3xl border border-gray-800">
             <div>
-                <h1 class="text-xl font-black text-green-500 italic">POCKET DJ PRO</h1>
-                <div id="status" class="text-[9px] text-red-500 font-black uppercase tracking-widest">● Disconnected</div>
+                <h1 class="text-xl font-black text-green-500 italic uppercase">Pocket DJ Studio</h1>
+                <div id="status" class="text-[9px] text-red-500 font-bold uppercase">● Disconnected</div>
             </div>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2.5 rounded-2xl active:scale-90 transition">CONNECT</button>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2 rounded-2xl active:scale-90 transition shadow-lg">CONNECT</button>
         </div>
-        <div id="padGrid" class="grid grid-cols-5 gap-3 mb-32"></div>
+        <div id="padGrid" class="grid grid-cols-5 gap-3 mb-24"></div>
     </div>
 
     <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
-        <div class="flex justify-between items-center p-5 border-b border-gray-800 bg-gray-900/30">
-            <button onclick="closePopup()" class="text-gray-500 font-bold uppercase text-xs">Cancel</button>
-            <h2 id="modalTitle" class="font-black text-green-400 uppercase italic">Edit Slot</h2>
-            <button onclick="saveAndSend()" class="text-green-500 font-black uppercase text-xs">Done</button>
+        <div class="flex justify-between items-center p-4 bg-gray-900 border-b border-gray-800">
+            <button onclick="closePopup()" class="text-gray-500 font-bold text-xs tracking-widest uppercase">Cancel</button>
+            <div class="flex space-x-2">
+                <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
+                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black">DEL</button>
+            </div>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-xl text-xs uppercase">Save</button>
         </div>
 
-        <div class="flex flex-1 overflow-hidden p-3 space-x-3">
-            <div class="flex-1 overflow-y-auto space-y-4 pr-1 pb-10">
-                
-                <div class="slider-box bg-green-900/10 border-green-900/30">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-[9px] text-green-500 font-black uppercase">Layers Navigation</span>
-                        <button onclick="addNewLayer()" class="bg-green-600 text-black text-[9px] px-3 py-1.5 rounded-xl font-black">+ ADD LAYER</button>
-                    </div>
-                    <div id="layerTabs" class="flex flex-wrap gap-2 mb-3"></div>
-                    <textarea id="codeEditor" class="w-full bg-black text-green-400 p-3 rounded-2xl border border-gray-800 outline-none h-16 text-[10px] font-mono mb-1" oninput="syncFromCode()"></textarea>
-                </div>
+        <div id="timelineViewport" onclick="handleTimelineClick(event)">
+            <div id="timelineContent">
+                <div id="playhead"></div>
+                <div id="trackArea" class="relative h-full py-8"></div>
+            </div>
+        </div>
+        <div class="bg-gray-900 p-2 text-center border-b border-gray-800 flex justify-between px-4">
+            <span id="currentTimeDisplay" class="text-green-500 font-mono text-sm font-black">PLAYHEAD: 0.0s</span>
+            <span class="text-[9px] text-gray-500 uppercase font-bold">Max: 10.0s (Auto-Loop)</span>
+        </div>
 
-                <div class="slider-box">
-                    <div class="flex justify-between text-[10px] mb-2 font-black text-gray-500 uppercase">
-                        <span>LED Grid (1-300)</span>
-                        <button onclick="clearLEDs()" class="text-red-500">Clear</button>
-                    </div>
-                    <div id="ledGrid" class="grid grid-cols-6 gap-2 p-2 bg-black rounded-2xl border border-gray-900 min-h-[250px]"></div>
-                </div>
-
-                <div class="space-y-3">
-                    <div class="slider-box">
-                        <div class="flex justify-between text-[10px] text-gray-500 font-black uppercase mb-1"><span>Brightness</span><span id="v2" class="text-green-400">10</span></div>
-                        <input type="range" id="s2" min="0" max="99" value="10" class="w-full h-10" oninput="v2.innerText=this.value; updateCode(); livePre();">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-gray-900 border border-gray-800 p-1 rounded-2xl h-14"><input type="text" id="s4" placeholder="Group" class="w-full h-full bg-transparent text-center text-sm font-bold outline-none" oninput="updateCode(); livePre();"></div>
-                        <div class="bg-gray-900 border border-gray-800 p-1 rounded-2xl h-14">
-                            <select id="s6" class="w-full h-full bg-transparent text-xs font-black text-center text-green-400 uppercase outline-none" onchange="updateCode(); livePre();">
-                                <option value="u">Fade Up</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="o">Static</option><option value="b">Blink</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">DUR</div><input type="number" id="s7" value="1.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
-                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">OFF</div><input type="number" id="s8" value="0.0" step="0.1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
-                        <div class="slider-box text-center"><div class="text-[8px] text-gray-500 mb-1">LOOP</div><input type="number" id="s9" value="1" class="w-full bg-transparent text-center font-black text-xl" oninput="updateCode(); livePre();"></div>
+        <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-4 opacity-30 pointer-events-none transition-opacity duration-300">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                <span class="text-xs font-black text-gray-400">EDITING SELECTED CLIP</span>
+                <div class="flex items-center space-x-4">
+                    <button id="colorIndicator" class="w-8 h-8 rounded-full border-2 border-white shadow-lg"></button>
+                    <div class="flex items-center space-x-1" onclick="document.getElementById('cMirror').click()">
+                        <input type="checkbox" id="cMirror" class="w-4 h-4 accent-green-500" onchange="updateSelectedClip()">
+                        <label class="text-[10px] font-bold">MIRROR</label>
                     </div>
                 </div>
             </div>
 
-            <div class="w-16 flex flex-col space-y-4 bg-gray-900/40 p-2 rounded-3xl border border-gray-800">
-                <div class="text-[8px] text-gray-500 text-center font-black uppercase">Time</div>
-                <div id="timelineScroll" class="flex-1 overflow-y-auto space-y-2"></div>
-                <input type="hidden" id="s1" value="0">
-                <div class="text-[8px] text-gray-500 text-center font-black uppercase border-t border-gray-800 pt-4">Color</div>
-                <div id="colorPalette" class="space-y-3 pb-2"></div>
+            <div class="slider-box">
+                <div class="flex justify-between text-[10px] mb-2 font-black text-gray-500 uppercase"><span>LED Grid (1-300)</span><button onclick="clearLEDs()" class="text-red-500">Clear</button></div>
+                <div id="ledGrid" class="grid grid-cols-10 gap-1.5 h-36 overflow-y-auto bg-black p-2 rounded-xl"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="slider-box"><div class="text-[9px] text-gray-500 mb-1 font-bold">BRIGHTNESS</div><input type="range" id="cBright" min="0" max="99" oninput="updateSelectedClip()"></div>
+                <div class="slider-box">
+                    <select id="cFX" class="w-full h-full bg-transparent text-xs font-black text-green-400 uppercase outline-none" onchange="updateSelectedClip()">
+                        <option value="u">Fade Up</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="o">Static</option><option value="b">Blink</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pb-8">
+                <div class="slider-box text-center"><div class="text-[9px] text-gray-500 mb-1">COLOR</div><select id="cCol" class="w-full bg-transparent font-black text-xs text-center" onchange="updateSelectedClip()">
+                    <option value="bl">Blue</option><option value="re">Red</option><option value="gr">Green</option><option value="ye">Yellow</option><option value="wh">White</option><option value="pu">Purple</option><option value="aq">Aqua</option>
+                </select></div>
+                <div class="slider-box text-center"><div class="text-[9px] text-gray-500 mb-1">LOOP COUNT</div><input type="number" id="cLoop" value="1" class="bg-transparent w-full text-center font-black text-lg" oninput="updateSelectedClip()"></div>
             </div>
         </div>
     </div>
@@ -100,29 +105,200 @@
     <script>
         let device, characteristic;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        let selectedIdx = -1;
-        let currentLayerIdx = 0;
-        let selectedLEDs = new Set();
-        let pressTimer;
+        let clips = []; 
+        let selectedClipId = null;
+        let playheadTime = 0;
+        const pxPerSec = 100;
 
-        function renderPads() {
-            const grid = document.getElementById('padGrid');
-            grid.innerHTML = '';
-            patterns.forEach((p, index) => {
-                const btn = document.createElement('div');
-                btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
-                btn.innerHTML = `<span class="text-xs font-black">${index + 1}</span><span class="pad-label">FX</span>`;
-                btn.onpointerdown = () => pressTimer = setTimeout(() => openPopup(index), 600);
-                btn.onpointerup = () => { clearTimeout(pressTimer); if (selectedIdx !== index) playFX(index); };
-                grid.appendChild(btn);
+        function initTimelineLabels() {
+            const content = document.getElementById('timelineContent');
+            for(let i=0; i<=10; i++) {
+                const label = document.createElement('div');
+                label.className = 'time-label';
+                label.style.left = (i * pxPerSec) + 'px';
+                label.innerText = i.toFixed(1) + 's';
+                content.appendChild(label);
+            }
+        }
+
+        function handleTimelineClick(e) {
+            const rect = document.getElementById('timelineContent').getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            playheadTime = Math.max(0, Math.min(10, x / pxPerSec));
+            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+            document.getElementById('currentTimeDisplay').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s`;
+        }
+
+        function addClipAtPlayhead() {
+            const id = Date.now();
+            clips.push({
+                id: id, start: playheadTime, duration: 1.0, 
+                target: "a", color: "bl", fx: "u", bright: 99, loop: 1, mirror: false, track: clips.length % 3
+            });
+            renderClips();
+            selectClip(id);
+        }
+
+        function renderClips() {
+            const area = document.getElementById('trackArea');
+            area.innerHTML = '';
+            clips.forEach(c => {
+                const div = document.createElement('div');
+                div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
+                div.style.left = (c.start * pxPerSec) + 'px';
+                div.style.width = (c.duration * pxPerSec) + 'px';
+                div.style.top = (c.track * 45) + 'px';
+                div.innerText = `${c.color.toUpperCase()}`;
+                div.style.backgroundColor = getColorHex(c.color);
+                div.onclick = (e) => { e.stopPropagation(); selectClip(c.id); };
+                area.appendChild(div);
+                
+                interact(div).draggable({
+                    listeners: { move(event) {
+                        c.start += event.dx / pxPerSec;
+                        c.start = Math.max(0, c.start);
+                        renderClips();
+                        livePre();
+                    }}
+                }).resizable({
+                    edges: { right: true },
+                    listeners: { move(event) {
+                        c.duration = event.rect.width / pxPerSec;
+                        c.duration = Math.max(0.1, c.duration);
+                        renderClips();
+                        livePre();
+                    }}
+                });
             });
         }
 
-        new Sortable(document.getElementById('padGrid'), { animation: 200, ghostClass: 'ghost', delay: 150, onEnd: (evt) => {
-            const item = patterns.splice(evt.oldIndex, 1)[0];
-            patterns.splice(evt.newIndex, 0, item);
+        function selectClip(id) {
+            selectedClipId = id;
+            const c = clips.find(x => x.id === id);
+            const panel = document.getElementById('editorPanel');
+            panel.style.opacity = "1";
+            panel.style.pointerEvents = "auto";
+            
+            document.getElementById('cBright').value = c.bright;
+            document.getElementById('cFX').value = c.fx;
+            document.getElementById('cCol').value = c.color;
+            document.getElementById('cLoop').value = c.loop;
+            document.getElementById('cMirror').checked = c.mirror;
+            document.getElementById('colorIndicator').style.backgroundColor = getColorHex(c.color);
+            
+            renderLEDGrid();
+            renderClips();
+        }
+
+        function updateSelectedClip() {
+            if(!selectedClipId) return;
+            const c = clips.find(x => x.id === selectedClipId);
+            c.bright = document.getElementById('cBright').value;
+            c.fx = document.getElementById('cFX').value;
+            c.color = document.getElementById('cCol').value;
+            c.loop = document.getElementById('cLoop').value;
+            c.mirror = document.getElementById('cMirror').checked;
+            document.getElementById('colorIndicator').style.backgroundColor = getColorHex(c.color);
+            renderClips();
+            livePre();
+        }
+
+        function renderLEDGrid() {
+            const grid = document.getElementById('ledGrid');
+            grid.innerHTML = '';
+            const c = clips.find(x => x.id === selectedClipId);
+            for(let i=1; i<=300; i++) {
+                const dot = document.createElement('div');
+                dot.innerText = i;
+                dot.className = `led-dot ${c.target.includes('<'+i+'>') ? 'active' : ''}`;
+                dot.onclick = () => {
+                    if(c.target.includes('<'+i+'>')) c.target = c.target.replace('<'+i+'>','');
+                    else c.target += `<${i}>`;
+                    renderLEDGrid(); updateSelectedClip();
+                };
+                grid.appendChild(dot);
+            }
+        }
+
+        function getColorHex(code) {
+            const m = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF' };
+            return m[code] || '#555';
+        }
+
+        async function livePre() {
+            if(!characteristic) return;
+            let code = "5";
+            clips.sort((a,b)=>a.start-b.start).forEach(c => {
+                let m = c.mirror ? 'm' : '';
+                let s = Math.round(c.start*10).toString().padStart(2,'0');
+                let b = c.bright.toString().padStart(2,'0');
+                let d = Math.round(c.duration*10).toString().padStart(2,'0');
+                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,${c.loop})`;
+            });
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
+        }
+
+        async function saveAndSend() {
+            let code = "";
+            clips.sort((a,b)=>a.start-b.start).forEach(c => {
+                let m = c.mirror ? 'm' : '';
+                let s = Math.round(c.start*10).toString().padStart(2,'0');
+                let b = c.bright.toString().padStart(2,'0');
+                let d = Math.round(c.duration*10).toString().padStart(2,'0');
+                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,${c.loop})`;
+            });
+            patterns[selectedIdx].code = code;
+            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
+            closePopup();
             renderPads();
-        }});
+        }
+
+        function deleteSelectedClip() {
+            if(selectedClipId) {
+                clips = clips.filter(c => c.id !== selectedClipId);
+                selectedClipId = null;
+                document.getElementById('editorPanel').style.opacity = "0.3";
+                renderClips();
+                livePre();
+            }
+        }
+
+        function openPopup(idx) {
+            selectedIdx = idx;
+            clips = [];
+            let rawCode = patterns[idx].code || "";
+            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
+            if (brackets) {
+                brackets.forEach((bracket, i) => {
+                    let m = bracket.startsWith('m');
+                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
+                    if(content.length >= 5) {
+                        clips.push({
+                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)),
+                            target: content[1], color: content[2], fx: content[3].charAt(0),
+                            duration: parseInt(content[3].substring(1,3))/10, loop: parseInt(content[4]), mirror: m, track: i % 3
+                        });
+                    }
+                });
+            }
+            document.getElementById('modal').classList.remove('hidden');
+            renderClips();
+            if(clips.length > 0) selectClip(clips[0].id);
+        }
+
+        function closePopup() { document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
+
+        function renderPads() {
+            const g = document.getElementById('padGrid');
+            g.innerHTML = '';
+            for(let i=0; i<60; i++) {
+                const b = document.createElement('div');
+                b.className = `pad-btn ${patterns[i].code ? 'has-code' : ''}`;
+                b.innerHTML = `<span class="text-xs font-black">${i+1}</span><span class="text-[8px] opacity-40 uppercase">FX</span>`;
+                b.onclick = () => openPopup(i);
+                g.appendChild(b);
+            }
+        }
 
         document.getElementById('connectBtn').onclick = async () => {
             try {
@@ -130,14 +306,14 @@
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                document.getElementById('status').innerText = "● Connected: Online";
-                document.getElementById('status').className = "text-green-500 font-black uppercase";
+                document.getElementById('status').innerText = "● CONNECTED";
+                document.getElementById('status').className = "text-green-500 font-black";
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     if (val.startsWith("D")) {
-                        let parts = val.substring(1).split(":");
-                        patterns[parseInt(parts[0])].code = parts[2] || "";
+                        let p = val.substring(1).split(":");
+                        patterns[parseInt(p[0])].code = p[2] || "";
                         renderPads();
                     }
                 });
@@ -145,163 +321,7 @@
             } catch (e) { alert(e.message); }
         };
 
-        async function playFX(index) {
-            if (!characteristic || !patterns[index].code) return;
-            selectedIdx = index;
-            document.querySelectorAll('.pad-btn').forEach((b, i) => b.classList.toggle('active', i === index));
-            await characteristic.writeValue(new TextEncoder().encode("5" + patterns[index].code));
-        }
-
-        function openPopup(index) {
-            selectedIdx = index;
-            currentLayerIdx = 0;
-            document.getElementById('modalTitle').innerText = "Edit Slot " + (index + 1);
-            document.getElementById('codeEditor').value = patterns[index].code || "(0099,a,bl,u1005,1)";
-            syncFromCode();
-            document.getElementById('modal').classList.remove('hidden');
-        }
-
-        function syncFromCode() {
-            let fullCode = document.getElementById('codeEditor').value.trim();
-            let brackets = fullCode.match(/\(([^)]+)\)/g) || ["(0099,a,bl,u1005,1)"];
-            if (!brackets[currentLayerIdx]) currentLayerIdx = brackets.length - 1;
-
-            let content = brackets[currentLayerIdx].replace('(', '').replace(')', '');
-            let p = content.split(',');
-            if (p.length < 5) return;
-
-            let startTime = parseInt(p[0].substring(0, 2));
-            document.getElementById('s1').value = startTime;
-            updateTimelineScroll(startTime);
-            document.getElementById('s2').value = p[0].substring(2, 4);
-            document.getElementById('v2').innerText = p[0].substring(2, 4);
-            document.getElementById('s4').value = p[1].includes('<') ? "" : p[1];
-            setSelectedColor(p[2]);
-            document.getElementById('s6').value = p[3].charAt(0);
-            document.getElementById('s7').value = parseInt(p[3].substring(1, 3)) / 10;
-            document.getElementById('s8').value = parseInt(p[3].substring(3, 5)) / 10;
-            document.getElementById('s9').value = p[4];
-
-            selectedLEDs.clear();
-            const ids = p[1].match(/\d+/g);
-            if (ids) ids.forEach(id => selectedLEDs.add(parseInt(id)));
-            genLEDGrid();
-            updateLayerTabs();
-        }
-
-        function updateCode() {
-            let s = document.getElementById('s1').value.toString().padStart(2, '0');
-            let b = document.getElementById('s2').value.toString().padStart(2, '0');
-            let grp = document.getElementById('s4').value.trim();
-            let target = selectedLEDs.size > 0 ? Array.from(selectedLEDs).sort((a,b)=>a-b).map(id => `<${id}>`).join('') : (grp || "a");
-            let fx = document.getElementById('s6').value;
-            let d = (parseFloat(document.getElementById('s7').value) * 10).toString().padStart(2, '0');
-            let o = (parseFloat(document.getElementById('s8').value) * 10).toString().padStart(2, '0');
-            let lp = document.getElementById('s9').value;
-            let col = getSelectedColor();
-            
-            let newBracket = `(${s}${b},${target},${col},${fx}${d}${o},${lp})`;
-            let editor = document.getElementById('codeEditor');
-            let brackets = editor.value.match(/\(([^)]+)\)/g) || [];
-            
-            if (brackets.length > 0) { brackets[currentLayerIdx] = newBracket; editor.value = brackets.join(''); }
-            else { editor.value = newBracket; }
-            updateLayerTabs();
-        }
-
-        function updateLayerTabs() {
-            const container = document.getElementById('layerTabs');
-            const brackets = document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || [];
-            container.innerHTML = '';
-            brackets.forEach((_, i) => {
-                const btn = document.createElement('button');
-                btn.className = `layer-tab px-4 py-2 rounded-xl text-[10px] font-black ${i === currentLayerIdx ? 'active bg-green-500 text-black' : 'bg-gray-800 text-gray-500'}`;
-                btn.innerText = `L${i+1}`;
-                btn.onclick = () => { currentLayerIdx = i; syncFromCode(); };
-                
-                const del = document.createElement('span');
-                del.innerHTML = "&times;";
-                del.className = "ml-2 text-red-500 font-bold";
-                del.onclick = (e) => { e.stopPropagation(); deleteLayer(i); };
-                btn.appendChild(del);
-                container.appendChild(btn);
-            });
-        }
-
-        function addNewLayer() {
-            document.getElementById('codeEditor').value += "(0099,a,wh,u1005,1)";
-            currentLayerIdx = (document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || []).length - 1;
-            syncFromCode();
-            livePre();
-        }
-
-        function deleteLayer(idx) {
-            let brackets = document.getElementById('codeEditor').value.match(/\(([^)]+)\)/g) || [];
-            if (brackets.length > 1) {
-                brackets.splice(idx, 1);
-                document.getElementById('codeEditor').value = brackets.join('');
-                currentLayerIdx = 0;
-                syncFromCode();
-                livePre();
-            }
-        }
-
-        function genLEDGrid() {
-            const grid = document.getElementById('ledGrid');
-            grid.innerHTML = '';
-            for (let i = 1; i <= 300; i++) {
-                const dot = document.createElement('div');
-                dot.innerText = i;
-                dot.className = `led-dot ${selectedLEDs.has(i) ? 'active' : ''}`;
-                dot.onclick = () => {
-                    if (selectedLEDs.has(i)) selectedLEDs.delete(i);
-                    else selectedLEDs.add(i);
-                    genLEDGrid(); updateCode(); livePre();
-                };
-                grid.appendChild(dot);
-            }
-        }
-
-        function genTimeline() {
-            const scroll = document.getElementById('timelineScroll');
-            scroll.innerHTML = '';
-            for (let i = 0; i < 100; i++) {
-                const item = document.createElement('div');
-                item.className = 'timeline-item';
-                item.innerText = (i/10).toFixed(1) + 's';
-                item.id = `time-${i}`;
-                item.onclick = () => { document.getElementById('s1').value = i; updateTimelineScroll(i); updateCode(); livePre(); };
-                scroll.appendChild(item);
-            }
-        }
-
-        function updateTimelineScroll(t) {
-            document.querySelectorAll('.timeline-item').forEach(el => el.classList.remove('active'));
-            const active = document.getElementById(`time-${t}`);
-            if(active) { active.classList.add('active'); document.getElementById('timelineScroll').scrollTop = active.offsetTop - 150; }
-        }
-
-        const colors = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF' };
-        function genPalette() {
-            const container = document.getElementById('colorPalette');
-            container.innerHTML = '';
-            Object.keys(colors).forEach(k => {
-                const b = document.createElement('div');
-                b.className = 'color-palette-btn';
-                b.style.backgroundColor = colors[k];
-                b.id = `color-${k}`;
-                b.onclick = () => { setSelectedColor(k); updateCode(); livePre(); };
-                container.appendChild(b);
-            });
-        }
-        function getSelectedColor() { return (document.querySelector('.color-palette-btn.active') || {id:'color-bl'}).id.replace('color-', ''); }
-        function setSelectedColor(c) { document.querySelectorAll('.color-palette-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById(`color-${c}`); if(el) el.classList.add('active'); }
-        async function livePre() { if (characteristic) { try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + document.getElementById('codeEditor').value)); } catch(e){} } }
-        function saveAndSend() { patterns[selectedIdx].code = document.getElementById('codeEditor').value; if(characteristic) characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${patterns[selectedIdx].code}`)); renderPads(); closePopup(); }
-        function closePopup() { document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
-        function clearLEDs() { selectedLEDs.clear(); genLEDGrid(); updateCode(); livePre(); }
-
-        renderPads(); genTimeline(); genPalette();
+        initTimelineLabels(); renderPads();
     </script>
 </body>
 </html>
