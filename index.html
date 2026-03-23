@@ -29,13 +29,13 @@
             grid-template-columns: repeat(5, 1fr);
             gap: 10px;
             padding: 15px;
-            overflow-y: scroll; /* เปิดให้ scroll ได้ทางเทคนิค */
-            scrollbar-width: none; /* ซ่อน scrollbar สำหรับ Firefox */
-            touch-action: none; /* ไม้ตาย: ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่ม */
+            overflow-y: auto; /* เปิดให้ scroll ได้ทางเทคนิค */
+            scrollbar-width: none; 
+            touch-action: none; /* ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่มเพื่อให้ลากได้ */
         }
-        #padGrid::-webkit-scrollbar { display: none; } /* ซ่อน scrollbar สำหรับ Chrome/Safari */
+        #padGrid::-webkit-scrollbar { display: none; } 
 
-        /* แถบสไลด์ด้านข้าง (Side Scroll Track) */
+        /* แถบสไลด์ด้านข้าง */
         .side-scroll-track {
             width: 30px;
             background: #111;
@@ -45,7 +45,7 @@
             justify-content: center;
             position: relative;
             cursor: ns-resize;
-            touch-action: pan-y; /* อนุญาตให้สไลด์เฉพาะแถบนี้เท่านั้น */
+            touch-action: pan-y;
         }
         .side-scroll-track::after {
             content: '↕';
@@ -63,10 +63,19 @@
         .drag-handle { 
             position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
             display: flex; align-items: center; justify-content: center; 
-            color: #333; font-size: 16px; cursor: grab; z-index: 10;
+            color: #444; font-size: 16px; cursor: grab; z-index: 10;
         }
 
-        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 10px 30px #000; border: 2px solid #00e676 !important; }
+        /* แก้ไข: เพิ่มสไตล์ตอนกำลังลากให้ชัดเจนเพื่อให้วางลงล็อค */
+        .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
+        .sortable-drag { 
+            opacity: 1 !important; 
+            transform: scale(1.1) rotate(2deg) !important; 
+            z-index: 9999 !important; 
+            box-shadow: 0 15px 30px #000 !important; 
+            border: 2px solid #00e676 !important;
+            background: #222 !important;
+        }
     </style>
 </head>
 <body class="p-4">
@@ -74,13 +83,12 @@
     <div id="consoleView" class="max-w-xl mx-auto w-full">
         <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800">
             <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl">CONNECT</button>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
         </div>
     </div>
 
     <div class="pad-container max-w-xl">
         <div id="padGrid"></div>
-        
         <div class="side-scroll-track" id="sideScroll"></div>
     </div>
 
@@ -105,18 +113,27 @@
                 grid.appendChild(btn);
             });
 
+            // แก้ไข: ปรับแต่ง Sortable ให้วางได้แม่นยำบนมือถือ
             new Sortable(grid, {
                 handle: '.drag-handle',
                 animation: 150,
+                forceFallback: true,   // สำคัญ: บังคับใช้ Fallback เพื่อให้การวางเสถียร
+                fallbackClass: "sortable-drag",
+                scroll: true,           // เปิด Auto Scroll เวลาลากไปขอบ
+                scrollSensitivity: 30,
+                scrollSpeed: 10,
                 onEnd: (evt) => {
+                    // ย้ายตำแหน่งใน Array
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
+                    
+                    // อัปเดตตัวเลข 1-60 ใหม่
                     grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
                 }
             });
         }
 
-        // ระบบเชื่อมโยงแถบสไลด์ข้าง (Side Scroll Logic)
+        // ระบบเชื่อมโยงแถบสไลด์ข้าง (คงเดิม)
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false;
         let startY, startScrollTop;
@@ -129,7 +146,7 @@
 
         sideScroll.addEventListener('touchmove', (e) => {
             if (!isScrolling) return;
-            const deltaY = (e.touches[0].pageY - startY) * 2; // คูณ 2 เพื่อให้เลื่อนไวขึ้น
+            const deltaY = (e.touches[0].pageY - startY) * 2.5; 
             grid.scrollTop = startScrollTop - deltaY;
         }, {passive: true});
 
