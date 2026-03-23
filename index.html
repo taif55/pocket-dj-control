@@ -1,177 +1,133 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pocket DJ Studio - PRO</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pocket DJ Studio - PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
+        
+        /* แก้ไขจุดตาย: เอา touch-action ออกเพื่อให้ Browser อนุญาตให้ลากได้ */
+        .pad-btn { 
+            background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
+            border-radius: 12px; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; cursor: pointer; 
+            position: relative; overflow: hidden; 
+            transition: background 0.2s;
+        }
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
+        .pad-btn.has-code { border-color: #00e676; }
+        
+        /* สไตล์โหมดแก้ไข */
+        body.edit-mode .pad-btn { border: 1px dashed #ef4444; opacity: 0.9; }
+        body.edit-mode .pad-btn:after { content: 'DRAG'; position: absolute; bottom: 4px; font-size: 8px; color: #ef4444; font-weight: bold; }
 
-<style>
-body { font-family:'Segoe UI',sans-serif;background:#050505;color:white;user-select:none;overflow-x:hidden;}
-.pad-btn{background:#151515;border:1px solid #333;aspect-ratio:1/1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform .1s;position:relative;overflow:hidden;touch-action:none;}
-.pad-btn:active{transform:scale(.95);background:#222;}
-.pad-btn.active{background:#00e676!important;color:black;box-shadow:0 0 15px #00e676;border-color:#fff;}
-.pad-btn.has-code{border-color:#00e676;}
-.hold-ring{position:absolute;inset:0;border:4px solid transparent;border-top-color:#00e676;border-radius:12px;opacity:0;pointer-events:none;z-index:10;}
-.is-holding .hold-ring{opacity:1;animation:spin .5s linear forwards;}
-@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-.sortable-ghost{opacity:.2;}
-.sortable-drag{opacity:.9;transform:scale(1.1) rotate(2deg);box-shadow:0 20px 40px rgba(0,0,0,.6);z-index:9999;}
-</style>
+        /* ทำให้ปุ่มลอยติดนิ้ว 100% */
+        .sortable-ghost { opacity: 0; } /* ตัวที่รอวางให้จางไปเลย */
+        .sortable-drag { 
+            opacity: 1 !important; 
+            transform: scale(1.15) !important; 
+            box-shadow: 0 20px 50px rgba(0,0,0,1) !important; 
+            background: #222 !important;
+            border: 2px solid #00e676 !important;
+            z-index: 9999 !important; 
+        }
+    </style>
 </head>
-
 <body class="p-4">
 
-<div id="consoleView" class="max-w-xl mx-auto">
-<div class="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl mb-4">
-
-<div class="flex justify-between items-center mb-6">
-<h1 class="text-xl font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
-<button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2 rounded-2xl transition">CONNECT</button>
-</div>
-
-<div id="padGrid" class="grid grid-cols-5 gap-3 pb-32"></div>
-
-</div>
-</div>
-
-<script>
-
-let patterns=Array.from({length:60},(_,i)=>({id:i,code:""}))
-
-
-/* =========================
-PATCHED reorderPads ONLY
-========================= */
-
-function renderPads(){
-
-const grid=document.getElementById('padGrid')
-
-grid.innerHTML=''
-
-patterns.forEach((p,idx)=>{
-
-const btn=document.createElement('div')
-
-btn.className=`pad-btn ${p.code?'has-code':''}`
-
-btn.setAttribute('data-id',idx)
-
-btn.innerHTML=`
-<div class="hold-ring"></div>
-<span class="text-xs font-black pad-num">${idx+1}</span>
-`
-
-/* FIX 1: realtime index */
-
-btn.onclick=()=>{
-
-if(!btn.classList.contains('is-dragging')){
-
-const currentIdx=
-Array.from(btn.parentNode.children).indexOf(btn)
-
-playFX(currentIdx,btn)
-
-}
-
-}
-
-grid.appendChild(btn)
-
-})
-
-
-new Sortable(grid,{
-
-animation:150,
-
-delay:400,
-
-delayOnTouchOnly:true,
-
-touchStartThreshold:5,
-
-ghostClass:'sortable-ghost',
-
-dragClass:'sortable-drag',
-
-
-onChoose:(evt)=>{
-
-evt.item.classList.add('is-holding')
-
-window.popupTimer=setTimeout(()=>{
-
-evt.item.classList.remove('is-holding')
-
-
-/* FIX 2: realtime popup index */
-
-openPopup(
-
-Array.from(evt.item.parentNode.children)
-
-.indexOf(evt.item)
-
-)
-
-},100)
-
-},
-
-
-onStart:(evt)=>{
-
-clearTimeout(window.popupTimer)
-
-evt.item.classList.remove('is-holding')
-
-evt.item.classList.add('is-dragging')
-
-},
-
-
-onEnd:(evt)=>{
-
-evt.item.classList.remove('is-dragging')
-
-const item=patterns.splice(evt.oldIndex,1)[0]
-
-patterns.splice(evt.newIndex,0,item)
-
-
-/* FIX 3: sync UI */
-
-renderPads()
-
-}
-
-})
-
-}
-
-
-/* ====== dummy functions (ของเดิมคุณมีอยู่แล้ว) ====== */
-
-function playFX(idx,btn){
-console.log("PLAY PAD",idx)
-}
-
-function openPopup(idx){
-console.log("OPEN POPUP",idx)
-}
-
-
-/* init */
-
-renderPads()
-
-</script>
-
+    <div id="consoleView" class="max-w-xl mx-auto">
+        <div class="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl mb-4">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-xl font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
+                <div class="flex space-x-2">
+                    <button id="editToggleBtn" onclick="toggleEditMode()" class="bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-95">EDIT MODE: OFF</button>
+                    <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition">CONNECT</button>
+                </div>
+            </div>
+            <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-8">
+        </div>
+        <div id="padGrid" class="grid grid-cols-5 gap-3 pb-32"></div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
+        <div class="flex justify-between items-center p-3 bg-gray-900">
+            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs">BACK</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs">SAVE</button>
+        </div>
+        <div class="p-10 text-center">ระบบแก้ไขลายไฟสำหรับปุ่มลำดับที่ <span id="targetIdx"></span></div>
+    </div>
+
+    <script>
+        let sortableInstance;
+        let isEditMode = false;
+        let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('editToggleBtn');
+            if (isEditMode) {
+                document.body.classList.add('edit-mode');
+                btn.innerText = "EDIT MODE: ON";
+                btn.className = "bg-red-600 text-white text-[10px] font-black px-4 py-2 rounded-2xl border border-red-500";
+                sortableInstance.option("disabled", false); // เปิดการลาก
+            } else {
+                document.body.classList.remove('edit-mode');
+                btn.innerText = "EDIT MODE: OFF";
+                btn.className = "bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700";
+                sortableInstance.option("disabled", true); // ปิดการลาก
+            }
+        }
+
+        function renderPads() {
+            const grid = document.getElementById('padGrid');
+            grid.innerHTML = '';
+            patterns.forEach((p, idx) => {
+                const btn = document.createElement('div');
+                btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
+                btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
+                
+                // ใช้ปุ่มในโหมด Edit เพื่อเข้าหน้าตั้งค่า
+                btn.onclick = () => {
+                    if (isEditMode) openPopup(idx);
+                    else playFX(idx, btn);
+                };
+                grid.appendChild(btn);
+            });
+
+            // ตั้งค่าลากใหม่แบบเน้นความเร็ว
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(grid, {
+                animation: 150,
+                disabled: true, 
+                forceFallback: true, // บังคับใช้ระบบลากจำลอง เพื่อให้ตามนิ้วได้เสถียรที่สุดบนมือถือ
+                fallbackClass: "sortable-drag",
+                onEnd: (evt) => {
+                    const item = patterns.splice(evt.oldIndex, 1)[0];
+                    patterns.splice(evt.newIndex, 0, item);
+                    // อัปเดตเฉพาะตัวเลข ไม่ล้างหน้าจอ
+                    grid.querySelectorAll('.pad-btn').forEach((p, i) => {
+                        p.querySelector('.pad-num').innerText = i + 1;
+                    });
+                }
+            });
+        }
+
+        function openPopup(idx) {
+            document.getElementById('targetIdx').innerText = idx + 1;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function closePopup() { document.getElementById('modal').classList.add('hidden'); }
+        function playFX(idx, el) { 
+            document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            setTimeout(() => el.classList.remove('active'), 200);
+        }
+
+        renderPads();
+    </script>
 </body>
 </html>
