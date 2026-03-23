@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DJ Master Sync - Pro Drag</title>
+    <title>Pocket DJ Studio - Side Scroll Lock</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -13,31 +13,45 @@
             display: flex; flex-direction: column;
         }
 
-        /* กรอบขังปุ่ม - ปรับให้ SortableJS ทำงานได้สมบูรณ์ */
+        /* กรอบขังปุ่ม */
         .pad-container {
             margin: 0 auto; width: 95%; height: 70vh; 
             background: #0a0a0a; border: 2px solid #222; border-radius: 20px;
-            position: relative; overflow: hidden; display: flex;
+            position: relative;
+            overflow: hidden; /* ปิดการสไลด์แบบปกติทับปุ่ม */
+            display: flex;
         }
 
-        /* พื้นที่แสดงปุ่ม */
+        /* พื้นที่แสดงปุ่ม (ล็อคการสไลด์ด้วยนิ้วบนปุ่ม) */
         #padGrid {
-            flex: 1; display: grid; grid-template-columns: repeat(5, 1fr);
-            gap: 10px; padding: 15px;
-            overflow-y: auto; /* เปิดให้ Scroll ภายในได้ */
-            touch-action: pinch-zoom; /* ปิดการสไลด์แนวตั้งทับปุ่ม เพื่อให้ลากได้ */
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            padding: 15px;
+            overflow-y: scroll; /* เปิดให้ scroll ได้ทางเทคนิค */
+            scrollbar-width: none; /* ซ่อน scrollbar สำหรับ Firefox */
+            touch-action: none; /* ไม้ตาย: ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่ม */
         }
-        
-        /* ซ่อน Scrollbar แต่ยังเลื่อนได้ */
-        #padGrid::-webkit-scrollbar { width: 0px; background: transparent; }
+        #padGrid::-webkit-scrollbar { display: none; } /* ซ่อน scrollbar สำหรับ Chrome/Safari */
 
-        /* แถบสไลด์ด้านข้าง */
+        /* แถบสไลด์ด้านข้าง (Side Scroll Track) */
         .side-scroll-track {
-            width: 35px; background: #111; border-left: 1px solid #222;
-            display: flex; align-items: center; justify-content: center;
-            cursor: ns-resize; touch-action: none;
+            width: 30px;
+            background: #111;
+            border-left: 1px solid #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: ns-resize;
+            touch-action: pan-y; /* อนุญาตให้สไลด์เฉพาะแถบนี้เท่านั้น */
         }
-        .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
+        .side-scroll-track::after {
+            content: '↕';
+            color: #444;
+            font-size: 20px;
+        }
 
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
@@ -45,33 +59,28 @@
             cursor: pointer; position: relative;
         }
 
-        /* ไข่ปลาสำหรับลาก (ขยายพื้นที่ให้จิ้มง่ายขึ้น) */
+        /* ไข่ปลาสำหรับลากสลับที่ */
         .drag-handle { 
-            position: absolute; top: 0; left: 0; width: 40px; height: 40px; 
+            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
             display: flex; align-items: center; justify-content: center; 
-            color: #444; font-size: 18px; cursor: grab; z-index: 10;
+            color: #333; font-size: 16px; cursor: grab; z-index: 10;
         }
 
-        /* สไตล์ตอนกำลังลาก - ต้องเด่นและลอยเหนือทุกอย่าง */
-        .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
-        .sortable-drag { 
-            opacity: 1 !important; transform: scale(1.1) rotate(2deg) !important; 
-            z-index: 9999 !important; box-shadow: 0 15px 30px #000 !important; 
-            border: 2px solid #00e676 !important; background: #222 !important;
-        }
+        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 10px 30px #000; border: 2px solid #00e676 !important; }
     </style>
 </head>
 <body class="p-4">
 
     <div id="consoleView" class="max-w-xl mx-auto w-full">
         <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800">
-            <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync Pro</h1>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+            <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl">CONNECT</button>
         </div>
     </div>
 
     <div class="pad-container max-w-xl">
         <div id="padGrid"></div>
+        
         <div class="side-scroll-track" id="sideScroll"></div>
     </div>
 
@@ -91,34 +100,18 @@
                 
                 btn.onclick = (e) => {
                     if (e.target.classList.contains('drag-handle')) return;
-                    console.log("Pad Action:", idx + 1);
+                    console.log("Play:", idx + 1);
                 };
                 grid.appendChild(btn);
             });
 
-            // ตั้งค่า SortableJS ใหม่เพื่อให้วางได้แม่นยำ
             new Sortable(grid, {
-                handle: '.drag-handle', // ลากได้เฉพาะตรงไข่ปลา
+                handle: '.drag-handle',
                 animation: 150,
-                forceFallback: true,   // บังคับใช้ Fallback เพื่อให้การลากบนมือถือเสถียร
-                fallbackClass: "sortable-drag",
-                scroll: true,           // เปิด Auto Scroll
-                scrollSensitivity: 50,  // ระยะก่อนเริ่มเลื่อนหน้าจอ (px)
-                scrollSpeed: 10,        // ความเร็วในการเลื่อน
-                bubbleScroll: true,
-                onStart: (evt) => {
-                    if (window.navigator.vibrate) window.navigator.vibrate(20);
-                },
                 onEnd: (evt) => {
-                    // จัดการข้อมูลใน Array เมื่อวางสำเร็จ
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    
-                    // อัปเดตตัวเลข 1-60 ใหม่
-                    const allPads = grid.querySelectorAll('.pad-num');
-                    allPads.forEach((num, i) => {
-                        num.innerText = i + 1;
-                    });
+                    grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
                 }
             });
         }
@@ -136,7 +129,7 @@
 
         sideScroll.addEventListener('touchmove', (e) => {
             if (!isScrolling) return;
-            const deltaY = (e.touches[0].pageY - startY) * 2.5; // ปรับความเร็ว
+            const deltaY = (e.touches[0].pageY - startY) * 2; // คูณ 2 เพื่อให้เลื่อนไวขึ้น
             grid.scrollTop = startScrollTop - deltaY;
         }, {passive: true});
 
