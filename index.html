@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Ultimate Fix</title>
+    <title>Pocket DJ Studio - Bluetooth Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -36,18 +36,14 @@
         }
         .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
 
-        /* 🔥 แก้ไข: เอา Transform (หดปุ่ม) ออก เพื่อไม่ให้กวนระบบลาก 🔥 */
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; position: relative; transition: background 0.1s, box-shadow 0.1s;
+            cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s;
         }
-        
-        /* Effect เปลี่ยนสีและแสงเงาแทนการหดตัว */
-        .pad-btn:active { box-shadow: inset 0 0 20px rgba(0,0,0,0.8); background: #222; }
-        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; background: #00e676 !important; color: black; }
+        .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
+        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676 !important; color: black; }
 
-        /* โซน 10 ปุ่มแรก (Potentiometer Zone) */
         .poten-slot { 
             border: 2px dashed #ff9100 !important; 
             background: rgba(255, 145, 0, 0.05);
@@ -61,10 +57,10 @@
             border: 2px solid #ff9100 !important;
             box-shadow: inset 0 0 15px rgba(255, 145, 0, 0.3), 0 0 10px rgba(255, 145, 0, 0.5) !important;
         }
-
         .pad-btn:not(.poten-slot).has-code {
             border: 2px solid #00e676 !important;
             box-shadow: inset 0 0 10px rgba(0,230,118,0.2) !important;
+            background-color: #151515 !important; /* ลบสีรุ้งออกถ้ามีโค้ดไฟ */
         }
 
         .sortable-drag { 
@@ -155,16 +151,14 @@
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
         const grid = document.getElementById('padGrid');
-        let isDraggingPad = false; // ตัวแปรป้องกันการคลิกซ้อนตอนลาก
+        let sortableInstance = null; // ตัวแปรเก็บระบบลาก
+        let isDraggingPad = false; 
 
-        // --- ระบบออโต้ซิงค์ 10 ปุ่มบนสุด ---
         async function autoSyncTop10() {
             if(!characteristic) return; 
-            
             const btn = document.getElementById('connectBtn');
             btn.innerText = "SYNCING...";
             btn.className = "bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition";
-
             try {
                 for(let i=0; i<10; i++) {
                     let codeToSend = patterns[i].code ? patterns[i].code : ""; 
@@ -174,13 +168,12 @@
                 btn.innerText = "ONLINE";
                 btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
             } catch(e) { 
-                console.log("Auto Sync Error", e); 
                 btn.innerText = "ONLINE";
                 btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
             }
         }
 
-        // --- ฟังก์ชันวาดปุ่มหน้าจอหลัก ---
+        // --- ฟังก์ชันวาดปุ่ม (เรียกใช้ครั้งเดียวตอนเปิดแอป) ---
         function renderPads() {
             grid.innerHTML = '';
             patterns.forEach((p, index) => {
@@ -197,19 +190,16 @@
                 btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
-                
-                // ตรวจจับการกดให้แม่นยำที่สุด
                 btn.addEventListener('pointerdown', (e) => {
-                    if (isDraggingPad) return; // ถ้ากำลังลากอยู่ ให้ข้ามการคลิกไปเลย
+                    if (isDraggingPad) return; 
                     
                     const currentVisualIndex = patterns.indexOf(p);
-                    
                     if (clickTimer) {
                         clearTimeout(clickTimer);
                         clickTimer = null;
-                        openPopup(currentVisualIndex); // เข้าหน้าแก้ไฟ
+                        openPopup(currentVisualIndex); 
                     } else {
-                        playFX(currentVisualIndex, btn); // เล่นไฟ
+                        playFX(currentVisualIndex, btn); 
                         clickTimer = setTimeout(() => {
                             clickTimer = null; 
                         }, 300);
@@ -219,18 +209,19 @@
                 grid.appendChild(btn);
             });
 
-            // ระบบลากปุ่มด้วยนิ้ว
-            new Sortable(grid, {
+            // สร้างระบบลากแค่ครั้งเดียว
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(grid, {
                 animation: 150,
-                delay: 250, // กดแช่ 0.25 วิ ถึงจะลาก
-                delayOnTouchOnly: false, // บังคับใช้ delay ทั้งนิ้วและเมาส์ เพื่อให้กดคลิกได้
+                delay: 250, 
+                delayOnTouchOnly: false, 
                 touchStartThreshold: 5,
                 forceFallback: true,
                 fallbackClass: "sortable-drag",
                 fallbackOnBody: true,
                 swapThreshold: 0.65,
                 onStart: (evt) => {
-                    isDraggingPad = true; // ทำเครื่องหมายว่าเริ่มลากแล้ว
+                    isDraggingPad = true; 
                     if (window.navigator.vibrate) window.navigator.vibrate(30);
                 },
                 onEnd: (evt) => {
@@ -243,14 +234,29 @@
                     });
 
                     autoSyncTop10();
-                    
-                    // หน่วงเวลาเล็กน้อยก่อนปลดล็อคคลิก เพื่อกันการคลิกลั่นตอนปล่อยนิ้ว
                     setTimeout(() => { isDraggingPad = false; }, 50);
                 }
             });
         }
 
-        // --- ระบบเล่นไฟ & Bluetooth ---
+        // --- ไม้ตายแก้บัค: ฟังก์ชันอัปเดตแค่ภาพกราฟิก ไม่ทำลายระบบลาก ---
+        function updatePadsVisuals() {
+            const btns = grid.children;
+            patterns.forEach((p, index) => {
+                const btn = btns[index];
+                if (!btn) return;
+                
+                if(p.code) {
+                    btn.classList.add('has-code');
+                    btn.style.backgroundColor = ""; // เคลียร์สีรุ้งออก
+                } else {
+                    btn.classList.remove('has-code');
+                    const hue = (p.id * 6) % 360;
+                    btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`;
+                }
+            });
+        }
+
         async function playFX(idx, btnElement) {
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
             if(btnElement) btnElement.classList.add('playing');
@@ -259,7 +265,7 @@
             if(!characteristic || !patterns[idx].code) return;
             try { 
                 await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); 
-            } catch(e){ console.log(e); }
+            } catch(e){}
         }
 
         document.getElementById('connectBtn').onclick = async () => {
@@ -277,13 +283,16 @@
                 btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
                 
                 await characteristic.startNotifications();
+                
+                // รับข้อมูลจาก ESP32
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     if (val.startsWith("D")) {
                         let p = val.substring(1).split(":");
                         if(p.length >= 3) { 
                             patterns[parseInt(p[0])].code = p[2] || ""; 
-                            renderPads(); 
+                            // ใช้ updatePadsVisuals แทน renderPads ตรงนี้แหละครับกุญแจสำคัญ!
+                            updatePadsVisuals(); 
                         }
                     }
                 });
@@ -325,7 +334,13 @@
             if(clips.length > 0) selectClip(clips[0].id);
         }
 
-        function closePopup() { stopPlayback(); document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; renderPads(); }
+        function closePopup() { 
+            stopPlayback(); 
+            document.getElementById('modal').classList.add('hidden'); 
+            selectedIdx = -1; 
+            // อัปเดตแค่ภาพกราฟิก ไม่ลบปุ่มทิ้ง
+            updatePadsVisuals(); 
+        }
 
         function renderClips() {
             const area = document.getElementById('trackArea'); area.innerHTML = '';
@@ -412,6 +427,7 @@
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5"; clips.sort((a,b)=>a.start-b.start).forEach(c => { let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0'); code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`; }); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
         async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
 
+        // เรียกวาดปุ่มแค่ครั้งเดียวตอนโหลดแอป!
         renderPads();
     </script>
 </body>
