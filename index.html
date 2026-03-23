@@ -9,18 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
-        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; position: relative; overflow: hidden; touch-action: manipulation; }
-        .pad-btn:active { transform: scale(0.95); background: #222; }
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s, border 0.3s; position: relative; overflow: hidden; touch-action: manipulation; }
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        /* จุดดึงไข่ปลา (Drag Handle) */
-        .drag-handle { 
-            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
-            display: flex; align-items: center; justify-content: center; 
-            color: #444; font-size: 18px; cursor: grab; z-index: 20;
-        }
-        .drag-handle:active { color: #00e676; }
+        /* สไตล์ตอนอยู่ในโหมดแก้ไข */
+        body.edit-mode .pad-btn { border: 1px dashed #555; opacity: 0.8; }
+        body.edit-mode .pad-btn:after { content: 'EDIT'; position: absolute; bottom: 4px; font-size: 7px; color: #555; font-weight: bold; }
 
         /* สไตล์ตอนกำลังลาก */
         .sortable-ghost { opacity: 0.1; }
@@ -41,11 +36,14 @@
         <div class="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl mb-4">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-xl font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
-                <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2 rounded-2xl transition active:scale-95">CONNECT</button>
+                <div class="flex space-x-2">
+                    <button id="editToggleBtn" onclick="toggleEditMode()" class="bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-90">EDIT MODE: OFF</button>
+                    <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-2xl transition active:scale-95">CONNECT</button>
+                </div>
             </div>
             <div class="space-y-1">
                 <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
-                    <span>Global Playback Speed</span>
+                    <span>Playback Speed</span>
                     <span id="speedVal" class="text-green-500 text-sm">1.0x</span>
                 </div>
                 <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-8" oninput="speedVal.innerText=this.value+'x'; updateGlobalSpeed(this.value)">
@@ -58,7 +56,7 @@
         <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
             <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
             <div class="flex space-x-2">
-                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg">PLAY</button>
+                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">PLAY</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
                 <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase italic">Del</button>
             </div>
@@ -91,81 +89,61 @@
                     </select>
                 </div>
             </div>
-            <div class="bg-gray-900/40 p-3 rounded-2xl border border-gray-800">
-                <div id="ledGrid" class="grid grid-cols-10 gap-1 h-32 overflow-y-auto bg-black p-2 rounded-lg border border-gray-900"></div>
-            </div>
+            <div id="ledGrid" class="grid grid-cols-10 gap-1 h-32 overflow-y-auto bg-black p-2 rounded-lg border border-gray-900"></div>
         </div>
     </div>
 
     <script>
-        let device, characteristic;
+        let device, characteristic, sortableInstance;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        let clips = []; 
-        let selectedClipId = null;
-        let selectedIdx = -1;
-        let playheadTime = 0;
-        let isPlaying = false;
-        let playInterval;
-        let startAnimateTime;
-        let currentLoopLimit = 1.0;
-        const pxPerSec = 100;
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
+        let clips = [], selectedClipId = null, selectedIdx = -1, playheadTime = 0, isPlaying = false, isEditMode = false;
+        const pxPerSec = 100, colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบปุ่ม (แก้ไข: Handle ไข่ปลาสำหรับลากสลับที่) ---
+        // --- ระบบเปิด-ปิด Edit Mode ---
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('editToggleBtn');
+            if (isEditMode) {
+                document.body.classList.add('edit-mode');
+                btn.innerText = "EDIT MODE: ON";
+                btn.className = "bg-red-600 text-white text-[10px] font-black px-4 py-2 rounded-2xl border border-red-500 transition active:scale-90";
+                sortableInstance.option("disabled", false); // เปิดระบบลาก
+            } else {
+                document.body.classList.remove('edit-mode');
+                btn.innerText = "EDIT MODE: OFF";
+                btn.className = "bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-90";
+                sortableInstance.option("disabled", true); // ปิดระบบลาก
+            }
+        }
+
+        // --- วาดปุ่มหน้าแรก ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
             patterns.forEach((p, idx) => {
                 const btn = document.createElement('div');
                 btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
-                btn.setAttribute('data-id', idx);
-
-                // 1. ใส่ Handle ไข่ปลา
-                const handle = document.createElement('div');
-                handle.className = 'drag-handle';
-                handle.innerHTML = '⠿';
-                btn.appendChild(handle);
-
-                // 2. ใส่ตัวเลขปุ่ม
-                const num = document.createElement('span');
-                num.className = 'text-xs font-black pad-num';
-                num.innerText = idx + 1;
-                btn.appendChild(num);
-
-                // 3. ระบบคลิก (แยกออกจากจุดดึง)
-                let lastTap = 0;
-                btn.onpointerdown = (e) => {
-                    // ถ้าจิ้มโดนไข่ปลา ให้ปล่อยเป็นหน้าที่ Sortable
-                    if (e.target.classList.contains('drag-handle')) return;
-
-                    const now = Date.now();
-                    if (now - lastTap < 300) { 
-                        openPopup(idx); // เคาะ 2 ทีเข้า Popup
+                btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
+                
+                btn.onclick = () => {
+                    if (isEditMode) {
+                        openPopup(idx); // ในโหมด Edit: จิ้มเพื่อเข้าหน้าตั้งค่า
                     } else {
-                        // หน่วงเวลาเล็กน้อยเพื่อรอเช็ค Double Tap
-                        window.tapTimer = setTimeout(() => {
-                            playFX(idx, btn);
-                        }, 300);
+                        playFX(idx, btn); // ในโหมดปกติ: จิ้มเพื่อเล่นไฟ
                     }
-                    lastTap = now;
                 };
-
                 grid.appendChild(btn);
             });
 
-            // เปิดระบบลาก (ล็อกเฉพาะจุดดึง ⠿)
-            new Sortable(grid, { 
-                handle: '.drag-handle', // <--- สำคัญ: ลากได้เฉพาะจุดนี้
+            // สร้าง Sortable Instance ทิ้งไว้
+            sortableInstance = new Sortable(grid, {
                 animation: 150,
+                disabled: true, // ปิดไว้ตอนเริ่มต้น
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
-                onStart: () => {
-                    clearTimeout(window.tapTimer); // เริ่มลากปุ๊บ ยกเลิกเล่นไฟ
-                },
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    // อัปเดตตัวเลขแบบลื่นๆ ไม่ต้องวาดใหม่
                     grid.querySelectorAll('.pad-btn').forEach((p, i) => {
                         p.querySelector('.pad-num').innerText = i + 1;
                     });
@@ -184,6 +162,7 @@
             if(characteristic) await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + v));
         }
 
+        // --- Logic Designer & Bluetooth (คงเดิม 100%) ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -246,8 +225,9 @@
         async function saveAndSend() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
+                let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${m}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
@@ -261,7 +241,7 @@
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
                 document.getElementById('connectBtn').innerText = "ONLINE";
-                document.getElementById('connectBtn').className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl";
+                document.getElementById('connectBtn').className = "bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-xl";
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
