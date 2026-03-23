@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Touch & Drag Fixed</title>
+    <title>Pocket DJ Studio - Auto Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -12,7 +12,7 @@
             font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
             user-select: none; overflow: hidden; height: 100vh;
             display: flex; flex-direction: column;
-            touch-action: none;
+            touch-action: none; 
         }
 
         .pad-container {
@@ -41,9 +41,28 @@
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
             cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s;
         }
-        
         .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676; color: black; }
+        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676 !important; color: black; }
+
+        /* โซน 10 ปุ่มแรก (Potentiometer Zone) */
+        .poten-slot { 
+            border: 2px dashed #ff9100 !important; 
+            background: rgba(255, 145, 0, 0.05);
+        }
+        .poten-slot::before {
+            content: 'POTEN';
+            position: absolute; top: 4px; font-size: 7px; font-weight: 900; 
+            color: #ff9100; letter-spacing: 0.5px; opacity: 0.9;
+        }
+        .poten-slot.has-code {
+            border: 2px solid #ff9100 !important;
+            box-shadow: inset 0 0 15px rgba(255, 145, 0, 0.3), 0 0 10px rgba(255, 145, 0, 0.5) !important;
+        }
+
+        .pad-btn:not(.poten-slot).has-code {
+            border: 2px solid #00e676 !important;
+            box-shadow: inset 0 0 10px rgba(0,230,118,0.2) !important;
+        }
 
         .sortable-drag { 
             opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; 
@@ -52,7 +71,6 @@
         }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
-        /* --- Designer UI --- */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
@@ -135,16 +153,44 @@
 
         const grid = document.getElementById('padGrid');
 
+        // --- ระบบออโต้ซิงค์ 10 ปุ่มบนสุด ---
+        async function autoSyncTop10() {
+            // ถ้าไม่ได้ต่อบลูทูธอยู่ ไม่ต้องทำอะไร (กันแจ้งเตือนเด้งรบกวน)
+            if(!characteristic) return; 
+            
+            const btn = document.getElementById('connectBtn');
+            btn.innerText = "SYNCING...";
+            btn.className = "bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition";
+
+            try {
+                // ส่งเฉพาะกรอบส้ม 10 ลายแรก เพื่อความรวดเร็วที่สุด
+                for(let i=0; i<10; i++) {
+                    // ถ้าช่องนั้นมีลาย ให้ส่งโค้ด ถ้าว่าง ให้ส่งเคลียร์ค่า
+                    let codeToSend = patterns[i].code ? patterns[i].code : ""; 
+                    await characteristic.writeValue(new TextEncoder().encode(`S${i}:${codeToSend}`));
+                    await new Promise(r => setTimeout(r, 60)); // หน่วงกันบลูทูธค้าง
+                }
+                
+                // คืนค่าปุ่มให้เป็นสีเขียวเหมือนเดิมเมื่อเสร็จ
+                btn.innerText = "ONLINE";
+                btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
+            } catch(e) { 
+                console.log("Auto Sync Error", e); 
+                btn.innerText = "ONLINE";
+                btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
+            }
+        }
+
+        // --- ฟังก์ชันวาดปุ่มหน้าจอหลัก ---
         function renderPads() {
             grid.innerHTML = '';
             patterns.forEach((p, index) => {
                 const btn = document.createElement('div');
-                btn.className = 'pad-btn';
+                const isPotenZone = index < 10;
                 
-                if(p.code) {
-                    btn.style.border = "2px solid #00e676";
-                    btn.style.boxShadow = "inset 0 0 10px rgba(0,230,118,0.2)";
-                } else {
+                btn.className = `pad-btn ${isPotenZone ? 'poten-slot' : ''} ${p.code ? 'has-code' : ''}`;
+                
+                if(!p.code) {
                     const hue = (p.id * 6) % 360;
                     btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`;
                 }
@@ -152,29 +198,26 @@
                 btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
-                
                 btn.addEventListener('pointerdown', (e) => {
                     const currentVisualIndex = patterns.indexOf(p);
-
                     if (clickTimer) {
                         clearTimeout(clickTimer);
                         clickTimer = null;
-                        openPopup(currentVisualIndex); // Double Tap
+                        openPopup(currentVisualIndex); 
                     } else {
-                        playFX(currentVisualIndex, btn); // Single Tap
+                        playFX(currentVisualIndex, btn); 
                         clickTimer = setTimeout(() => {
                             clickTimer = null; 
-                        }, 300);
+                        }, 250);
                     }
                 });
 
                 grid.appendChild(btn);
             });
 
-            // --- แก้ไขตรงนี้: เอา handle: '.drag-handle' ออกแล้ว! ---
             new Sortable(grid, {
                 animation: 150,
-                delay: 250, // กดค้างไว้ 0.25 วินาทีถึงจะเริ่มลาก
+                delay: 250, 
                 delayOnTouchOnly: true, 
                 touchStartThreshold: 5,
                 forceFallback: true,
@@ -185,12 +228,23 @@
                     if (window.navigator.vibrate) window.navigator.vibrate(30);
                 },
                 onEnd: (evt) => {
+                    // 1. สลับข้อมูล
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
+                    
+                    // 2. อัปเดตคลาสกรอบสีส้ม (Poten Zone) และไฟ
+                    Array.from(grid.children).forEach((btn, i) => {
+                        if (i < 10) btn.classList.add('poten-slot');
+                        else btn.classList.remove('poten-slot');
+                    });
+
+                    // 3. ✨ เรียกคำสั่ง Auto Sync ทันทีที่ปล่อยนิ้ว ✨
+                    autoSyncTop10();
                 }
             });
         }
 
+        // --- ระบบ Bluetooth ---
         async function playFX(idx, btnElement) {
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
             if(btnElement) btnElement.classList.add('playing');
@@ -231,6 +285,7 @@
             } catch (e) { alert("BT Error: " + e.message); }
         };
 
+        // --- ระบบแถบสไลด์ข้าง ---
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false, startY, startScrollTop;
 
@@ -243,6 +298,7 @@
         }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
+        // --- ระบบ Popup Designer ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -311,6 +367,9 @@
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); 
+            
+            // กรณี Save จาก Popup ในโซน 10 ปุ่มบน ก็ให้ออโต้ซิงค์ด้วยเลย
+            if(selectedIdx < 10) autoSyncTop10();
         }
 
         function renderLEDGrid() {
