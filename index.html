@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Auto Sync</title>
+    <title>Pocket DJ Studio - Ultimate Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -36,13 +36,16 @@
         }
         .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
 
+        /* 🔥 แก้ไข: เอา Transform (หดปุ่ม) ออก เพื่อไม่ให้กวนระบบลาก 🔥 */
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s;
+            cursor: pointer; position: relative; transition: background 0.1s, box-shadow 0.1s;
         }
-        .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676 !important; color: black; }
+        
+        /* Effect เปลี่ยนสีและแสงเงาแทนการหดตัว */
+        .pad-btn:active { box-shadow: inset 0 0 20px rgba(0,0,0,0.8); background: #222; }
+        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; background: #00e676 !important; color: black; }
 
         /* โซน 10 ปุ่มแรก (Potentiometer Zone) */
         .poten-slot { 
@@ -152,10 +155,10 @@
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
         const grid = document.getElementById('padGrid');
+        let isDraggingPad = false; // ตัวแปรป้องกันการคลิกซ้อนตอนลาก
 
         // --- ระบบออโต้ซิงค์ 10 ปุ่มบนสุด ---
         async function autoSyncTop10() {
-            // ถ้าไม่ได้ต่อบลูทูธอยู่ ไม่ต้องทำอะไร (กันแจ้งเตือนเด้งรบกวน)
             if(!characteristic) return; 
             
             const btn = document.getElementById('connectBtn');
@@ -163,15 +166,11 @@
             btn.className = "bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition";
 
             try {
-                // ส่งเฉพาะกรอบส้ม 10 ลายแรก เพื่อความรวดเร็วที่สุด
                 for(let i=0; i<10; i++) {
-                    // ถ้าช่องนั้นมีลาย ให้ส่งโค้ด ถ้าว่าง ให้ส่งเคลียร์ค่า
                     let codeToSend = patterns[i].code ? patterns[i].code : ""; 
                     await characteristic.writeValue(new TextEncoder().encode(`S${i}:${codeToSend}`));
-                    await new Promise(r => setTimeout(r, 60)); // หน่วงกันบลูทูธค้าง
+                    await new Promise(r => setTimeout(r, 60)); 
                 }
-                
-                // คืนค่าปุ่มให้เป็นสีเขียวเหมือนเดิมเมื่อเสร็จ
                 btn.innerText = "ONLINE";
                 btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
             } catch(e) { 
@@ -198,53 +197,60 @@
                 btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
+                
+                // ตรวจจับการกดให้แม่นยำที่สุด
                 btn.addEventListener('pointerdown', (e) => {
+                    if (isDraggingPad) return; // ถ้ากำลังลากอยู่ ให้ข้ามการคลิกไปเลย
+                    
                     const currentVisualIndex = patterns.indexOf(p);
+                    
                     if (clickTimer) {
                         clearTimeout(clickTimer);
                         clickTimer = null;
-                        openPopup(currentVisualIndex); 
+                        openPopup(currentVisualIndex); // เข้าหน้าแก้ไฟ
                     } else {
-                        playFX(currentVisualIndex, btn); 
+                        playFX(currentVisualIndex, btn); // เล่นไฟ
                         clickTimer = setTimeout(() => {
                             clickTimer = null; 
-                        }, 250);
+                        }, 300);
                     }
                 });
 
                 grid.appendChild(btn);
             });
 
+            // ระบบลากปุ่มด้วยนิ้ว
             new Sortable(grid, {
                 animation: 150,
-                delay: 250, 
-                delayOnTouchOnly: true, 
+                delay: 250, // กดแช่ 0.25 วิ ถึงจะลาก
+                delayOnTouchOnly: false, // บังคับใช้ delay ทั้งนิ้วและเมาส์ เพื่อให้กดคลิกได้
                 touchStartThreshold: 5,
                 forceFallback: true,
                 fallbackClass: "sortable-drag",
                 fallbackOnBody: true,
                 swapThreshold: 0.65,
                 onStart: (evt) => {
+                    isDraggingPad = true; // ทำเครื่องหมายว่าเริ่มลากแล้ว
                     if (window.navigator.vibrate) window.navigator.vibrate(30);
                 },
                 onEnd: (evt) => {
-                    // 1. สลับข้อมูล
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
                     
-                    // 2. อัปเดตคลาสกรอบสีส้ม (Poten Zone) และไฟ
                     Array.from(grid.children).forEach((btn, i) => {
                         if (i < 10) btn.classList.add('poten-slot');
                         else btn.classList.remove('poten-slot');
                     });
 
-                    // 3. ✨ เรียกคำสั่ง Auto Sync ทันทีที่ปล่อยนิ้ว ✨
                     autoSyncTop10();
+                    
+                    // หน่วงเวลาเล็กน้อยก่อนปลดล็อคคลิก เพื่อกันการคลิกลั่นตอนปล่อยนิ้ว
+                    setTimeout(() => { isDraggingPad = false; }, 50);
                 }
             });
         }
 
-        // --- ระบบ Bluetooth ---
+        // --- ระบบเล่นไฟ & Bluetooth ---
         async function playFX(idx, btnElement) {
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
             if(btnElement) btnElement.classList.add('playing');
@@ -285,7 +291,6 @@
             } catch (e) { alert("BT Error: " + e.message); }
         };
 
-        // --- ระบบแถบสไลด์ข้าง ---
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false, startY, startScrollTop;
 
@@ -298,7 +303,6 @@
         }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
-        // --- ระบบ Popup Designer ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -368,7 +372,6 @@
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); 
             
-            // กรณี Save จาก Popup ในโซน 10 ปุ่มบน ก็ให้ออโต้ซิงค์ด้วยเลย
             if(selectedIdx < 10) autoSyncTop10();
         }
 
