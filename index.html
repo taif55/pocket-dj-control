@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Clean UI</title>
+    <title>Pocket DJ Studio - Touch & Drag Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -12,6 +12,7 @@
             font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
             user-select: none; overflow: hidden; height: 100vh;
             display: flex; flex-direction: column;
+            touch-action: none;
         }
 
         .pad-container {
@@ -35,12 +36,12 @@
         }
         .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
 
-        /* ปรับปุ่มให้คลีน ไม่มีไข่ปลาแล้ว */
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
             cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s;
         }
+        
         .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
         .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676; color: black; }
 
@@ -134,7 +135,6 @@
 
         const grid = document.getElementById('padGrid');
 
-        // --- ฟังก์ชันวาดปุ่มหน้าจอหลัก ---
         function renderPads() {
             grid.innerHTML = '';
             patterns.forEach((p, index) => {
@@ -149,22 +149,19 @@
                     btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`;
                 }
 
-                // เอาไข่ปลาออก เหลือแค่ตัวเลขตรงกลาง
                 btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
                 
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('pointerdown', (e) => {
                     const currentVisualIndex = patterns.indexOf(p);
 
                     if (clickTimer) {
                         clearTimeout(clickTimer);
                         clickTimer = null;
-                        // Double Tap -> แก้ไฟ
-                        openPopup(currentVisualIndex);
+                        openPopup(currentVisualIndex); // Double Tap
                     } else {
-                        // Single Tap -> เล่นไฟ
-                        playFX(currentVisualIndex, btn);
+                        playFX(currentVisualIndex, btn); // Single Tap
                         clickTimer = setTimeout(() => {
                             clickTimer = null; 
                         }, 300);
@@ -174,18 +171,17 @@
                 grid.appendChild(btn);
             });
 
-            // --- เปลี่ยนมาใช้ Delay ในการดึงปุ่มขึ้นมาแทน ---
+            // --- แก้ไขตรงนี้: เอา handle: '.drag-handle' ออกแล้ว! ---
             new Sortable(grid, {
                 animation: 150,
-                delay: 250, // กดแช่ 0.25 วิ ถึงจะเข้าโหมดลาก
-                delayOnTouchOnly: true, // บนมือถือต้องกดแช่
-                touchStartThreshold: 5, // ป้องกันการลากพลาดตอนนิ้วสั่น
+                delay: 250, // กดค้างไว้ 0.25 วินาทีถึงจะเริ่มลาก
+                delayOnTouchOnly: true, 
+                touchStartThreshold: 5,
                 forceFallback: true,
                 fallbackClass: "sortable-drag",
                 fallbackOnBody: true,
                 swapThreshold: 0.65,
                 onStart: (evt) => {
-                    // สั่นเบาๆ ให้รู้ว่าปุ่มพร้อมลากแล้ว
                     if (window.navigator.vibrate) window.navigator.vibrate(30);
                 },
                 onEnd: (evt) => {
@@ -195,7 +191,6 @@
             });
         }
 
-        // --- ระบบเล่นไฟ & Bluetooth ---
         async function playFX(idx, btnElement) {
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
             if(btnElement) btnElement.classList.add('playing');
@@ -236,7 +231,6 @@
             } catch (e) { alert("BT Error: " + e.message); }
         };
 
-        // --- ระบบแถบสไลด์ข้าง ---
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false, startY, startScrollTop;
 
@@ -249,7 +243,6 @@
         }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
-        // --- ระบบ Popup Designer ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
