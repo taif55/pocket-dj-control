@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Side Scroll Lock</title>
+    <title>Pocket DJ Studio - Final Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -13,45 +13,26 @@
             display: flex; flex-direction: column;
         }
 
-        /* กรอบขังปุ่ม */
         .pad-container {
             margin: 0 auto; width: 95%; height: 70vh; 
             background: #0a0a0a; border: 2px solid #222; border-radius: 20px;
-            position: relative;
-            overflow: hidden; /* ปิดการสไลด์แบบปกติทับปุ่ม */
-            display: flex;
+            position: relative; overflow: hidden; display: flex;
         }
 
-        /* พื้นที่แสดงปุ่ม (ล็อคการสไลด์ด้วยนิ้วบนปุ่ม) */
         #padGrid {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            padding: 15px;
-            overflow-y: auto; /* เปิดให้ scroll ได้ทางเทคนิค */
-            scrollbar-width: none; 
-            touch-action: none; /* ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่มเพื่อให้ลากได้ */
+            flex: 1; display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 10px; padding: 15px;
+            overflow-y: auto; scrollbar-width: none; 
+            touch-action: none; /* ล็อคการสไลด์เพื่อส่งสิทธิ์ให้ SortableJS 100% */
         }
         #padGrid::-webkit-scrollbar { display: none; } 
 
-        /* แถบสไลด์ด้านข้าง */
         .side-scroll-track {
-            width: 30px;
-            background: #111;
-            border-left: 1px solid #222;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: ns-resize;
+            width: 30px; background: #111; border-left: 1px solid #222;
+            display: flex; align-items: center; justify-content: center;
             touch-action: pan-y;
         }
-        .side-scroll-track::after {
-            content: '↕';
-            color: #444;
-            font-size: 20px;
-        }
+        .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
 
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
@@ -59,23 +40,22 @@
             cursor: pointer; position: relative;
         }
 
-        /* ไข่ปลาสำหรับลากสลับที่ */
         .drag-handle { 
-            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
+            position: absolute; top: 0; left: 0; width: 40px; height: 40px; 
             display: flex; align-items: center; justify-content: center; 
-            color: #444; font-size: 16px; cursor: grab; z-index: 10;
+            color: #444; font-size: 18px; cursor: grab; z-index: 10;
         }
 
-        /* แก้ไข: เพิ่มสไตล์ตอนกำลังลากให้ชัดเจนเพื่อให้วางลงล็อค */
-        .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
+        /* หัวใจสำคัญ: สไตล์สำหรับตัวที่กำลังถูกลาก (ลอยติดนิ้ว) */
         .sortable-drag { 
             opacity: 1 !important; 
-            transform: scale(1.1) rotate(2deg) !important; 
             z-index: 9999 !important; 
-            box-shadow: 0 15px 30px #000 !important; 
-            border: 2px solid #00e676 !important;
             background: #222 !important;
+            border: 2px solid #00e676 !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,1) !important;
+            pointer-events: none; /* สำคัญ: ปิดเพื่อให้เบราว์เซอร์มองทะลุไปเห็นช่องที่จะวางข้างใต้ */
         }
+        .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
     </style>
 </head>
 <body class="p-4">
@@ -108,32 +88,38 @@
                 
                 btn.onclick = (e) => {
                     if (e.target.classList.contains('drag-handle')) return;
-                    console.log("Play:", idx + 1);
+                    // playFX(idx); 
                 };
                 grid.appendChild(btn);
             });
 
-            // แก้ไข: ปรับแต่ง Sortable ให้วางได้แม่นยำบนมือถือ
+            // แก้ไข Logic การวาง (Drop) ให้หนึบที่สุด
             new Sortable(grid, {
                 handle: '.drag-handle',
                 animation: 150,
-                forceFallback: true,   // สำคัญ: บังคับใช้ Fallback เพื่อให้การวางเสถียร
+                forceFallback: true,        // ใช้ระบบจำลองการลาก
                 fallbackClass: "sortable-drag",
-                scroll: true,           // เปิด Auto Scroll เวลาลากไปขอบ
-                scrollSensitivity: 30,
-                scrollSpeed: 10,
+                fallbackOnBody: true,       // ดึงปุ่มที่ลากออกมาไว้ข้างนอกเพื่อให้วางง่ายขึ้น
+                swapThreshold: 0.65,        // ลากทับแค่ 65% ของปุ่มอื่นก็ให้สลับที่ทันที
+                invertSwap: true,           // ช่วยให้การสลับที่แม่นยำขึ้นในพื้นที่แคบ
+                
+                onStart: (evt) => {
+                    if (window.navigator.vibrate) window.navigator.vibrate(30);
+                },
                 onEnd: (evt) => {
-                    // ย้ายตำแหน่งใน Array
+                    // ปรับตำแหน่งใน Array จริง
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
                     
-                    // อัปเดตตัวเลข 1-60 ใหม่
-                    grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
+                    // อัปเดตเลขหน้าจอใหม่
+                    grid.querySelectorAll('.pad-num').forEach((num, i) => {
+                        num.innerText = i + 1;
+                    });
                 }
             });
         }
 
-        // ระบบเชื่อมโยงแถบสไลด์ข้าง (คงเดิม)
+        // ระบบสไลด์แถบข้าง (Side Scroll)
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false;
         let startY, startScrollTop;
