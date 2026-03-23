@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Master Pro</title>
+    <title>Pocket DJ Studio - Clean UI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -14,7 +14,6 @@
             display: flex; flex-direction: column;
         }
 
-        /* --- กรอบขังปุ่ม และ แถบสไลด์ข้าง (คงความลื่นไหลไว้ 100%) --- */
         .pad-container {
             margin: 0 auto; width: 95%; height: 70vh; 
             background: #0a0a0a; border: 2px solid #222; border-radius: 20px;
@@ -25,7 +24,7 @@
             flex: 1; display: grid; grid-template-columns: repeat(5, 1fr);
             gap: 10px; padding: 15px;
             overflow-y: scroll; scrollbar-width: none; 
-            touch-action: none; /* ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่ม */
+            touch-action: none; 
         }
         #padGrid::-webkit-scrollbar { display: none; } 
 
@@ -36,33 +35,28 @@
         }
         .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
 
+        /* ปรับปุ่มให้คลีน ไม่มีไข่ปลาแล้ว */
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; position: relative; transition: 0.1s;
+            cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s;
         }
-        .pad-btn.active { box-shadow: 0 0 15px #00e676; border-color: #fff; transform: scale(0.95); }
-
-        .drag-handle { 
-            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
-            display: flex; align-items: center; justify-content: center; 
-            color: #444; font-size: 16px; cursor: grab; z-index: 10;
-        }
+        .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
+        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; transform: scale(0.95); background: #00e676; color: black; }
 
         .sortable-drag { 
-            opacity: 1 !important; transform: scale(1.1); z-index: 9999; 
-            box-shadow: 0 10px 30px #000; border: 2px solid #00e676 !important; 
+            opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; 
+            box-shadow: 0 10px 30px #000 !important; border: 2px solid #00e676 !important; 
             pointer-events: none; 
         }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
-        /* --- สไตล์สำหรับ Popup Designer --- */
+        /* --- Designer UI --- */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
-        
-        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
+        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
         .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
     </style>
 </head>
@@ -82,13 +76,13 @@
 
     <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
         <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
-            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
+            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase px-2 py-1">Back</button>
             <div class="flex space-x-2">
                 <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg">PLAY</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
                 <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black">Del</button>
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase">Save</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase active:bg-gray-300">Save</button>
         </div>
         <div id="timelineViewport" onclick="handleTimelineClick(event)">
             <div id="timelineContent">
@@ -125,11 +119,9 @@
     </div>
 
     <script>
-        // --- ตัวแปรหลัก ---
         let device, characteristic;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         
-        // --- ตัวแปร Designer ---
         let clips = []; 
         let selectedClipId = null;
         let selectedIdx = -1;
@@ -149,7 +141,6 @@
                 const btn = document.createElement('div');
                 btn.className = 'pad-btn';
                 
-                // ตกแต่งสีปุ่ม: ถ้ามีโค้ดไฟจะเป็นขอบเขียว, ถ้าไม่มีจะเป็นสีตามลำดับเพื่อให้เห็นการย้ายชัดเจน
                 if(p.code) {
                     btn.style.border = "2px solid #00e676";
                     btn.style.boxShadow = "inset 0 0 10px rgba(0,230,118,0.2)";
@@ -158,55 +149,57 @@
                     btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`;
                 }
 
-                btn.innerHTML = `
-                    <div class="drag-handle">⠿</div>
-                    <span class="text-xs font-black pad-num">${p.id + 1}</span>
-                `;
+                // เอาไข่ปลาออก เหลือแค่ตัวเลขตรงกลาง
+                btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
-                // --- ระบบแยก Single Tap (เล่นไฟ) กับ Double Tap (แก้ไฟ) ---
-                let lastTap = 0;
-                btn.onclick = (e) => {
-                    // ถ้าจิ้มไข่ปลา ปล่อยให้ลากไป ไม่ต้องคลิก
-                    if (e.target.classList.contains('drag-handle')) return;
-                    
-                    const now = Date.now();
-                    const currentVisualIndex = patterns.indexOf(p); // หาตำแหน่งปัจจุบันใน Array
+                let clickTimer = null;
+                
+                btn.addEventListener('click', (e) => {
+                    const currentVisualIndex = patterns.indexOf(p);
 
-                    if (now - lastTap < 300) { 
-                        // เคาะ 2 ทีไวๆ -> เข้า Popup แก้ไฟ
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                        // Double Tap -> แก้ไฟ
                         openPopup(currentVisualIndex);
                     } else {
-                        // เคาะ 1 ที -> เล่นไฟทันที (Zero Delay UX)
+                        // Single Tap -> เล่นไฟ
                         playFX(currentVisualIndex, btn);
+                        clickTimer = setTimeout(() => {
+                            clickTimer = null; 
+                        }, 300);
                     }
-                    lastTap = now;
-                };
+                });
 
                 grid.appendChild(btn);
             });
 
-            // ระบบลากสลับที่
+            // --- เปลี่ยนมาใช้ Delay ในการดึงปุ่มขึ้นมาแทน ---
             new Sortable(grid, {
-                handle: '.drag-handle',
                 animation: 150,
+                delay: 250, // กดแช่ 0.25 วิ ถึงจะเข้าโหมดลาก
+                delayOnTouchOnly: true, // บนมือถือต้องกดแช่
+                touchStartThreshold: 5, // ป้องกันการลากพลาดตอนนิ้วสั่น
                 forceFallback: true,
                 fallbackClass: "sortable-drag",
                 fallbackOnBody: true,
                 swapThreshold: 0.65,
+                onStart: (evt) => {
+                    // สั่นเบาๆ ให้รู้ว่าปุ่มพร้อมลากแล้ว
+                    if (window.navigator.vibrate) window.navigator.vibrate(30);
+                },
                 onEnd: (evt) => {
-                    // สลับตำแหน่งใน Array เมื่อลากเสร็จ ข้อมูลลายไฟจะได้ย้ายตามปุ่มไป
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
                 }
             });
         }
 
-        // --- ระบบเล่นไฟ & Bluetooth หน้าจอหลัก ---
+        // --- ระบบเล่นไฟ & Bluetooth ---
         async function playFX(idx, btnElement) {
-            // ทำ Effect ปุ๋มกระพริบ
-            document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('active'));
-            if(btnElement) btnElement.classList.add('active');
-            setTimeout(() => { if(btnElement) btnElement.classList.remove('active'); }, 150);
+            document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
+            if(btnElement) btnElement.classList.add('playing');
+            setTimeout(() => { if(btnElement) btnElement.classList.remove('playing'); }, 200);
 
             if(!characteristic || !patterns[idx].code) return;
             try { 
@@ -224,8 +217,9 @@
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
                 
-                document.getElementById('connectBtn').innerText = "ONLINE";
-                document.getElementById('connectBtn').className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_10px_#00e676]";
+                const btn = document.getElementById('connectBtn');
+                btn.innerText = "ONLINE";
+                btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
                 
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
@@ -234,16 +228,15 @@
                         let p = val.substring(1).split(":");
                         if(p.length >= 3) { 
                             patterns[parseInt(p[0])].code = p[2] || ""; 
-                            renderPads(); // อัปเดตหน้าจอเมื่อได้รับข้อมูล
+                            renderPads(); 
                         }
                     }
                 });
-                // ส่งคำสั่งขอข้อมูลปุ่มทั้งหมด 1-60 จาก ESP32
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
             } catch (e) { alert("BT Error: " + e.message); }
         };
 
-        // --- ระบบแถบสไลด์ข้าง (Side Scroll Lock) ---
+        // --- ระบบแถบสไลด์ข้าง ---
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false, startY, startScrollTop;
 
@@ -256,7 +249,7 @@
         }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
-        // --- ระบบ Popup Designer (คงเดิมจากเวอร์ชันก่อนๆ) ---
+        // --- ระบบ Popup Designer ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -292,10 +285,10 @@
                     const parts = c.color.split('2');
                     div.style.background = `linear-gradient(to right, ${colorMap[parts[0]] || '#333'}, ${colorMap[parts[1]] || '#333'})`;
                 } else { div.style.backgroundColor = colorMap[c.color] || '#555'; }
-                div.onclick = (e) => { e.stopPropagation(); selectClip(c.id); };
+                
+                div.addEventListener('pointerdown', (e) => { e.stopPropagation(); selectClip(c.id); });
                 area.appendChild(div);
                 
-                // ระบบลาก/ยืดหดคลิปใน Timeline
                 interact(div).draggable({ listeners: { move(e) { c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); renderClips(); if(!isPlaying) sendLiveFrame(); } } })
                             .resizable({ edges: { right: true }, listeners: { move(e) { c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); renderClips(); if(!isPlaying) sendLiveFrame(); } } });
             });
@@ -323,31 +316,35 @@
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
-            // สั่ง Save ลง ESP32
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); 
         }
 
-        // --- ส่วนเสริม UI Designer (ตารางไฟ, พาเลทสี, ระบบเล่น Timeline) ---
         function renderLEDGrid() {
             const grid = document.getElementById('ledGrid'); grid.innerHTML = '';
             const c = clips.find(x => x.id === selectedClipId);
             if(!c) return;
-            for(let i=1; i<=300; i++) { // รองรับไฟ 300 ดวง
+            for(let i=1; i<=300; i++) { 
                 const d = document.createElement('div'); d.innerText = i;
                 d.className = `text-[8px] h-7 bg-[#111] border border-[#222] rounded flex items-center justify-center cursor-pointer ${c.target.includes('<'+i+'>')?'bg-green-500 text-black font-bold':''}`;
-                d.onclick = () => { if(c.target.includes('<'+i+'>')) c.target = c.target.replace('<'+i+'>',''); else c.target += `<${i}>`; renderLEDGrid(); updateSelectedClip(); };
+                d.addEventListener('pointerdown', (e) => { 
+                    e.preventDefault(); 
+                    if(c.target.includes('<'+i+'>')) c.target = c.target.replace('<'+i+'>',''); else c.target += `<${i}>`; 
+                    renderLEDGrid(); updateSelectedClip(); 
+                });
                 grid.appendChild(d);
             }
         }
+        
         function initColors() {
             const p = document.getElementById('colorPalette'); p.innerHTML = '';
             Object.keys(colorMap).forEach(k => {
                 const d = document.createElement('div'); d.className = 'w-8 h-8 rounded-lg cursor-pointer border-2 border-transparent'; d.style.backgroundColor = colorMap[k];
-                d.onclick = () => { const c = clips.find(x => x.id === selectedClipId); if (c) { c.color = k; document.getElementById('customColor').value = k; updateSelectedClip(); } };
+                d.addEventListener('pointerdown', () => { const c = clips.find(x => x.id === selectedClipId); if (c) { c.color = k; document.getElementById('customColor').value = k; updateSelectedClip(); } });
                 p.appendChild(d);
             });
         }
+        
         function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
         function addClipAtPlayhead() { const id = Date.now(); clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 4 }); renderClips(); selectClip(id); }
         function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; renderClips(); } }
@@ -360,7 +357,6 @@
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5"; clips.sort((a,b)=>a.start-b.start).forEach(c => { let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0'); code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`; }); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
         async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
 
-        // --- เริ่มการทำงาน ---
         renderPads();
     </script>
 </body>
