@@ -14,9 +14,17 @@
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        /* สไตล์ตอนกำลังลาก - แก้ให้ลอยเด่นๆ ตามนิ้ว */
+        /* จุดดึงไข่ปลา (Drag Handle) */
+        .drag-handle { 
+            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #444; font-size: 18px; cursor: grab; z-index: 20;
+        }
+        .drag-handle:active { color: #00e676; }
+
+        /* สไตล์ตอนกำลังลาก */
         .sortable-ghost { opacity: 0.1; }
-        .sortable-drag { opacity: 0.9; transform: scale(1.1) rotate(2deg); z-index: 9999; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 2px solid #00e676 !important; }
 
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
@@ -54,7 +62,7 @@
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
                 <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase italic">Del</button>
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase">Save</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase font-black">Save</button>
         </div>
         <div id="timelineViewport" onclick="handleTimelineClick(event)">
             <div id="timelineContent">
@@ -103,7 +111,7 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบปุ่ม (แก้ไข: ลากหนึบตามนิ้ว / เคาะ 2 ทีเข้า Popup) ---
+        // --- ระบบปุ่ม (แก้ไข: Handle ไข่ปลาสำหรับลากสลับที่) ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -111,47 +119,55 @@
                 const btn = document.createElement('div');
                 btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
                 btn.setAttribute('data-id', idx);
-                btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
-                
-                // ระบบ Tap สั้นเล่นไฟ / Double Tap แก้ไฟ
+
+                // 1. ใส่ Handle ไข่ปลา
+                const handle = document.createElement('div');
+                handle.className = 'drag-handle';
+                handle.innerHTML = '⠿';
+                btn.appendChild(handle);
+
+                // 2. ใส่ตัวเลขปุ่ม
+                const num = document.createElement('span');
+                num.className = 'text-xs font-black pad-num';
+                num.innerText = idx + 1;
+                btn.appendChild(num);
+
+                // 3. ระบบคลิก (แยกออกจากจุดดึง)
                 let lastTap = 0;
                 btn.onpointerdown = (e) => {
+                    // ถ้าจิ้มโดนไข่ปลา ให้ปล่อยเป็นหน้าที่ Sortable
+                    if (e.target.classList.contains('drag-handle')) return;
+
                     const now = Date.now();
-                    if (now - lastTap < 300) { // Double Tap (ภายใน 0.3 วินาที)
-                        openPopup(idx);
+                    if (now - lastTap < 300) { 
+                        openPopup(idx); // เคาะ 2 ทีเข้า Popup
                     } else {
-                        // ป้องกันการเล่นไฟถ้าเป็นการเริ่มลาก
+                        // หน่วงเวลาเล็กน้อยเพื่อรอเช็ค Double Tap
                         window.tapTimer = setTimeout(() => {
-                            if (!btn.classList.contains('is-dragging')) {
-                                playFX(idx, btn);
-                            }
+                            playFX(idx, btn);
                         }, 300);
                     }
                     lastTap = now;
                 };
+
                 grid.appendChild(btn);
             });
 
+            // เปิดระบบลาก (ล็อกเฉพาะจุดดึง ⠿)
             new Sortable(grid, { 
+                handle: '.drag-handle', // <--- สำคัญ: ลากได้เฉพาะจุดนี้
                 animation: 150,
-                delay: 150, // หน่วงเวลานิดเดียวเพื่อให้แยกจากการ Double Tap ได้
-                delayOnTouchOnly: true,
-                touchStartThreshold: 10, // ต้องขยับนิ้ว 10px ถึงจะเริ่มโหมดลาก (กันนิ้วสั่น)
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
-                onStart: (evt) => {
-                    clearTimeout(window.tapTimer); // เริ่มลากปุ๊บ ยกเลิกคำสั่งเล่นไฟ
-                    evt.item.classList.add('is-dragging');
+                onStart: () => {
+                    clearTimeout(window.tapTimer); // เริ่มลากปุ๊บ ยกเลิกเล่นไฟ
                 },
                 onEnd: (evt) => {
-                    evt.item.classList.remove('is-dragging');
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    
-                    // อัปเดตตัวเลขปุ่มใหม่
+                    // อัปเดตตัวเลขแบบลื่นๆ ไม่ต้องวาดใหม่
                     grid.querySelectorAll('.pad-btn').forEach((p, i) => {
                         p.querySelector('.pad-num').innerText = i + 1;
-                        p.setAttribute('data-id', patterns[i].id); 
                     });
                 }
             });
@@ -230,9 +246,8 @@
         async function saveAndSend() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
@@ -335,16 +350,6 @@
             let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
             currentLoopLimit = maxT > 0 ? maxT : 1.0;
             const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; }
-        }
-
-        function addClipAtPlayhead() {
-            const id = Date.now();
-            clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 4 });
-            renderClips(); selectClip(id);
-        }
-
-        function deleteSelectedClip() {
-            if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; renderClips(); }
         }
 
         function handleTimelineClick(e) {
