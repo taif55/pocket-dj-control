@@ -3,200 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ - Pro Studio Live</title>
+    <title>Pocket DJ Studio - Scroll Lock</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow: hidden; height: 100vh; }
-        
-        /* แก้ไข: สร้างกรอบสำหรับสไลด์ปุ่มโดยเฉพาะ */
-        .scroll-area { 
-            height: calc(100vh - 120px); /* ลบความสูงส่วนหัวออก */
-            overflow-y: auto; 
-            padding-bottom: 50px;
-            -webkit-overflow-scrolling: touch; /* ให้สไลด์ลื่นบน iOS */
+        /* ล็อคหน้าจอหลักไม่ให้ขยับเลย */
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #050505; 
+            color: white; 
+            user-select: none; 
+            overflow: hidden; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
+
+        /* กรอบสี่เหลี่ยมสำหรับขังปุ่ม (เล็กลงจากหน้าจอเล็กน้อย) */
+        .pad-container {
+            margin: 0 auto;
+            width: 95%; /* เล็กกว่าหน้าจอเล็กน้อย */
+            height: 65vh; /* กำหนดความสูงให้พอดีกับสายตา */
+            background: #0a0a0a;
+            border: 2px solid #222;
+            border-radius: 24px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 15px;
+            
+            /* ไม้ตาย: ป้องกันไม่ให้การสไลด์ในนี้ไปทำให้หน้าจอข้างนอกขยับ */
+            overscroll-behavior: contain; 
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ปรับแต่ง Scrollbar ให้ดูสวยแบบ DJ Gear */
+        .pad-container::-webkit-scrollbar { width: 4px; }
+        .pad-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
             cursor: pointer; transition: 0.1s; border: 1px solid #222;
-            touch-action: none; /* ล็อคการเลื่อนหน้าจอที่ตัวปุ่มเพื่อให้ลากได้ */
+            
+            /* ล็อคระบบสัมผัสที่ตัวปุ่มเพื่อให้ Sortable ทำงานได้ 100% */
+            touch-action: none; 
             user-select: none;
             -webkit-user-select: none;
         }
         
         .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
-        
-        /* สไตล์สำหรับปุ่มที่กำลังถูกลาก */
-        .sortable-ghost { opacity: 0.1; background: #333 !important; }
-        .sortable-drag { opacity: 1 !important; transform: scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 100; }
 
-        /* ส่วนอื่นๆ คงเดิม */
-        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
-        #timelineContent { position: relative; height: 100%; width: 1500px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
-        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; }
-        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
-        .led-dot { font-size: 8px; height: 28px; background: #111; border: 1px solid #222; border-radius: 5px; display: flex; align-items: center; justify-content: center; }
-        .led-dot.active { background: #00e676; color: black; font-weight: bold; }
+        /* สไตล์ตอนกำลังลาก */
+        .sortable-ghost { opacity: 0.1; background: #333 !important; }
+        .sortable-drag { opacity: 1 !important; transform: scale(1.1); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100; }
     </style>
 </head>
 <body class="p-4">
 
-    <div id="consoleView" class="max-w-xl mx-auto flex flex-col h-full">
+    <div id="consoleView" class="max-w-xl mx-auto w-full">
         <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
             <h1 class="text-lg font-black text-green-500 italic uppercase tracking-tighter">Pocket DJ Studio</h1>
             <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition active:scale-95">CONNECT</button>
         </div>
-
-        <div class="scroll-area">
-            <div id="padGrid" class="grid grid-cols-5 gap-2"></div>
-        </div>
     </div>
 
-    <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
-        <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
-            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
-            <div class="flex space-x-2">
-                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">PLAY</button>
-                <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase italic">Del</button>
+    <div class="pad-container max-w-xl shadow-2xl">
+        <div id="padGrid" class="grid grid-cols-5 gap-3">
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase font-black">Save</button>
+    </div>
+
+    <div class="max-w-xl mx-auto w-full mt-4 bg-gray-900/30 p-3 rounded-2xl border border-gray-800">
+        <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
+            <span>Global Speed</span>
+            <span id="speedVal" class="text-green-500">1.0x</span>
         </div>
-        <div id="timelineViewport" onclick="handleTimelineClick(event)">
-            <div id="timelineContent"><div id="playhead"></div><div id="loopLine"></div><div id="trackArea" class="relative h-full py-6"></div></div>
-        </div>
-        <div id="timeText" class="bg-black text-[10px] text-center p-1 text-gray-500 font-mono">PLAYHEAD: 0.0s</div>
-        <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-3 opacity-30 pointer-events-none pb-12">
-            <div id="colorPalette" class="flex flex-wrap gap-2 justify-center"></div>
-            <div class="grid grid-cols-2 gap-2">
-                <input type="number" id="cBright" value="50" class="bg-gray-900 text-center font-black text-xl rounded-xl p-2 outline-none">
-                <select id="cFX" class="bg-gray-900 text-xs font-black text-green-400 rounded-xl p-2 outline-none">
-                    <option value="u">Fade Up</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="o">Static</option><option value="b">Blink</option>
-                </select>
-            </div>
-            <div id="ledGrid" class="grid grid-cols-10 gap-1.5 h-32 overflow-y-auto bg-black p-2 rounded-lg"></div>
-        </div>
+        <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-6">
     </div>
 
     <script>
-        let device, characteristic;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        let clips = [], selectedClipId = null, selectedIdx = -1, playheadTime = 0, isPlaying = false;
-        const pxPerSec = 100, colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
             patterns.forEach((p, idx) => {
                 const btn = document.createElement('div');
-                btn.className = `pad-btn ${p.code ? 'border-green-500 shadow-[inset_0_0_10px_rgba(0,230,118,0.2)]' : ''}`;
+                btn.className = `pad-btn ${p.code ? 'border-green-500' : ''}`;
                 btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
                 
-                // แก้ไข: ใช้ onclick ปกติ แต่ Sortable จะกันการคลิกถ้าเกิดการลาก
+                // ระบบจิ้ม (เปิด Popup)
                 btn.onclick = () => {
                     if (!btn.classList.contains('is-dragging')) {
-                        openPopup(idx);
+                        // openPopup(idx); // ใส่ฟังก์ชันเปิด Popup เดิมของคุณที่นี่
+                        console.log("Open Pad:", idx + 1);
                     }
                 };
                 grid.appendChild(btn);
             });
 
+            // ตั้งค่า Sortable ภายในกรอบ Lock
             new Sortable(grid, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                delay: 250,             // กดแช่ 0.25 วิเพื่อลาก (กำลังดีสำหรับนิ้วมือ)
+                delay: 200,             // กดแช่ 0.2 วิเพื่อเริ่มลาก (ป้องกันการพลาด)
                 delayOnTouchOnly: true,
                 touchStartThreshold: 5,
+                
                 onStart: (evt) => {
                     evt.item.classList.add('is-dragging');
+                    // ใส่สั่นนิดๆ เพื่อบอกว่าเริ่มลากได้แล้ว (เฉพาะ Android)
+                    if (window.navigator.vibrate) window.navigator.vibrate(30);
                 },
                 onEnd: (evt) => {
                     evt.item.classList.remove('is-dragging');
+                    // สลับตำแหน่งข้อมูลใน Array
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
+                    
+                    // อัปเดตตัวเลขปุ่ม 1-60 ใหม่ให้เรียงถูกต้อง
+                    const allNums = grid.querySelectorAll('.pad-num');
+                    allNums.forEach((num, i) => {
+                        num.innerText = i + 1;
+                    });
                 }
             });
         }
-
-        // ฟังก์ชันอื่นๆ (Bluetooth, Designer) ใช้ชุดเดิมที่คุณมีได้เลยครับ (ผมสรุปไว้ให้สั้นๆ ด้านล่าง)
-        document.getElementById('connectBtn').onclick = async () => {
-            try {
-                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
-                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                document.getElementById('connectBtn').innerText = "ONLINE";
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', (e) => {
-                    let val = new TextDecoder().decode(e.target.value);
-                    if (val.startsWith("D")) {
-                        let p = val.substring(1).split(":");
-                        if(p.length >= 3) { patterns[parseInt(p[0])].code = p[2] || ""; renderPads(); }
-                    }
-                });
-                await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
-            } catch (e) { alert("BT Connect Error"); }
-        };
-
-        function openPopup(idx) {
-            selectedIdx = idx; clips = [];
-            let rawCode = patterns[idx].code || "";
-            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 5) {
-                        clips.push({ id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), target: content[1], color: content[2], fx: content[3].charAt(0), duration: parseInt(content[3].substring(1,3))/10, loop: parseInt(content[4]), mirror: m, track: i % 3 });
-                    }
-                });
-            }
-            document.getElementById('modal').classList.remove('hidden');
-            initColors(); renderLEDGrid(); renderClips();
-            if(clips.length > 0) selectClip(clips[0].id);
-        }
-
-        // [ชุดคำสั่งเสริมคงเดิม]
-        function closePopup() { stopPlayback(); document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
-        async function saveAndSend() {
-            let code = "";
-            clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let m = c.mirror ? 'm' : '';
-                let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,${c.loop})`;
-            });
-            patterns[selectedIdx].code = code;
-            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
-            closePopup(); renderPads();
-        }
-        function initColors() {
-            const p = document.getElementById('colorPalette'); p.innerHTML = '';
-            Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'w-8 h-8 rounded-lg cursor-pointer'; d.style.backgroundColor = colorMap[k];
-                d.onclick = () => { const c = clips.find(x => x.id === selectedClipId); if (c) { c.color = k; updateSelectedClip(); } };
-                p.appendChild(d);
-            });
-        }
-        function renderLEDGrid() {
-            const grid = document.getElementById('ledGrid'); grid.innerHTML = '';
-            const c = clips.find(x => x.id === selectedClipId);
-            if(!c) return;
-            for(let i=1; i<=300; i++) {
-                const d = document.createElement('div'); d.innerText = i; d.className = `led-dot ${c.target.includes('<'+i+'>') ? 'active' : ''}`;
-                d.onclick = () => { if(c.target.includes('<'+i+'>')) c.target = c.target.replace('<'+i+'>',''); else c.target += `<${i}>`; renderLEDGrid(); updateSelectedClip(); };
-                grid.appendChild(d);
-            }
-        }
-        function updateSelectedClip() { if(!selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); c.bright = document.getElementById('cBright').value; c.fx = document.getElementById('cFX').value; renderClips(); sendFullCodeToBT(); }
-        function handleTimelineClick(e) { const rect = document.getElementById('timelineContent').getBoundingClientRect(); playheadTime = Math.max(0, (e.clientX - rect.left) / pxPerSec); }
-        function togglePlay() { if (!characteristic) return alert("Connect First!"); const btn = document.getElementById('playBtn'); if (!isPlaying) { isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); sendFullCodeToBT(); startAnimateTime = performance.now() - (playheadTime * 1000); playInterval = requestAnimationFrame(animatePlayhead); } else { stopPlayback(); } }
-        function stopPlayback() { isPlaying = false; document.getElementById('playBtn').innerText = "PLAY"; document.getElementById('playBtn').classList.replace('bg-red-600', 'bg-blue-600'); cancelAnimationFrame(playInterval); }
-        function animatePlayhead(currentTime) { if (!isPlaying) return; let elapsed = (currentTime - startAnimateTime) / 1000; if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; sendFullCodeToBT(); } playheadTime = elapsed; document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px'; playInterval = requestAnimationFrame(animatePlayhead); }
 
         renderPads();
     </script>
