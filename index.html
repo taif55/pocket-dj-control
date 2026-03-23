@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Bluetooth Fixed</title>
+    <title>Pocket DJ Studio - Timeline Drag Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -57,10 +57,11 @@
             border: 2px solid #ff9100 !important;
             box-shadow: inset 0 0 15px rgba(255, 145, 0, 0.3), 0 0 10px rgba(255, 145, 0, 0.5) !important;
         }
+
         .pad-btn:not(.poten-slot).has-code {
             border: 2px solid #00e676 !important;
             box-shadow: inset 0 0 10px rgba(0,230,118,0.2) !important;
-            background-color: #151515 !important; /* ลบสีรุ้งออกถ้ามีโค้ดไฟ */
+            background-color: #151515 !important;
         }
 
         .sortable-drag { 
@@ -70,11 +71,14 @@
         }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
+        /* --- Designer UI --- */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
-        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); cursor: pointer; }
+        
+        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); cursor: grab; }
+        .light-clip:active { cursor: grabbing; }
         .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
     </style>
 </head>
@@ -151,7 +155,7 @@
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
         const grid = document.getElementById('padGrid');
-        let sortableInstance = null; // ตัวแปรเก็บระบบลาก
+        let sortableInstance = null; 
         let isDraggingPad = false; 
 
         async function autoSyncTop10() {
@@ -173,13 +177,11 @@
             }
         }
 
-        // --- ฟังก์ชันวาดปุ่ม (เรียกใช้ครั้งเดียวตอนเปิดแอป) ---
         function renderPads() {
             grid.innerHTML = '';
             patterns.forEach((p, index) => {
                 const btn = document.createElement('div');
                 const isPotenZone = index < 10;
-                
                 btn.className = `pad-btn ${isPotenZone ? 'poten-slot' : ''} ${p.code ? 'has-code' : ''}`;
                 
                 if(!p.code) {
@@ -192,7 +194,6 @@
                 let clickTimer = null;
                 btn.addEventListener('pointerdown', (e) => {
                     if (isDraggingPad) return; 
-                    
                     const currentVisualIndex = patterns.indexOf(p);
                     if (clickTimer) {
                         clearTimeout(clickTimer);
@@ -205,21 +206,13 @@
                         }, 300);
                     }
                 });
-
                 grid.appendChild(btn);
             });
 
-            // สร้างระบบลากแค่ครั้งเดียว
             if (sortableInstance) sortableInstance.destroy();
             sortableInstance = new Sortable(grid, {
-                animation: 150,
-                delay: 250, 
-                delayOnTouchOnly: false, 
-                touchStartThreshold: 5,
-                forceFallback: true,
-                fallbackClass: "sortable-drag",
-                fallbackOnBody: true,
-                swapThreshold: 0.65,
+                animation: 150, delay: 250, delayOnTouchOnly: false, touchStartThreshold: 5,
+                forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true, swapThreshold: 0.65,
                 onStart: (evt) => {
                     isDraggingPad = true; 
                     if (window.navigator.vibrate) window.navigator.vibrate(30);
@@ -227,28 +220,24 @@
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    
                     Array.from(grid.children).forEach((btn, i) => {
                         if (i < 10) btn.classList.add('poten-slot');
                         else btn.classList.remove('poten-slot');
                     });
-
                     autoSyncTop10();
                     setTimeout(() => { isDraggingPad = false; }, 50);
                 }
             });
         }
 
-        // --- ไม้ตายแก้บัค: ฟังก์ชันอัปเดตแค่ภาพกราฟิก ไม่ทำลายระบบลาก ---
         function updatePadsVisuals() {
             const btns = grid.children;
             patterns.forEach((p, index) => {
                 const btn = btns[index];
                 if (!btn) return;
-                
                 if(p.code) {
                     btn.classList.add('has-code');
-                    btn.style.backgroundColor = ""; // เคลียร์สีรุ้งออก
+                    btn.style.backgroundColor = ""; 
                 } else {
                     btn.classList.remove('has-code');
                     const hue = (p.id * 6) % 360;
@@ -263,16 +252,13 @@
             setTimeout(() => { if(btnElement) btnElement.classList.remove('playing'); }, 200);
 
             if(!characteristic || !patterns[idx].code) return;
-            try { 
-                await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); 
-            } catch(e){}
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
         }
 
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({ 
-                    filters: [{ namePrefix: 'PocketDJ-' }], 
-                    optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] 
+                    filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] 
                 });
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
@@ -283,15 +269,12 @@
                 btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
                 
                 await characteristic.startNotifications();
-                
-                // รับข้อมูลจาก ESP32
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     if (val.startsWith("D")) {
                         let p = val.substring(1).split(":");
                         if(p.length >= 3) { 
                             patterns[parseInt(p[0])].code = p[2] || ""; 
-                            // ใช้ updatePadsVisuals แทน renderPads ตรงนี้แหละครับกุญแจสำคัญ!
                             updatePadsVisuals(); 
                         }
                     }
@@ -302,14 +285,8 @@
 
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false, startY, startScrollTop;
-
-        sideScroll.addEventListener('touchstart', (e) => {
-            isScrolling = true; startY = e.touches[0].pageY; startScrollTop = grid.scrollTop;
-        }, {passive: true});
-        sideScroll.addEventListener('touchmove', (e) => {
-            if (!isScrolling) return;
-            grid.scrollTop = startScrollTop - ((e.touches[0].pageY - startY) * 2); 
-        }, {passive: true});
+        sideScroll.addEventListener('touchstart', (e) => { isScrolling = true; startY = e.touches[0].pageY; startScrollTop = grid.scrollTop; }, {passive: true});
+        sideScroll.addEventListener('touchmove', (e) => { if (!isScrolling) return; grid.scrollTop = startScrollTop - ((e.touches[0].pageY - startY) * 2); }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
         function openPopup(idx) {
@@ -338,36 +315,91 @@
             stopPlayback(); 
             document.getElementById('modal').classList.add('hidden'); 
             selectedIdx = -1; 
-            // อัปเดตแค่ภาพกราฟิก ไม่ลบปุ่มทิ้ง
             updatePadsVisuals(); 
         }
 
+        // --- แก้ไข: ระบบ Timeline ลากยืดหดก้อนไฟ เลื่อนบรรทัดได้ 100% ---
         function renderClips() {
             const area = document.getElementById('trackArea'); area.innerHTML = '';
             clips.forEach(c => {
                 const div = document.createElement('div');
                 div.id = `clip-${c.id}`; div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
-                div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; div.style.top = (c.track * 40) + 'px';
+                div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; 
+                div.style.top = (c.track * 40) + 'px';
                 div.innerText = c.color.toUpperCase();
+                
                 if(c.color.includes('2')) {
                     const parts = c.color.split('2');
                     div.style.background = `linear-gradient(to right, ${colorMap[parts[0]] || '#333'}, ${colorMap[parts[1]] || '#333'})`;
                 } else { div.style.backgroundColor = colorMap[c.color] || '#555'; }
                 
-                div.addEventListener('pointerdown', (e) => { e.stopPropagation(); selectClip(c.id); });
+                // ไม่ใช้ stopPropagation เพื่อให้ InteractJS รับรู้การกดด้วย
+                div.addEventListener('pointerdown', (e) => { selectClip(c.id); });
                 area.appendChild(div);
                 
-                interact(div).draggable({ listeners: { move(e) { c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); renderClips(); if(!isPlaying) sendLiveFrame(); } } })
-                            .resizable({ edges: { right: true }, listeners: { move(e) { c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); renderClips(); if(!isPlaying) sendLiveFrame(); } } });
+                // ระบบลากที่แก้ใหม่ (เลื่อนซ้ายขวา และ บนล่างได้)
+                interact(div).draggable({
+                    listeners: {
+                        start(e) {
+                            c.tempY = c.track * 40; // จำตำแหน่งเริ่มต้นแกน Y
+                        },
+                        move(e) {
+                            // เลื่อนซ้ายขวา
+                            c.start += e.dx / pxPerSec;
+                            c.start = Math.max(0, c.start);
+
+                            // เลื่อนขึ้นลง
+                            c.tempY += e.dy;
+                            c.track = Math.max(0, Math.min(3, Math.round(c.tempY / 40))); // มี 4 บรรทัด (0,1,2,3)
+
+                            // อัปเดตพิกัดแบบไม่ต้องวาด DOM ใหม่ (ลื่นสุดๆ)
+                            e.target.style.left = (c.start * pxPerSec) + 'px';
+                            e.target.style.top = (c.track * 40) + 'px';
+
+                            if(!isPlaying) sendLiveFrame();
+                        },
+                        end(e) {
+                            c.tempY = undefined;
+                            updateLoopLine();
+                            renderClips(); // วาดจัดระเบียบให้เข้าล็อกสวยงามเมื่อปล่อยนิ้ว
+                            sendFullCodeToBT();
+                        }
+                    }
+                })
+                .resizable({ 
+                    edges: { right: true }, 
+                    listeners: { 
+                        move(e) { 
+                            c.duration = e.rect.width / pxPerSec; 
+                            c.duration = Math.max(0.1, c.duration); 
+                            e.target.style.width = (c.duration * pxPerSec) + 'px'; 
+                            if(!isPlaying) sendLiveFrame(); 
+                        },
+                        end(e) {
+                            updateLoopLine();
+                            renderClips();
+                            sendFullCodeToBT();
+                        }
+                    } 
+                });
             });
             updateLoopLine();
         }
 
+        // --- แก้ไข: เลือกก้อนไฟโดยไม่วาด Timeline ใหม่ ---
         function selectClip(id) {
             selectedClipId = id; const c = clips.find(x => x.id === id);
             document.getElementById('editorPanel').style.opacity = "1"; document.getElementById('editorPanel').style.pointerEvents = "auto";
             document.getElementById('cBright').value = c.bright; document.getElementById('cFX').value = c.fx; document.getElementById('customColor').value = c.color;
-            renderLEDGrid(); renderClips(); if(!isPlaying) sendLiveFrame();
+            renderLEDGrid(); 
+            
+            // อัปเดตคลาสก้อนที่ถูกเลือก ไม่ทำลาย DOM เก่า
+            document.querySelectorAll('.light-clip').forEach(el => {
+                if (el.id === `clip-${id}`) el.classList.add('selected');
+                else el.classList.remove('selected');
+            });
+
+            if(!isPlaying) sendLiveFrame();
         }
 
         function updateSelectedClip() {
@@ -427,7 +459,6 @@
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5"; clips.sort((a,b)=>a.start-b.start).forEach(c => { let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0'); code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`; }); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
         async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
 
-        // เรียกวาดปุ่มแค่ครั้งเดียวตอนโหลดแอป!
         renderPads();
     </script>
 </body>
