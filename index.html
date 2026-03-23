@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Final Fix</title>
+    <title>Pocket DJ Studio - Illusion Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -22,8 +22,8 @@
         #padGrid {
             flex: 1; display: grid; grid-template-columns: repeat(5, 1fr);
             gap: 10px; padding: 15px;
-            overflow-y: auto; scrollbar-width: none; 
-            touch-action: none; /* ล็อคการสไลด์เพื่อส่งสิทธิ์ให้ SortableJS 100% */
+            overflow-y: scroll; scrollbar-width: none; 
+            touch-action: none; 
         }
         #padGrid::-webkit-scrollbar { display: none; } 
 
@@ -41,19 +41,15 @@
         }
 
         .drag-handle { 
-            position: absolute; top: 0; left: 0; width: 40px; height: 40px; 
+            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
             display: flex; align-items: center; justify-content: center; 
-            color: #444; font-size: 18px; cursor: grab; z-index: 10;
+            color: #444; font-size: 16px; cursor: grab; z-index: 10;
         }
 
-        /* หัวใจสำคัญ: สไตล์สำหรับตัวที่กำลังถูกลาก (ลอยติดนิ้ว) */
         .sortable-drag { 
-            opacity: 1 !important; 
-            z-index: 9999 !important; 
-            background: #222 !important;
-            border: 2px solid #00e676 !important;
-            box-shadow: 0 20px 50px rgba(0,0,0,1) !important;
-            pointer-events: none; /* สำคัญ: ปิดเพื่อให้เบราว์เซอร์มองทะลุไปเห็นช่องที่จะวางข้างใต้ */
+            opacity: 1 !important; transform: scale(1.1); z-index: 9999; 
+            box-shadow: 0 10px 30px #000; border: 2px solid #00e676 !important; 
+            pointer-events: none; /* กันไม่ให้ปุ่มบังช่องวาง */
         }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
     </style>
@@ -81,45 +77,45 @@
             patterns.forEach((p, idx) => {
                 const btn = document.createElement('div');
                 btn.className = 'pad-btn';
+                
+                // พี่เจเพิ่มสีพื้นหลังนิดนึง จะได้เห็นชัดๆ ว่าปุ่มมันย้ายสลับที่กันแล้ว!
+                const hue = (idx * 6) % 360;
+                btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`;
+
                 btn.innerHTML = `
                     <div class="drag-handle">⠿</div>
-                    <span class="text-xs font-black pad-num">${idx+1}</span>
+                    <span class="text-xs font-black pad-num">${p.id + 1}</span>
                 `;
                 
                 btn.onclick = (e) => {
                     if (e.target.classList.contains('drag-handle')) return;
-                    // playFX(idx); 
+                    console.log("Play:", p.id + 1);
                 };
                 grid.appendChild(btn);
             });
 
-            // แก้ไข Logic การวาง (Drop) ให้หนึบที่สุด
             new Sortable(grid, {
                 handle: '.drag-handle',
                 animation: 150,
-                forceFallback: true,        // ใช้ระบบจำลองการลาก
+                forceFallback: true,
                 fallbackClass: "sortable-drag",
-                fallbackOnBody: true,       // ดึงปุ่มที่ลากออกมาไว้ข้างนอกเพื่อให้วางง่ายขึ้น
-                swapThreshold: 0.65,        // ลากทับแค่ 65% ของปุ่มอื่นก็ให้สลับที่ทันที
-                invertSwap: true,           // ช่วยให้การสลับที่แม่นยำขึ้นในพื้นที่แคบ
-                
-                onStart: (evt) => {
-                    if (window.navigator.vibrate) window.navigator.vibrate(30);
-                },
+                fallbackOnBody: true,
+                swapThreshold: 0.65,
                 onEnd: (evt) => {
-                    // ปรับตำแหน่งใน Array จริง
+                    // 1. สลับข้อมูลใน Array ให้ถูกต้อง
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
                     
-                    // อัปเดตเลขหน้าจอใหม่
-                    grid.querySelectorAll('.pad-num').forEach((num, i) => {
+                    // พี่เจคอมเมนต์ส่วนนี้ทิ้งไปเลย! เพื่อไม่ให้มันไปลบตัวเลขทิ้งตอนลากเสร็จ
+                    /* grid.querySelectorAll('.pad-num').forEach((num, i) => {
                         num.innerText = i + 1;
                     });
+                    */
                 }
             });
         }
 
-        // ระบบสไลด์แถบข้าง (Side Scroll)
+        // ระบบสไลด์แถบข้าง
         const sideScroll = document.getElementById('sideScroll');
         let isScrolling = false;
         let startY, startScrollTop;
@@ -132,7 +128,7 @@
 
         sideScroll.addEventListener('touchmove', (e) => {
             if (!isScrolling) return;
-            const deltaY = (e.touches[0].pageY - startY) * 2.5; 
+            const deltaY = (e.touches[0].pageY - startY) * 2; 
             grid.scrollTop = startScrollTop - deltaY;
         }, {passive: true});
 
