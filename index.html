@@ -15,8 +15,8 @@
         .pad-btn.has-code { border-color: #00e676; }
         
         .hold-ring { position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #00e676; border-radius: 12px; opacity: 0; pointer-events: none; z-index: 10; }
-        /* ปรับ Animation วงหมุนให้จบที่ 0.6 วินาที */
-        .is-holding .hold-ring { opacity: 1; animation: spin 0.6s linear forwards; }
+        /* ปรับวงหมุนให้เร็วขึ้นสัมพันธ์กับเวลาใหม่ (0.7s) */
+        .is-holding .hold-ring { opacity: 1; animation: spin 0.7s linear forwards; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
@@ -26,6 +26,10 @@
         
         .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
         .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
+        
+        /* สไตล์ตอนกำลังลาก */
+        .sortable-ghost { opacity: 0.3; transform: scale(0.9); }
+        .sortable-drag { opacity: 1; transform: scale(1.1); box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 100; }
     </style>
 </head>
 <body class="p-4">
@@ -34,12 +38,11 @@
         <div class="bg-gray-900/50 p-5 rounded-3xl border border-gray-800 shadow-xl mb-4">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-xl font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
-                <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2 rounded-2xl transition">CONNECT</button>
+                <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-5 py-2 rounded-2xl transition active:scale-95">CONNECT</button>
             </div>
-            
             <div class="space-y-1">
                 <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
-                    <span>Global Speed Multiplier</span>
+                    <span>Global Playback Speed</span>
                     <span id="speedVal" class="text-green-500 text-sm">1.0x</span>
                 </div>
                 <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-8" oninput="speedVal.innerText=this.value+'x'; updateGlobalSpeed(this.value)">
@@ -58,7 +61,6 @@
             </div>
             <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase">Save</button>
         </div>
-
         <div id="timelineViewport" onclick="handleTimelineClick(event)">
             <div id="timelineContent">
                 <div id="playhead"></div>
@@ -67,7 +69,6 @@
             </div>
         </div>
         <div id="timeText" class="bg-black text-[10px] text-center p-1 text-gray-500 font-mono">PLAYHEAD: 0.0s</div>
-        
         <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-3 opacity-30 pointer-events-none pb-12">
             <div class="bg-gray-900/40 p-3 rounded-2xl border border-gray-800">
                 <div class="flex justify-between items-center mb-2">
@@ -107,7 +108,7 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบจัดการปุ่มหน้าแรก ---
+        // --- ระบบปุ่มอัจฉริยะ (แก้ไขเพื่อการลากที่ตามนิ้วและกดค้างที่แม่นยำ) ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -116,65 +117,44 @@
                 btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
                 btn.innerHTML = `<div class="hold-ring"></div><span class="text-xs font-black">${idx+1}</span>`;
                 
+                // เก็บ Timer สำหรับการเข้า Popup
                 let holdTimer;
-                let startX, startY;
-                let isMoving = false;
-                const holdDuration = 600; // 0.6 วินาที
-
-                // สำหรับมือถือ
-                btn.addEventListener('touchstart', (e) => {
-                    isMoving = false;
-                    const touch = e.touches[0];
-                    startX = touch.clientX;
-                    startY = touch.clientY;
+                
+                // เมื่อนิ้วจิ้มลงไป
+                btn.onpointerdown = (e) => {
                     btn.classList.add('is-holding');
                     holdTimer = setTimeout(() => {
-                        if (!isMoving) {
-                            btn.classList.remove('is-holding');
-                            openPopup(idx);
-                        }
-                    }, holdDuration);
-                }, {passive: true});
+                        btn.classList.remove('is-holding');
+                        openPopup(idx); // เข้าหน้าแก้ไฟเมื่อครบ 0.7 วินาที
+                    }, 7000); // 700ms (0.7 วินาที)
+                };
 
-                btn.addEventListener('touchmove', (e) => {
-                    const touch = e.touches[0];
-                    if (Math.abs(touch.clientX - startX) > 8 || Math.abs(touch.clientY - startY) > 8) {
-                        isMoving = true;
+                // เมื่อยกนิ้วขึ้น
+                btn.onpointerup = (e) => {
+                    if (btn.classList.contains('is-holding')) {
                         clearTimeout(holdTimer);
                         btn.classList.remove('is-holding');
+                        playFX(idx, btn); // ถ้ายังไม่ครบเวลา ให้เล่นไฟแทน
                     }
-                }, {passive: true});
-
-                btn.addEventListener('touchend', () => {
-                    clearTimeout(holdTimer);
-                    if (!isMoving && btn.classList.contains('is-holding')) {
-                        playFX(idx, btn);
-                    }
-                    btn.classList.remove('is-holding');
-                }, {passive: true});
-
-                // สำหรับ PC
-                btn.onmousedown = (e) => {
-                    if(e.button !== 0) return;
-                    isMoving = false;
-                    holdTimer = setTimeout(() => { if(!isMoving) openPopup(idx); }, holdDuration);
                 };
-                btn.onmousemove = () => { isMoving = true; clearTimeout(holdTimer); };
-                btn.onmouseup = () => { clearTimeout(holdTimer); if(!isMoving) playFX(idx, btn); };
+
+                // ถ้ามีการขยับนิ้ว (จะลากปุ่ม) หรือนิ้วหลุดออกจากปุ่ม
+                btn.onpointermove = () => { if(btn.classList.contains('is-holding')) { clearTimeout(holdTimer); btn.classList.remove('is-holding'); } };
+                btn.onpointerleave = () => { if(btn.classList.contains('is-holding')) { clearTimeout(holdTimer); btn.classList.remove('is-holding'); } };
 
                 grid.appendChild(btn);
             });
 
-            // เปิดระบบลากสลับปุ่ม
+            // เปิดระบบลากสลับที่ (ใช้ Sortable.js แบบดั้งเดิม)
             new Sortable(grid, { 
-                animation: 150, 
-                delay: 0, 
-                swapThreshold: 0.5,
-                onStart: () => { document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('is-holding')); },
+                animation: 150,
+                delay: 100, // หน่วงเวลานิดเดียวเพื่อให้ไม่ลากทับการกดเล่น
+                delayOnTouchOnly: true,
+                touchStartThreshold: 5,
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    renderPads();
+                    renderPads(); // รีเซ็ตเลขปุ่มให้เรียงตามเดิม
                 }
             });
         }
@@ -190,7 +170,7 @@
             if(characteristic) await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + v));
         }
 
-        // --- Logic ตัวแก้ไฟ (Designer) ---
+        // --- ส่วน Designer & Bluetooth (รักษา Logic เดิมของคุณไว้ 100%) ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -253,15 +233,15 @@
         async function saveAndSend() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
+                let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); renderPads();
         }
 
-        // --- Bluetooth & Timeline ---
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
