@@ -3,137 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Side Scroll Lock</title>
+    <title>Pocket DJ - Pro Studio Live</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
-            user-select: none; overflow: hidden; height: 100vh;
-            display: flex; flex-direction: column;
+        body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow: hidden; height: 100vh; }
+        
+        /* แก้ไข: กรอบสีเหลี่ยมขังปุ่ม (เล็กลงจากหน้าจอเล็กน้อย) */
+        .pad-container { 
+            margin: 0 auto; width: 95%; height: 60vh; 
+            background: #0a0a0a; border: 2px solid #222; border-radius: 20px; 
+            overflow-y: auto; overflow-x: hidden; padding: 10px;
+            overscroll-behavior: contain; /* ล็อคไม่ให้หน้าจอหลักขยับตาม */
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* กรอบขังปุ่ม */
-        .pad-container {
-            margin: 0 auto; width: 95%; height: 70vh; 
-            background: #0a0a0a; border: 2px solid #222; border-radius: 20px;
-            position: relative;
-            overflow: hidden; /* ปิดการสไลด์แบบปกติทับปุ่ม */
-            display: flex;
-        }
-
-        /* พื้นที่แสดงปุ่ม (ล็อคการสไลด์ด้วยนิ้วบนปุ่ม) */
-        #padGrid {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            padding: 15px;
-            overflow-y: scroll; /* เปิดให้ scroll ได้ทางเทคนิค */
-            scrollbar-width: none; /* ซ่อน scrollbar สำหรับ Firefox */
-            touch-action: none; /* ไม้ตาย: ห้ามสไลด์หน้าจอผ่านการรูดบนปุ่ม */
-        }
-        #padGrid::-webkit-scrollbar { display: none; } /* ซ่อน scrollbar สำหรับ Chrome/Safari */
-
-        /* แถบสไลด์ด้านข้าง (Side Scroll Track) */
-        .side-scroll-track {
-            width: 30px;
-            background: #111;
-            border-left: 1px solid #222;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: ns-resize;
-            touch-action: pan-y; /* อนุญาตให้สไลด์เฉพาะแถบนี้เท่านั้น */
-        }
-        .side-scroll-track::after {
-            content: '↕';
-            color: #444;
-            font-size: 20px;
-        }
-
-        .pad-btn { 
-            background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
-            border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; position: relative;
-        }
-
-        /* ไข่ปลาสำหรับลากสลับที่ */
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; position: relative; overflow: hidden; }
+        .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
+        .pad-btn.has-code { border-color: #00e676; }
+        
+        /* จุดดึงไข่ปลา (Drag Handle) */
         .drag-handle { 
             position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
             display: flex; align-items: center; justify-content: center; 
-            color: #333; font-size: 16px; cursor: grab; z-index: 10;
+            color: #444; font-size: 18px; cursor: grab; z-index: 20;
+            touch-action: none; /* ตรงจุดนี้เท่านั้นที่ห้ามสไลด์หน้าจอ เพื่อให้ลากติดมือ */
         }
+        .drag-handle:active { color: #00e676; }
 
-        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 10px 30px #000; border: 2px solid #00e676 !important; }
+        /* สไตล์สำหรับปุ่มที่กำลังถูกลาก */
+        .sortable-ghost { opacity: 0.1; background: #333 !important; }
+        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 100; box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 2px solid #00e676 !important; }
+
+        /* [สไตล์ส่วนอื่นคงเดิม] */
+        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
+        #timelineContent { position: relative; height: 100%; width: 1500px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
+        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
+        #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; opacity: 0.8; }
+        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
+        .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
     </style>
 </head>
-<body class="p-4">
+<body class="p-4 flex flex-col h-full">
 
     <div id="consoleView" class="max-w-xl mx-auto w-full">
-        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800">
-            <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl">CONNECT</button>
+        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
+            <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync Pro</h1>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
         </div>
     </div>
 
-    <div class="pad-container max-w-xl">
-        <div id="padGrid"></div>
-        
-        <div class="side-scroll-track" id="sideScroll"></div>
+    <div class="pad-container max-w-xl shadow-2xl">
+        <div id="padGrid" class="grid grid-cols-5 gap-3">
+            </div>
     </div>
 
     <script>
-        let patterns = Array.from({length: 60}, (_, i) => ({ id: i }));
-        const grid = document.getElementById('padGrid');
+        let device, characteristic;
+        let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        let clips = []; let selectedClipId = null;
 
+        // --- ระบบปุ่มใหม่: แยกร่างไข่ปลา ---
         function renderPads() {
+            const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
             patterns.forEach((p, idx) => {
                 const btn = document.createElement('div');
-                btn.className = 'pad-btn';
-                btn.innerHTML = `
-                    <div class="drag-handle">⠿</div>
-                    <span class="text-xs font-black pad-num">${idx+1}</span>
-                `;
+                btn.className = `pad-btn ${p.code ? 'border-green-500' : ''}`;
+                btn.setAttribute('data-id', idx);
+
+                // 1. ใส่ Handle ไข่ปลา (⠿)
+                const handle = document.createElement('div');
+                handle.className = 'drag-handle';
+                handle.innerHTML = '⠿';
+                btn.appendChild(handle);
+
+                // 2. ใส่ตัวเลขปุ่ม
+                const num = document.createElement('span');
+                num.className = 'text-xs font-black pad-num';
+                num.innerText = idx + 1;
+                btn.appendChild(num);
                 
+                // 3. ระบบคลิก (แยกออกจาก handle)
                 btn.onclick = (e) => {
+                    // ถ้าคลิกโดนไข่ปลา ไม่ต้องทำงาน
                     if (e.target.classList.contains('drag-handle')) return;
-                    console.log("Play:", idx + 1);
+                    
+                    // console.log("Open Pad:", idx + 1); // ใช้ playFX ของเดิมคุณใส่ตรงนี้ได้เลย
                 };
+
                 grid.appendChild(btn);
             });
 
-            new Sortable(grid, {
-                handle: '.drag-handle',
+            // ตั้งค่า Sortable ให้ลากเฉพาะที่ Handle (⠿)
+            new Sortable(grid, { 
+                handle: '.drag-handle', // <--- สำคัญ: ลากได้เฉพาะตรงไข่ปลาเท่านั้น
                 animation: 150,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
+                    // อัปเดตตัวเลขปุ่ม 1-60 ใหม่ให้เรียงถูกต้องเสมอ
+                    grid.querySelectorAll('.pad-num').forEach((num, i) => {
+                        num.innerText = i + 1;
+                    });
                 }
             });
         }
-
-        // ระบบเชื่อมโยงแถบสไลด์ข้าง (Side Scroll Logic)
-        const sideScroll = document.getElementById('sideScroll');
-        let isScrolling = false;
-        let startY, startScrollTop;
-
-        sideScroll.addEventListener('touchstart', (e) => {
-            isScrolling = true;
-            startY = e.touches[0].pageY;
-            startScrollTop = grid.scrollTop;
-        }, {passive: true});
-
-        sideScroll.addEventListener('touchmove', (e) => {
-            if (!isScrolling) return;
-            const deltaY = (e.touches[0].pageY - startY) * 2; // คูณ 2 เพื่อให้เลื่อนไวขึ้น
-            grid.scrollTop = startScrollTop - deltaY;
-        }, {passive: true});
-
-        sideScroll.addEventListener('touchend', () => isScrolling = false);
 
         renderPads();
     </script>
