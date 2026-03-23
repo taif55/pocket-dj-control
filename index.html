@@ -14,10 +14,12 @@
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        .hold-ring { position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #00e676; border-radius: 12px; opacity: 0; pointer-events: none; }
+        /* วงรอบเวลาโหลดตอนกดค้าง */
+        .hold-ring { position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #00e676; border-radius: 12px; opacity: 0; pointer-events: none; z-index: 10; }
         .is-holding .hold-ring { opacity: 1; animation: spin 3s linear forwards; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+        /* Timeline Workspace */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
@@ -52,11 +54,11 @@
         <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
             <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
             <div class="flex space-x-2">
-                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">PLAY</button>
+                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg">PLAY</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black">DEL</button>
+                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase italic">Del</button>
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase">Save</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase font-black">Save</button>
         </div>
 
         <div id="timelineViewport" onclick="handleTimelineClick(event)">
@@ -107,7 +109,7 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบจัดการปุ่มหน้าแรก ---
+        // --- ระบบจัดการปุ่ม (เล่น / ลาก / กดค้าง) ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -117,40 +119,45 @@
                 btn.innerHTML = `<div class="hold-ring"></div><span class="text-xs font-black">${idx+1}</span>`;
                 
                 let holdTimer;
-                let isDragging = false;
+                let startX, startY;
+                let isMoving = false;
 
                 btn.onpointerdown = (e) => {
-                    isDragging = false;
+                    isMoving = false;
+                    startX = e.clientX;
+                    startY = e.clientY;
                     btn.classList.add('is-holding');
+                    
                     holdTimer = setTimeout(() => {
-                        if (!isDragging) {
+                        if (!isMoving) {
                             btn.classList.remove('is-holding');
                             openPopup(idx);
                         }
-                    }, 3000); // กดค้าง 3 วิ
+                    }, 3000); // 3 วินาที
                 };
 
                 btn.onpointermove = (e) => {
-                    if (Math.abs(e.movementX) > 5 || Math.abs(e.movementY) > 5) {
-                        isDragging = true;
+                    // ถ้าขยับนิ้วเกิน 10px ถือว่ากำลังลาก ให้หยุดนับเวลา Popup
+                    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+                        isMoving = true;
                         clearTimeout(holdTimer);
                         btn.classList.remove('is-holding');
                     }
                 };
 
-                btn.onpointerup = () => {
+                btn.onpointerup = (e) => {
                     clearTimeout(holdTimer);
-                    if (!isDragging && btn.classList.contains('is-holding')) {
-                        btn.classList.remove('is-holding');
+                    const wasHolding = btn.classList.contains('is-holding');
+                    btn.classList.remove('is-holding');
+                    if (!isMoving && wasHolding) {
                         playFX(idx, btn);
                     }
-                    btn.classList.remove('is-holding');
                 };
 
                 grid.appendChild(btn);
             });
 
-            // เปิดระบบลาก (Delay 150ms เพื่อให้กดค้างทำงานได้)
+            // ระบบลาก (Sortable) - หน่วงเวลา 150ms เพื่อให้ Long Press ทำงานได้
             new Sortable(grid, { 
                 animation: 150, 
                 delay: 150, 
@@ -167,7 +174,7 @@
             if(!characteristic || !patterns[idx].code) return;
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code));
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
         }
 
         async function updateGlobalSpeed(v) {
@@ -202,30 +209,22 @@
                 div.id = `clip-${c.id}`; div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
                 div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; div.style.top = (c.track * 40) + 'px';
                 div.innerText = c.color.toUpperCase();
-                
                 if(c.color.includes('2')) {
                     const parts = c.color.split('2');
                     div.style.background = `linear-gradient(to right, ${colorMap[parts[0]] || '#333'}, ${colorMap[parts[1]] || '#333'})`;
                 } else { div.style.backgroundColor = colorMap[c.color] || '#555'; }
-
                 div.onclick = (e) => { e.stopPropagation(); selectClip(c.id); };
                 area.appendChild(div);
-                
-                interact(div).draggable({ listeners: { move(e) { 
-                    c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); 
-                    renderClips(); if(!isPlaying) sendLiveFrame(); 
-                } } })
-                .resizable({ edges: { right: true }, listeners: { move(e) { 
-                    c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); 
-                    renderClips(); if(!isPlaying) sendLiveFrame(); 
-                } } });
+                interact(div).draggable({ listeners: { move(e) { c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); renderClips(); if(!isPlaying) sendLiveFrame(); } } })
+                            .resizable({ edges: { right: true }, listeners: { move(e) { c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); renderClips(); if(!isPlaying) sendLiveFrame(); } } });
             });
             updateLoopLine();
         }
 
         function selectClip(id) {
             selectedClipId = id; const c = clips.find(x => x.id === id);
-            const panel = document.getElementById('editorPanel'); panel.style.opacity = "1"; panel.style.pointerEvents = "auto";
+            document.getElementById('editorPanel').style.opacity = "1";
+            document.getElementById('editorPanel').style.pointerEvents = "auto";
             document.getElementById('cBright').value = c.bright;
             document.getElementById('cFX').value = c.fx;
             document.getElementById('customColor').value = c.color;
@@ -239,23 +238,21 @@
             c.bright = document.getElementById('cBright').value;
             c.fx = document.getElementById('cFX').value;
             c.color = document.getElementById('customColor').value;
-            renderClips(); 
-            if(!isPlaying) sendLiveFrame(); else sendFullCodeToBT();
+            renderClips(); if(!isPlaying) sendLiveFrame(); else sendFullCodeToBT();
         }
 
         async function saveAndSend() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); renderPads();
         }
 
-        // --- Bluetooth & Helper ---
+        // --- Bluetooth & Timeline Helpers ---
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
@@ -275,24 +272,6 @@
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
             } catch (e) { alert("BT Error: " + e.message); }
         };
-
-        function addClipAtPlayhead() {
-            const id = Date.now();
-            clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 4 });
-            renderClips(); selectClip(id);
-        }
-
-        function deleteSelectedClip() {
-            if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; renderClips(); }
-        }
-
-        async function sendLiveFrame() {
-            if(!characteristic || !selectedClipId) return;
-            const c = clips.find(x => x.id === selectedClipId);
-            let b = parseInt(c.bright).toString().padStart(2,'0');
-            let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
-        }
 
         function togglePlay() {
             const btn = document.getElementById('playBtn');
@@ -317,8 +296,8 @@
             let elapsed = (currentTime - startAnimateTime) / 1000;
             if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; sendFullCodeToBT(); }
             playheadTime = elapsed;
-            const ph = document.getElementById('playhead'); if (ph) ph.style.left = (playheadTime * pxPerSec) + 'px';
-            const el = document.getElementById('timeText'); if (el) el.innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
+            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
             playInterval = requestAnimationFrame(animatePlayhead);
         }
 
@@ -329,6 +308,14 @@
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
                 code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
             });
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
+        }
+
+        async function sendLiveFrame() {
+            if(!characteristic || !selectedClipId) return;
+            const c = clips.find(x => x.id === selectedClipId);
+            let b = parseInt(c.bright).toString().padStart(2,'0');
+            let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`;
             try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
         }
 
@@ -364,11 +351,23 @@
             const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; }
         }
 
+        function addClipAtPlayhead() {
+            const id = Date.now();
+            clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 4 });
+            renderClips(); selectClip(id);
+        }
+
+        function deleteSelectedClip() {
+            if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; renderClips(); }
+        }
+
+        function adjBright(v) { const input = document.getElementById('cBright'); input.value = Math.max(0, Math.min(99, parseInt(input.value) + v)); updateSelectedClip(); }
+
         function handleTimelineClick(e) {
             if(isPlaying) return;
             const rect = document.getElementById('timelineContent').getBoundingClientRect();
             playheadTime = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-            const ph = document.getElementById('playhead'); if (ph) ph.style.left = (playheadTime * pxPerSec) + 'px';
+            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
         }
 
         renderPads();
