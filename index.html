@@ -3,60 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - Scroll Lock</title>
+    <title>Pocket DJ Studio - Final Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        /* ล็อคหน้าจอหลักไม่ให้ขยับเลย */
         body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: #050505; 
-            color: white; 
-            user-select: none; 
-            overflow: hidden; 
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
+            user-select: none; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column;
         }
 
-        /* กรอบสี่เหลี่ยมสำหรับขังปุ่ม (เล็กลงจากหน้าจอเล็กน้อย) */
+        /* กรอบสีเหลี่ยมขังปุ่ม (มีเส้นขอบชัดเจน) */
         .pad-container {
-            margin: 0 auto;
-            width: 95%; /* เล็กกว่าหน้าจอเล็กน้อย */
-            height: 65vh; /* กำหนดความสูงให้พอดีกับสายตา */
-            background: #0a0a0a;
-            border: 2px solid #222;
-            border-radius: 24px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 15px;
-            
-            /* ไม้ตาย: ป้องกันไม่ให้การสไลด์ในนี้ไปทำให้หน้าจอข้างนอกขยับ */
-            overscroll-behavior: contain; 
+            margin: 0 auto; width: 95%; height: 65vh; 
+            background: #0a0a0a; border: 2px solid #222; border-radius: 24px;
+            overflow-y: auto; overflow-x: hidden; padding: 10px;
+            overscroll-behavior: contain; /* ล็อคไม่ให้หน้าจอหลักขยับตาม */
             -webkit-overflow-scrolling: touch;
         }
 
-        /* ปรับแต่ง Scrollbar ให้ดูสวยแบบ DJ Gear */
-        .pad-container::-webkit-scrollbar { width: 4px; }
-        .pad-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-
+        /* ปรับปรุงปุ่มให้สไลด์ขึ้นลงได้ (pan-y) */
         .pad-btn { 
             background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
             border-radius: 12px; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; transition: 0.1s; border: 1px solid #222;
-            
-            /* ล็อคระบบสัมผัสที่ตัวปุ่มเพื่อให้ Sortable ทำงานได้ 100% */
-            touch-action: none; 
-            user-select: none;
-            -webkit-user-select: none;
+            cursor: pointer; transition: 0.1s; position: relative;
+            touch-action: pan-y; /* ไม้ตาย: ยอมให้ไถนิ้วขึ้นลงบนปุ่มได้เพื่อเลื่อนดูปุ่มล่างๆ */
         }
         
         .pad-btn.active { background: #00e676; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
-        .pad-btn.has-code { border-color: #00e676; }
+
+        /* จุดดึงไข่ปลาสำหรับลากสลับที่ */
+        .drag-handle { 
+            position: absolute; top: 0; left: 0; width: 35px; height: 35px; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #444; font-size: 18px; cursor: grab; z-index: 20;
+            touch-action: none; /* ตรงจุดนี้เท่านั้นที่ห้ามสไลด์หน้าจอ เพื่อให้ลากติดมือ */
+        }
 
         /* สไตล์ตอนกำลังลาก */
-        .sortable-ghost { opacity: 0.1; background: #333 !important; }
-        .sortable-drag { opacity: 1 !important; transform: scale(1.1); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100; }
+        .sortable-ghost { opacity: 0.1; }
+        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 2px solid #00e676 !important; }
+
+        /* Scrollbar สวยๆ */
+        .pad-container::-webkit-scrollbar { width: 6px; }
+        .pad-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body class="p-4">
@@ -64,7 +54,7 @@
     <div id="consoleView" class="max-w-xl mx-auto w-full">
         <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
             <h1 class="text-lg font-black text-green-500 italic uppercase tracking-tighter">Pocket DJ Studio</h1>
-            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition active:scale-95">CONNECT</button>
+            <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition">CONNECT</button>
         </div>
     </div>
 
@@ -74,11 +64,11 @@
     </div>
 
     <div class="max-w-xl mx-auto w-full mt-4 bg-gray-900/30 p-3 rounded-2xl border border-gray-800">
-        <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-1">
-            <span>Global Speed</span>
+        <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase mb-2">
+            <span>Global Playback Speed</span>
             <span id="speedVal" class="text-green-500">1.0x</span>
         </div>
-        <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-6">
+        <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500">
     </div>
 
     <script>
@@ -89,43 +79,40 @@
             grid.innerHTML = '';
             patterns.forEach((p, idx) => {
                 const btn = document.createElement('div');
-                btn.className = `pad-btn ${p.code ? 'border-green-500' : ''}`;
-                btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
+                btn.className = 'pad-btn';
                 
-                // ระบบจิ้ม (เปิด Popup)
-                btn.onclick = () => {
-                    if (!btn.classList.contains('is-dragging')) {
-                        // openPopup(idx); // ใส่ฟังก์ชันเปิด Popup เดิมของคุณที่นี่
-                        console.log("Open Pad:", idx + 1);
-                    }
+                // 1. ใส่ Handle ไข่ปลาสำหรับลากโดยเฉพาะ
+                const handle = document.createElement('div');
+                handle.className = 'drag-handle';
+                handle.innerHTML = '⠿';
+                btn.appendChild(handle);
+
+                // 2. ใส่ตัวเลขปุ่ม
+                const num = document.createElement('span');
+                num.className = 'text-xs font-black pad-num';
+                num.innerText = idx + 1;
+                btn.appendChild(num);
+                
+                // ระบบจิ้มเล่นไฟ / เปิด Popup
+                btn.onclick = (e) => {
+                    if (e.target.classList.contains('drag-handle')) return;
+                    console.log("Play FX:", idx + 1);
+                    // playFX(idx, btn); 
                 };
+
                 grid.appendChild(btn);
             });
 
-            // ตั้งค่า Sortable ภายในกรอบ Lock
+            // เปิดระบบลาก (ล็อกเฉพาะจุดไข่ปลา)
             new Sortable(grid, {
+                handle: '.drag-handle', // ลากได้เฉพาะตรงไข่ปลา
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                delay: 200,             // กดแช่ 0.2 วิเพื่อเริ่มลาก (ป้องกันการพลาด)
-                delayOnTouchOnly: true,
-                touchStartThreshold: 5,
-                
-                onStart: (evt) => {
-                    evt.item.classList.add('is-dragging');
-                    // ใส่สั่นนิดๆ เพื่อบอกว่าเริ่มลากได้แล้ว (เฉพาะ Android)
-                    if (window.navigator.vibrate) window.navigator.vibrate(30);
-                },
+                dragClass: 'sortable-drag',
                 onEnd: (evt) => {
-                    evt.item.classList.remove('is-dragging');
-                    // สลับตำแหน่งข้อมูลใน Array
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    
-                    // อัปเดตตัวเลขปุ่ม 1-60 ใหม่ให้เรียงถูกต้อง
-                    const allNums = grid.querySelectorAll('.pad-num');
-                    allNums.forEach((num, i) => {
-                        num.innerText = i + 1;
-                    });
+                    grid.querySelectorAll('.pad-num').forEach((num, i) => num.innerText = i + 1);
                 }
             });
         }
