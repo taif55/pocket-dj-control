@@ -2,19 +2,29 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pocket DJ Studio Pro</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <style>
+        :root {
+            --primary-green: #2ecc71;
+            --bg-dark: #0a0a0a;
+            --card-bg: #1a1a1a;
+        }
+
         body {
-            background-color: #0a0a0a;
-            color: #2ecc71;
-            font-family: 'Arial', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--primary-green);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
+            /* ป้องกันการเด้งไปมาของหน้าจอมือถือขณะลาก */
+            overflow-x: hidden; 
         }
 
         .header {
@@ -23,70 +33,106 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
-        /* แถบปรับความเร็ว */
+        .header h2 { margin: 0; font-style: italic; font-size: 1.2rem; }
+
+        .status-badge {
+            background: var(--primary-green);
+            color: black;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* โซนปรับความเร็ว */
         .controls {
             width: 100%;
             max-width: 500px;
-            background: #1a1a1a;
+            background: var(--card-bg);
             padding: 15px;
-            border-radius: 15px;
+            border-radius: 12px;
             margin-bottom: 20px;
             box-sizing: border-box;
+            border: 1px solid #333;
+        }
+
+        .speed-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
         }
 
         .speed-slider {
             width: 100%;
-            accent-color: #2ecc71;
+            height: 8px;
+            background: #333;
+            border-radius: 5px;
+            outline: none;
+            accent-color: var(--primary-green);
+            -webkit-appearance: none;
         }
 
-        /* ตารางปุ่ม */
+        /* ตารางปุ่ม 60 ปุ่ม */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
+            gap: 8px;
             width: 100%;
             max-width: 500px;
+            padding-bottom: 50px; /* เผื่อพื้นที่ด้านล่างให้เลื่อนหน้าจอได้ */
         }
 
         .dj-button {
             aspect-ratio: 1 / 1;
             background-color: #1e1e1e;
-            border: 2px solid #2ecc71;
-            border-radius: 12px;
+            border: 1.5px solid var(--primary-green);
+            border-radius: 10px;
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 14px;
             font-weight: bold;
             cursor: grab;
-            transition: transform 0.1s, background-color 0.2s;
+            transition: background-color 0.2s;
+            
+            /* ป้องกัน Browser แย่งจัดการ Touch Event */
+            touch-action: none; 
             user-select: none;
-        }
-
-        .dj-button:active {
-            cursor: grabbing;
-            background-color: #2ecc71;
-            color: black;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* สไตล์ตอนกำลังลาก */
         .sortable-ghost {
-            opacity: 0.3;
+            opacity: 0.2;
+            transform: scale(0.9);
+        }
+
+        .sortable-drag {
+            background-color: var(--primary-green) !important;
+            color: black !important;
+            opacity: 1;
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2 style="font-style: italic;">POCKET DJ STUDIO</h2>
-        <div style="background: #2ecc71; color: black; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold;">ONLINE</div>
+        <h2>POCKET DJ STUDIO</h2>
+        <div class="status-badge">ONLINE</div>
     </div>
 
     <div class="controls">
-        <label for="speed">SPEED: <span id="speed-val">1.0</span>x</label>
+        <div class="speed-label">
+            <span>TEMPO / SPEED</span>
+            <span><span id="speed-val">1.0</span>x</span>
+        </div>
         <input type="range" id="speed" class="speed-slider" min="0.5" max="2.0" step="0.1" value="1.0">
     </div>
 
@@ -102,22 +148,36 @@
         for (let i = 1; i <= 60; i++) {
             const btn = document.createElement('div');
             btn.className = 'dj-button';
-            btn.innerText = i;
-            // ใส่ฟังก์ชันเมื่อคลิกที่ปุ่ม
-            btn.onclick = () => console.log(`เล่นเสียงที่ ${i}`);
+            btn.innerHTML = i;
+            
+            // คลิกเพื่อเล่นเสียง (ตัวอย่าง)
+            btn.addEventListener('pointerdown', () => {
+                console.log(`Trigger Pad: ${i}`);
+            });
+
             grid.appendChild(btn);
         }
 
-        // 2. ตั้งค่าการลากวาง (SortableJS)
+        // 2. ตั้งค่า SortableJS สำหรับการลากวาง
         new Sortable(grid, {
-            animation: 150,
-            ghostClass: 'sortable-ghost'
+            animation: 150,       // ความเร็วตอนปุ่มสลับที่ (ms)
+            ghostClass: 'sortable-ghost', // สไตล์ปุ่มตัวหลอกที่ค้างอยู่ตำแหน่งเดิม
+            dragClass: 'sortable-drag',   // สไตล์ปุ่มที่กำลังถูกลาก
+            
+            // การตั้งค่าสำหรับมือถือ
+            delay: 150,           // ต้องกดค้าง 150ms ถึงจะเริ่มลาก (ป้องกันการกดเล่นเสียงสับสนกับการลาก)
+            delayOnTouchOnly: true, 
+            touchStartThreshold: 5, // ขยับนิ้วได้ 5px ก่อนยกเลิก
+            
+            onStart: function() {
+                if (window.navigator.vibrate) window.navigator.vibrate(20); // สั่นนิดๆ ตอนเริ่มลาก
+            }
         });
 
         // 3. อัปเดตตัวเลขความเร็ว
-        speedSlider.oninput = function() {
-            speedVal.innerText = this.value;
-        };
+        speedSlider.addEventListener('input', (e) => {
+            speedVal.innerText = e.target.value;
+        });
     </script>
 </body>
 </html>
