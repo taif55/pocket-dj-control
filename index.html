@@ -9,15 +9,11 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
-        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; position: relative; overflow: hidden; touch-action: none; }
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; position: relative; overflow: hidden; touch-action: none; }
         .pad-btn:active { transform: scale(0.95); background: #222; }
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        /* สไตล์ตอนกำลังลาก (เลียนแบบโค้ดที่ลื่น) */
-        .sortable-ghost { opacity: 0.3; background: #00e676 !important; }
-        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 1000; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
@@ -25,6 +21,10 @@
         
         .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
         .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
+        
+        /* สไตล์ตอนกำลังลาก - ให้ติดนิ้วเด่นๆ */
+        .sortable-ghost { opacity: 0.1; }
+        .sortable-drag { opacity: 0.9; transform: scale(1.1); box-shadow: 0 15px 30px rgba(0,0,0,0.8); z-index: 9999; }
     </style>
 </head>
 <body class="p-4">
@@ -103,7 +103,7 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบจัดการปุ่มหน้าแรก (ลอก Logic ตัวลื่นมาใช้) ---
+        // --- ระบบปุ่ม (แก้ไข: ลากย้ายทันที / เคาะ 2 ทีเข้า Popup) ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -113,32 +113,48 @@
                 btn.setAttribute('data-id', idx);
                 btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
                 
-                // ใช้ onclick ปกติเพื่อเล่นไฟ (Sortable จะจัดการเรื่องหน่วงลากให้เอง)
-                btn.onclick = () => {
-                    playFX(idx, btn);
+                // ระบบ Tap/Double-Tap
+                let lastTap = 0;
+                btn.onpointerdown = (e) => {
+                    const now = Date.now();
+                    if (now - lastTap < 300) { // เคาะ 2 ทีไวๆ (Double Tap)
+                        openPopup(idx);
+                    } else {
+                        // ถ้าจิ้มทีเดียว (Single Tap) ให้รอแป๊บเผื่อเคาะทีที่สอง
+                        window.tapTimeout = setTimeout(() => {
+                            if (!btn.classList.contains('is-dragging')) {
+                                playFX(idx, btn);
+                            }
+                        }, 300);
+                    }
+                    lastTap = now;
                 };
+
                 grid.appendChild(btn);
             });
 
+            // เปิดระบบลากสลับตำแหน่ง (Native Speed)
             new Sortable(grid, { 
                 animation: 150,
-                delay: 700, // หน่วงเวลา 0.7 วิ (จิ้มค้างเพื่อลากสลับที่)
+                delay: 150, // หน่วงเวลานิดเดียวเพื่อแยกกับการจิ้ม
                 delayOnTouchOnly: true,
                 touchStartThreshold: 5,
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
+                onStart: (evt) => {
+                    clearTimeout(window.tapTimeout); // ถ้าเริ่มลาก ให้ยกเลิกคำสั่งเล่นไฟ
+                    evt.item.classList.add('is-dragging');
+                },
                 onEnd: (evt) => {
+                    evt.item.classList.remove('is-dragging');
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
                     
-                    // อัปเดตตัวเลขปุ่มโดยไม่ Re-render (เพื่อความลื่น)
+                    // อัปเดตเลขปุ่มใหม่
                     grid.querySelectorAll('.pad-btn').forEach((p, i) => {
                         p.querySelector('.pad-num').innerText = i + 1;
-                        p.setAttribute('data-id', patterns[i].id);
+                        p.setAttribute('data-id', patterns[i].id); 
                     });
-
-                    // เมื่อลากจบปุ๊บ ให้ถือว่าเป็นการเลือกเพื่อแก้ไข (Popup)
-                    openPopup(evt.newIndex);
                 }
             });
         }
@@ -154,7 +170,6 @@
             if(characteristic) await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + v));
         }
 
-        // --- ส่วน Designer & Bluetooth (เหมือนเดิม 100%) ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -219,7 +234,7 @@
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
