@@ -5,29 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pocket DJ Studio - PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #050505; color: white; user-select: none; overflow-x: hidden; }
-        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s, border 0.3s; position: relative; overflow: hidden; touch-action: manipulation; }
+        
+        /* แก้ไขจุดตาย: เอา touch-action ออกเพื่อให้ Browser อนุญาตให้ลากได้ */
+        .pad-btn { 
+            background: #151515; border: 1px solid #333; aspect-ratio: 1/1; 
+            border-radius: 12px; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; cursor: pointer; 
+            position: relative; overflow: hidden; 
+            transition: background 0.2s;
+        }
+
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        /* สไตล์ตอนอยู่ในโหมดแก้ไข */
-        body.edit-mode .pad-btn { border: 1px dashed #555; opacity: 0.8; }
-        body.edit-mode .pad-btn:after { content: 'EDIT'; position: absolute; bottom: 4px; font-size: 7px; color: #555; font-weight: bold; }
+        /* สไตล์โหมดแก้ไข */
+        body.edit-mode .pad-btn { border: 1px dashed #ef4444; opacity: 0.9; }
+        body.edit-mode .pad-btn:after { content: 'DRAG'; position: absolute; bottom: 4px; font-size: 8px; color: #ef4444; font-weight: bold; }
 
-        /* สไตล์ตอนกำลังลาก */
-        .sortable-ghost { opacity: 0.1; }
-        .sortable-drag { opacity: 0.9; transform: scale(1.1); z-index: 9999; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 2px solid #00e676 !important; }
-
-        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
-        #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
-        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
-        #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
-        
-        .light-clip { position: absolute; height: 34px; color: black; border-radius: 6px; font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.2); }
-        .light-clip.selected { border: 2px solid white; box-shadow: 0 0 12px #00e676; z-index: 40; }
+        /* ทำให้ปุ่มลอยติดนิ้ว 100% */
+        .sortable-ghost { opacity: 0; } /* ตัวที่รอวางให้จางไปเลย */
+        .sortable-drag { 
+            opacity: 1 !important; 
+            transform: scale(1.15) !important; 
+            box-shadow: 0 20px 50px rgba(0,0,0,1) !important; 
+            background: #222 !important;
+            border: 2px solid #00e676 !important;
+            z-index: 9999 !important; 
+        }
     </style>
 </head>
 <body class="p-4">
@@ -37,86 +44,44 @@
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-xl font-black text-green-500 italic uppercase">DJ Studio Pro</h1>
                 <div class="flex space-x-2">
-                    <button id="editToggleBtn" onclick="toggleEditMode()" class="bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-90">EDIT MODE: OFF</button>
-                    <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-2xl transition active:scale-95">CONNECT</button>
+                    <button id="editToggleBtn" onclick="toggleEditMode()" class="bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-95">EDIT MODE: OFF</button>
+                    <button id="connectBtn" class="bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition">CONNECT</button>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
-                    <span>Playback Speed</span>
-                    <span id="speedVal" class="text-green-500 text-sm">1.0x</span>
-                </div>
-                <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-8" oninput="speedVal.innerText=this.value+'x'; updateGlobalSpeed(this.value)">
-            </div>
+            <input type="range" id="globalSpeed" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full accent-green-500 h-8">
         </div>
         <div id="padGrid" class="grid grid-cols-5 gap-3 pb-32"></div>
     </div>
 
     <div id="modal" class="fixed inset-0 hidden z-50 flex flex-col bg-[#050505]">
-        <div class="flex justify-between items-center p-3 bg-gray-900 border-b border-gray-800">
-            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs uppercase">Back</button>
-            <div class="flex space-x-2">
-                <button id="playBtn" onclick="togglePlay()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">PLAY</button>
-                <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-4 py-2 rounded-xl text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase italic">Del</button>
-            </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs uppercase font-black">Save</button>
+        <div class="flex justify-between items-center p-3 bg-gray-900">
+            <button onclick="closePopup()" class="text-gray-400 font-bold text-xs">BACK</button>
+            <button onclick="saveAndSend()" class="bg-white text-black font-black px-4 py-2 rounded-lg text-xs">SAVE</button>
         </div>
-        <div id="timelineViewport" onclick="handleTimelineClick(event)">
-            <div id="timelineContent">
-                <div id="playhead"></div>
-                <div id="loopLine"></div>
-                <div id="trackArea" class="relative h-full py-6"></div>
-            </div>
-        </div>
-        <div id="timeText" class="bg-black text-[10px] text-center p-1 text-gray-500 font-mono">PLAYHEAD: 0.0s</div>
-        <div id="editorPanel" class="flex-1 overflow-y-auto p-4 space-y-3 opacity-30 pointer-events-none pb-12">
-            <div class="bg-gray-900/40 p-3 rounded-2xl border border-gray-800">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-black text-gray-400 uppercase">Color Selection</span>
-                    <input type="text" id="customColor" class="bg-black border border-gray-800 px-2 py-1 rounded text-[10px] text-green-500 outline-none w-20 text-center" oninput="updateSelectedClip()">
-                </div>
-                <div id="colorPalette" class="flex flex-wrap gap-2 justify-center"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-                <div class="bg-gray-900/40 p-3 rounded-2xl border border-gray-800 text-center">
-                    <div class="text-[9px] text-gray-500 mb-1 font-bold uppercase">Brightness</div>
-                    <input type="number" id="cBright" value="10" class="bg-transparent text-center font-black text-xl w-full outline-none" oninput="updateSelectedClip()">
-                </div>
-                <div class="bg-gray-900/40 p-3 rounded-2xl border border-gray-800">
-                    <select id="cFX" class="w-full h-full bg-transparent text-xs font-black text-green-400 uppercase outline-none" onchange="updateSelectedClip()">
-                        <option value="o">Static</option><option value="u">Fade Up</option><option value="f">Fade Out</option><option value="s">Strobe</option><option value="b">Blink</option>
-                    </select>
-                </div>
-            </div>
-            <div id="ledGrid" class="grid grid-cols-10 gap-1 h-32 overflow-y-auto bg-black p-2 rounded-lg border border-gray-900"></div>
-        </div>
+        <div class="p-10 text-center">ระบบแก้ไขลายไฟสำหรับปุ่มลำดับที่ <span id="targetIdx"></span></div>
     </div>
 
     <script>
-        let device, characteristic, sortableInstance;
+        let sortableInstance;
+        let isEditMode = false;
         let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        let clips = [], selectedClipId = null, selectedIdx = -1, playheadTime = 0, isPlaying = false, isEditMode = false;
-        const pxPerSec = 100, colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบเปิด-ปิด Edit Mode ---
         function toggleEditMode() {
             isEditMode = !isEditMode;
             const btn = document.getElementById('editToggleBtn');
             if (isEditMode) {
                 document.body.classList.add('edit-mode');
                 btn.innerText = "EDIT MODE: ON";
-                btn.className = "bg-red-600 text-white text-[10px] font-black px-4 py-2 rounded-2xl border border-red-500 transition active:scale-90";
-                sortableInstance.option("disabled", false); // เปิดระบบลาก
+                btn.className = "bg-red-600 text-white text-[10px] font-black px-4 py-2 rounded-2xl border border-red-500";
+                sortableInstance.option("disabled", false); // เปิดการลาก
             } else {
                 document.body.classList.remove('edit-mode');
                 btn.innerText = "EDIT MODE: OFF";
-                btn.className = "bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700 transition active:scale-90";
-                sortableInstance.option("disabled", true); // ปิดระบบลาก
+                btn.className = "bg-gray-800 text-gray-400 text-[10px] font-black px-4 py-2 rounded-2xl border border-gray-700";
+                sortableInstance.option("disabled", true); // ปิดการลาก
             }
         }
 
-        // --- วาดปุ่มหน้าแรก ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -125,25 +90,25 @@
                 btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
                 btn.innerHTML = `<span class="text-xs font-black pad-num">${idx+1}</span>`;
                 
+                // ใช้ปุ่มในโหมด Edit เพื่อเข้าหน้าตั้งค่า
                 btn.onclick = () => {
-                    if (isEditMode) {
-                        openPopup(idx); // ในโหมด Edit: จิ้มเพื่อเข้าหน้าตั้งค่า
-                    } else {
-                        playFX(idx, btn); // ในโหมดปกติ: จิ้มเพื่อเล่นไฟ
-                    }
+                    if (isEditMode) openPopup(idx);
+                    else playFX(idx, btn);
                 };
                 grid.appendChild(btn);
             });
 
-            // สร้าง Sortable Instance ทิ้งไว้
+            // ตั้งค่าลากใหม่แบบเน้นความเร็ว
+            if (sortableInstance) sortableInstance.destroy();
             sortableInstance = new Sortable(grid, {
                 animation: 150,
-                disabled: true, // ปิดไว้ตอนเริ่มต้น
-                ghostClass: 'sortable-ghost',
-                dragClass: 'sortable-drag',
+                disabled: true, 
+                forceFallback: true, // บังคับใช้ระบบลากจำลอง เพื่อให้ตามนิ้วได้เสถียรที่สุดบนมือถือ
+                fallbackClass: "sortable-drag",
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
+                    // อัปเดตเฉพาะตัวเลข ไม่ล้างหน้าจอ
                     grid.querySelectorAll('.pad-btn').forEach((p, i) => {
                         p.querySelector('.pad-num').innerText = i + 1;
                     });
@@ -151,192 +116,15 @@
             });
         }
 
-        async function playFX(idx, el) {
-            if(!characteristic || !patterns[idx].code) return;
+        function openPopup(idx) {
+            document.getElementById('targetIdx').innerText = idx + 1;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function closePopup() { document.getElementById('modal').classList.add('hidden'); }
+        function playFX(idx, el) { 
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
-        }
-
-        async function updateGlobalSpeed(v) {
-            if(characteristic) await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + v));
-        }
-
-        // --- Logic Designer & Bluetooth (คงเดิม 100%) ---
-        function openPopup(idx) {
-            selectedIdx = idx; clips = [];
-            let rawCode = patterns[idx].code || "";
-            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 5) {
-                        clips.push({ id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), target: content[1], color: content[2], fx: content[3].charAt(0), duration: parseInt(content[3].substring(1,3))/10, loop: 1, mirror: m, track: i % 4 });
-                    }
-                });
-            }
-            document.getElementById('modal').classList.remove('hidden');
-            initColors(); renderClips();
-            if(clips.length > 0) selectClip(clips[0].id);
-        }
-
-        function closePopup() { stopPlayback(); document.getElementById('modal').classList.add('hidden'); selectedIdx = -1; }
-
-        function renderClips() {
-            const area = document.getElementById('trackArea'); area.innerHTML = '';
-            clips.forEach(c => {
-                const div = document.createElement('div');
-                div.id = `clip-${c.id}`; div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
-                div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; div.style.top = (c.track * 40) + 'px';
-                div.innerText = c.color.toUpperCase();
-                if(c.color.includes('2')) {
-                    const parts = c.color.split('2');
-                    div.style.background = `linear-gradient(to right, ${colorMap[parts[0]] || '#333'}, ${colorMap[parts[1]] || '#333'})`;
-                } else { div.style.backgroundColor = colorMap[c.color] || '#555'; }
-                div.onclick = (e) => { e.stopPropagation(); selectClip(c.id); };
-                area.appendChild(div);
-                interact(div).draggable({ listeners: { move(e) { c.start += e.dx/pxPerSec; c.start=Math.max(0, c.start); renderClips(); if(!isPlaying) sendLiveFrame(); } } })
-                            .resizable({ edges: { right: true }, listeners: { move(e) { c.duration = e.rect.width/pxPerSec; c.duration=Math.max(0.1, c.duration); renderClips(); if(!isPlaying) sendLiveFrame(); } } });
-            });
-            updateLoopLine();
-        }
-
-        function selectClip(id) {
-            selectedClipId = id; const c = clips.find(x => x.id === id);
-            document.getElementById('editorPanel').style.opacity = "1";
-            document.getElementById('editorPanel').style.pointerEvents = "auto";
-            document.getElementById('cBright').value = c.bright;
-            document.getElementById('cFX').value = c.fx;
-            document.getElementById('customColor').value = c.color;
-            renderLEDGrid(); renderClips();
-            if(!isPlaying) sendLiveFrame();
-        }
-
-        function updateSelectedClip() {
-            if(!selectedClipId) return;
-            const c = clips.find(x => x.id === selectedClipId);
-            c.bright = document.getElementById('cBright').value;
-            c.fx = document.getElementById('cFX').value;
-            c.color = document.getElementById('customColor').value;
-            renderClips(); if(!isPlaying) sendLiveFrame(); else sendFullCodeToBT();
-        }
-
-        async function saveAndSend() {
-            let code = "";
-            clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let m = c.mirror ? 'm' : '';
-                let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
-            });
-            patterns[selectedIdx].code = code;
-            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
-            closePopup(); renderPads();
-        }
-
-        document.getElementById('connectBtn').onclick = async () => {
-            try {
-                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
-                characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-                document.getElementById('connectBtn').innerText = "ONLINE";
-                document.getElementById('connectBtn').className = "bg-blue-500 text-white text-[10px] font-black px-4 py-2 rounded-xl";
-                await characteristic.startNotifications();
-                characteristic.addEventListener('characteristicvaluechanged', (e) => {
-                    let val = new TextDecoder().decode(e.target.value);
-                    if (val.startsWith("D")) {
-                        let p = val.substring(1).split(":");
-                        if(p.length >= 3) { patterns[parseInt(p[0])].code = p[2] || ""; renderPads(); }
-                    }
-                });
-                await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
-            } catch (e) { alert("BT Error: " + e.message); }
-        };
-
-        function togglePlay() {
-            const btn = document.getElementById('playBtn');
-            if (!isPlaying) {
-                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600');
-                sendFullCodeToBT();
-                startAnimateTime = performance.now() - (playheadTime * 1000);
-                playInterval = requestAnimationFrame(animatePlayhead);
-            } else { stopPlayback(); }
-        }
-
-        function stopPlayback() {
-            isPlaying = false;
-            const btn = document.getElementById('playBtn');
-            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-blue-600'); }
-            cancelAnimationFrame(playInterval);
-            if(selectedClipId) sendLiveFrame();
-        }
-
-        function animatePlayhead(currentTime) {
-            if (!isPlaying) return;
-            let elapsed = (currentTime - startAnimateTime) / 1000;
-            if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; sendFullCodeToBT(); }
-            playheadTime = elapsed;
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
-            playInterval = requestAnimationFrame(animatePlayhead);
-        }
-
-        async function sendFullCodeToBT() {
-            if(!characteristic) return;
-            let code = "5";
-            clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
-            });
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
-        }
-
-        async function sendLiveFrame() {
-            if(!characteristic || !selectedClipId) return;
-            const c = clips.find(x => x.id === selectedClipId);
-            let b = parseInt(c.bright).toString().padStart(2,'0');
-            let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){}
-        }
-
-        function renderLEDGrid() {
-            const grid = document.getElementById('ledGrid'); grid.innerHTML = '';
-            const c = clips.find(x => x.id === selectedClipId);
-            if(!c) return;
-            for(let i=1; i<=300; i++) {
-                const d = document.createElement('div'); d.innerText = i;
-                d.className = `text-[8px] h-7 bg-[#111] border border-[#222] rounded flex items-center justify-center cursor-pointer ${c.target.includes('<'+i+'>')?'bg-green-500 text-black font-bold':''}`;
-                d.onclick = () => {
-                    if(c.target.includes('<'+i+'>')) c.target = c.target.replace('<'+i+'>','');
-                    else c.target += `<${i}>`;
-                    renderLEDGrid(); updateSelectedClip();
-                };
-                grid.appendChild(d);
-            }
-        }
-
-        function initColors() {
-            const p = document.getElementById('colorPalette'); p.innerHTML = '';
-            Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'w-8 h-8 rounded-lg cursor-pointer border-2 border-transparent';
-                d.style.backgroundColor = colorMap[k];
-                d.onclick = () => { const c = clips.find(x => x.id === selectedClipId); if (c) { c.color = k; document.getElementById('customColor').value = k; updateSelectedClip(); } };
-                p.appendChild(d);
-            });
-        }
-
-        function updateLoopLine() {
-            let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
-            currentLoopLimit = maxT > 0 ? maxT : 1.0;
-            const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; }
-        }
-
-        function handleTimelineClick(e) {
-            if(isPlaying) return;
-            const rect = document.getElementById('timelineContent').getBoundingClientRect();
-            playheadTime = Math.max(0, (e.clientX - rect.left) / pxPerSec);
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+            setTimeout(() => el.classList.remove('active'), 200);
         }
 
         renderPads();
