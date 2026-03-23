@@ -14,12 +14,11 @@
         .pad-btn.active { background: #00e676 !important; color: black; box-shadow: 0 0 15px #00e676; border-color: #fff; }
         .pad-btn.has-code { border-color: #00e676; }
         
-        /* วงรอบเวลาโหลดตอนกดค้าง */
         .hold-ring { position: absolute; inset: 0; border: 4px solid transparent; border-top-color: #00e676; border-radius: 12px; opacity: 0; pointer-events: none; z-index: 10; }
-        .is-holding .hold-ring { opacity: 1; animation: spin 3s linear forwards; }
+        /* ปรับ Animation ให้เร็วขึ้นตามเวลา 800ms */
+        .is-holding .hold-ring { opacity: 1; animation: spin 0.8s linear forwards; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Timeline Workspace */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px); background-size: 100px 100%; }
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
@@ -109,7 +108,6 @@
         const pxPerSec = 100;
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000' };
 
-        // --- ระบบจัดการปุ่ม (เล่น / ลาก / กดค้าง) ---
         function renderPads() {
             const grid = document.getElementById('padGrid');
             grid.innerHTML = '';
@@ -121,6 +119,7 @@
                 let holdTimer;
                 let startX, startY;
                 let isMoving = false;
+                const holdTime = 800; // ปรับเหลือ 0.8 วินาทีเพื่อให้เหมาะสม
 
                 btn.onpointerdown = (e) => {
                     isMoving = false;
@@ -133,12 +132,12 @@
                             btn.classList.remove('is-holding');
                             openPopup(idx);
                         }
-                    }, 3000); // 3 วินาที
+                    }, holdTime);
                 };
 
                 btn.onpointermove = (e) => {
-                    // ถ้าขยับนิ้วเกิน 10px ถือว่ากำลังลาก ให้หยุดนับเวลา Popup
-                    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+                    // ถ้าขยับนิ้วเกิน 5px ให้ยกเลิกการเปิด Popup เพื่อปล่อยให้ Sortable ทำงานลาก
+                    if (Math.abs(e.clientX - startX) > 5 || Math.abs(e.clientY - startY) > 5) {
                         isMoving = true;
                         clearTimeout(holdTimer);
                         btn.classList.remove('is-holding');
@@ -147,21 +146,21 @@
 
                 btn.onpointerup = (e) => {
                     clearTimeout(holdTimer);
-                    const wasHolding = btn.classList.contains('is-holding');
-                    btn.classList.remove('is-holding');
-                    if (!isMoving && wasHolding) {
+                    if (!isMoving && btn.classList.contains('is-holding')) {
+                        btn.classList.remove('is-holding');
                         playFX(idx, btn);
                     }
+                    btn.classList.remove('is-holding');
                 };
 
                 grid.appendChild(btn);
             });
 
-            // ระบบลาก (Sortable) - หน่วงเวลา 150ms เพื่อให้ Long Press ทำงานได้
+            // แก้ไข Sortable ให้ลากง่ายขึ้น
             new Sortable(grid, { 
                 animation: 150, 
-                delay: 150, 
-                delayOnTouchOnly: true,
+                delay: 50, // หน่วงเวลาน้อยมากเพื่อให้ตอบสนองการลากไว
+                ghostClass: 'opacity-50',
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
@@ -181,7 +180,6 @@
             if(characteristic) await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + v));
         }
 
-        // --- Designer Logic ---
         function openPopup(idx) {
             selectedIdx = idx; clips = [];
             let rawCode = patterns[idx].code || "";
@@ -244,15 +242,15 @@
         async function saveAndSend() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
+                let m = c.mirror ? 'm' : '';
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
-                code += `${c.mirror?'m':''}(${s}${b},${c.target||'a'},${c.color},${c.fx}${d}00,1)`;
+                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             patterns[selectedIdx].code = code;
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${code}`));
             closePopup(); renderPads();
         }
 
-        // --- Bluetooth & Timeline Helpers ---
         document.getElementById('connectBtn').onclick = async () => {
             try {
                 device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'PocketDJ-' }], optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"] });
@@ -360,8 +358,6 @@
         function deleteSelectedClip() {
             if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; renderClips(); }
         }
-
-        function adjBright(v) { const input = document.getElementById('cBright'); input.value = Math.max(0, Math.min(99, parseInt(input.value) + v)); updateSelectedClip(); }
 
         function handleTimelineClick(e) {
             if(isPlaying) return;
