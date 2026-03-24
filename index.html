@@ -76,6 +76,14 @@
         <div class="side-scroll-track" id="sideScroll"></div>
     </div>
 
+    <div class="max-w-xl mx-auto w-full mt-auto pt-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 flex items-center space-x-3 shadow-lg">
+            <span class="text-yellow-500 font-black text-[10px] w-12 text-center">BRIGHT</span>
+            <input type="range" id="masterBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterBrightness(this.value)">
+            <div id="masterBrightText" class="text-yellow-500 font-black text-xs w-10 text-right">100%</div>
+        </div>
+    </div>
+
     <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
         <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙 BACK</button>
@@ -234,6 +242,14 @@
             try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + parseFloat(val).toFixed(1))); } catch(e) {}
         }
         function resetMasterSpeed() { document.getElementById('masterSpeedSlider').value = 1.0; updateMasterSpeed(1.0); }
+
+        // 🔥 อัปเดต: ฟังก์ชันควบคุมความสว่างหน้าจอหลักผ่านแอป 🔥
+        async function updateMasterBrightness(val) {
+            document.getElementById('masterBrightText').innerText = Math.round(val * 100) + '%';
+            if(!characteristic) return;
+            // ส่งคำสั่ง B นำหน้าตัวเลขความสว่าง (เช่น B1.00 หรือ B0.50)
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("B" + parseFloat(val).toFixed(2))); } catch(e) {}
+        }
 
         document.getElementById('connectBtn').onclick = async () => {
             const btn = document.getElementById('connectBtn');
@@ -784,6 +800,35 @@
                 isWritingBLE = false;
             } catch(e){ isWritingBLE = false; } 
         }
+
+        // -------------------------------------------------------------
+        // 🔥 ระบบป้องกันหน้าจอดับ (Screen Wake Lock API) 🔥
+        // -------------------------------------------------------------
+        let wakeLock = null;
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock released');
+                    });
+                }
+            } catch (err) {
+                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+        }
+
+        document.addEventListener('pointerdown', () => {
+            if (!wakeLock) requestWakeLock();
+        }, { once: true });
+
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+        // -------------------------------------------------------------
 
         renderPads();
     </script>
