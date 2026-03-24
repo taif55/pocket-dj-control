@@ -22,7 +22,6 @@
 
         .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
         .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        /* ทำให้ปุ่มสว่างค้างเวลาเล่น */
         .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; background: #00e676 !important; color: black; }
 
         .poten-slot { border: 2px dashed #ff9100 !important; background: rgba(255, 145, 0, 0.05); }
@@ -33,10 +32,10 @@
         .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #00e676 !important; pointer-events: none; }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
-        /* --- Designer UI & Timeline --- */
+        /* --- Timeline & Designer --- */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; }
-        /* เส้นตารางวินาทีให้ชัดขึ้น */
-        #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,255,255,0.25) 1px, transparent 1px); }
+        /* เส้นกริดทุกๆ 1 วินาที ชัดเจนขึ้น */
+        #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px); }
         
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
@@ -48,15 +47,16 @@
         .color-scroll::-webkit-scrollbar { height: 4px; }
         .color-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
 
-        #ledGrid { touch-action: pan-y; overflow-y: scroll; padding-right: 5px; }
+        /* LED Grid ยืดหยุ่นเต็มจอ */
+        #ledGrid { touch-action: pan-y; padding-right: 5px; }
         #ledGrid::-webkit-scrollbar { display: block; width: 14px; }
         #ledGrid::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
         #ledGrid::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 3px solid #0a0a0a; }
 
         .led-mark { border: 1px solid #444 !important; background: #151515; }
+        /* หลอดถูกเลือกเป็นสีเขียวเด่น */
         .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
         
-        /* Popup แบบ Custom */
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
     </style>
 </head>
@@ -103,7 +103,7 @@
             <span>* กดก้อนแช่ไว้เพื่อ COPY</span>
         </div>
 
-        <div class="bg-gray-900 border-b border-gray-800 p-2 grid grid-cols-2 gap-4">
+        <div class="bg-gray-900 border-b border-gray-800 p-2 grid grid-cols-2 gap-4 flex-none">
             <div class="flex items-center space-x-2">
                 <button onclick="fitToScreen()" class="bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold">FIT</button>
                 <input type="range" id="zoomSlider" min="20" max="300" value="100" class="flex-1 accent-blue-500" oninput="updateZoom(this.value)">
@@ -115,45 +115,53 @@
             </div>
         </div>
         
-        <div id="editorPanel" class="flex-1 overflow-y-auto p-2 space-y-2 opacity-30 pointer-events-none">
+        <div id="editorPanel" class="flex-1 flex flex-col p-2 space-y-2 opacity-30 pointer-events-none overflow-hidden">
             
-            <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
-                <div id="colorSlots" class="flex items-center space-x-1 px-1 flex-1 overflow-x-auto color-scroll"></div>
-                <div class="flex space-x-1 ml-2">
-                    <button onclick="addColorSlot()" class="bg-blue-600 text-white font-bold text-[8px] px-2 py-1 rounded">+ ADD</button>
-                    <button onclick="delColorSlot()" class="bg-red-900 text-white font-bold text-[8px] px-2 py-1 rounded">- DEL</button>
-                    <button onclick="resetColorBuilder()" class="text-red-500 font-bold text-[8px] px-1">RST</button>
-                </div>
+            <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex justify-between items-center flex-none">
+                <button onclick="addColorSlot()" class="bg-blue-600 text-white font-bold text-[9px] px-2 py-1 rounded shadow mr-2 flex-shrink-0">+ ADD</button>
+                <div id="colorSlots" class="flex items-center space-x-1 flex-1 overflow-x-auto color-scroll pb-1"></div>
+                <button onclick="resetColorBuilder()" class="text-red-500 font-bold text-[9px] px-2 flex-shrink-0">RST</button>
             </div>
-            <div id="colorPalette" class="color-scroll flex flex-nowrap overflow-x-auto gap-2 pb-1 px-1"></div>
+            <div id="colorPalette" class="color-scroll flex flex-nowrap overflow-x-auto gap-2 pb-1 px-1 flex-none"></div>
 
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 text-center flex flex-col justify-center">
-                    <div class="text-[8px] text-gray-500 mb-1 font-bold uppercase">Bright</div>
-                    <input type="number" id="cBright" value="10" class="bg-transparent text-center font-black text-sm w-full outline-none" oninput="updateSelectedClip()">
+            <div class="grid grid-cols-3 gap-2 flex-none">
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">Bright</span>
+                    <input type="number" id="cBright" value="10" class="bg-transparent text-right font-black text-sm w-10 outline-none" oninput="updateSelectedClip()">
                 </div>
-                
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex flex-col items-center justify-center cursor-pointer" onclick="toggleMirror()">
-                    <div class="text-[8px] text-gray-500 mb-1 font-bold uppercase">Mirror</div>
-                    <div id="cMirrorBtn" class="w-5 h-5 rounded-full border-2 border-gray-600 transition-colors"></div>
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2 cursor-pointer" onclick="toggleMirror()">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">Mirror</span>
+                    <div id="cMirrorBtn" class="w-4 h-4 rounded-full border-2 border-gray-600 transition-colors"></div>
                 </div>
-
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex flex-col justify-center">
-                    <div class="text-[8px] text-gray-500 mb-1 font-bold uppercase text-center">Effect</div>
-                    <select id="cFX" class="w-full bg-transparent text-[9px] font-black text-green-400 uppercase outline-none text-center" onchange="updateSelectedClip()">
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">FX</span>
+                    <select id="cFX" class="bg-transparent text-[9px] font-black text-green-400 uppercase outline-none text-right flex-1 ml-1" onchange="updateSelectedClip()">
                         <option value="o">STATIC</option><option value="u">FADE UP</option><option value="f">FADE OUT</option><option value="s">STROBE</option><option value="b">BLINK</option>
                     </select>
                 </div>
             </div>
 
-            <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800">
-                <div id="ledGrid" class="grid grid-cols-10 gap-1 h-28 bg-black p-1 rounded-lg border border-gray-900"></div>
+            <div class="flex-1 bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex flex-col min-h-0">
+                <div id="ledGrid" class="flex-1 grid grid-cols-10 gap-1 bg-black p-1 rounded-lg border border-gray-900 overflow-y-auto content-start"></div>
             </div>
         </div>
 
-        <div class="fixed bottom-0 w-full bg-gray-950 border-t border-gray-800 p-2 flex justify-between items-center z-50">
-            <input type="text" id="liveCode" class="text-[10px] font-mono text-green-400 bg-transparent outline-none flex-1 mr-2 border-b border-gray-800 focus:border-green-500 transition" placeholder="Paste code here..." onchange="applyCodeFromInput(this.value)">
-            <button onclick="copyCode()" class="bg-gray-700 text-white text-[9px] font-bold px-3 py-1 rounded shadow">COPY</button>
+        <div class="fixed bottom-0 w-full bg-gray-950 border-t border-gray-800 p-2 flex justify-between items-center z-50 cursor-pointer" onclick="openCodeModal()">
+            <div id="liveCode" class="text-[10px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 px-2 font-bold tracking-widest">No code yet...</div>
+            <button onclick="event.stopPropagation(); copyCode()" class="bg-gray-700 text-white text-[9px] font-bold px-3 py-1 rounded shadow">COPY</button>
+        </div>
+    </div>
+
+    <div id="codeModal" class="fixed inset-0 hidden z-[70] bg-[#050505] p-4 flex flex-col">
+        <div class="flex justify-between items-center mb-3">
+            <span class="text-green-500 font-bold text-sm">💻 LIVE CODE EDITOR</span>
+            <button onclick="closeCodeModal()" class="text-gray-400 font-bold text-xs">CLOSE</button>
+        </div>
+        <textarea id="codeTextarea" class="flex-1 w-full bg-gray-900 text-green-400 font-mono p-4 rounded-xl border border-gray-700 outline-none focus:border-green-500 text-sm tracking-wider"></textarea>
+        <div class="flex space-x-2 mt-4">
+            <button onclick="pasteCode()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold">PASTE</button>
+            <button onclick="copyFromModal()" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">COPY</button>
+            <button onclick="applyCodeModal()" class="flex-1 bg-green-600 text-black py-3 rounded-xl font-bold shadow-[0_0_15px_#00e676]">APPLY TO PADS</button>
         </div>
     </div>
 
@@ -162,8 +170,8 @@
             <h3 class="text-white font-bold text-lg">มีข้อมูลยังไม่ได้บันทึก!</h3>
             <p class="text-gray-400 text-xs">คุณต้องการเซฟลายไฟนี้ก่อนกลับไปหน้าแรกหรือไม่?</p>
             <div class="flex space-x-3 justify-center pt-3">
-                <button onclick="discardAndClose()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ไม่เซฟ</button>
-                <button onclick="saveAndSend()" class="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl text-xs font-bold flex-1 shadow-[0_0_10px_#00e676] transition">เซฟข้อมูล</button>
+                <button onclick="discardAndClose()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ทิ้งข้อมูล</button>
+                <button onclick="saveAndSend()" class="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl text-xs font-bold flex-1 shadow-[0_0_10px_#00e676] transition">เซฟก่อน</button>
             </div>
         </div>
     </div>
@@ -181,8 +189,9 @@
         let currentLoopLimit = 1.0;
         let pxPerSec = 100;
         let isFollowingPlayhead = false;
-        let hasUnsavedChanges = false; // ตัวแปรตรวจจับการเปลี่ยนข้อมูล
-        let activePadIndex = -1; // จำปุ่มที่กำลังเล่น
+        let hasUnsavedChanges = false; 
+        let activePadIndex = -1; 
+        let activeColorIndex = -1; // จำบล็อกสีที่ถูกเลือก
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pi': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK' };
@@ -191,7 +200,7 @@
         let sortableInstance = null; 
         let isDraggingPad = false; 
 
-        // --- ระบบความเร็วหน้าแรก ---
+        // --- Bluetooth & Speed ---
         async function updateMasterSpeed(val) {
             document.getElementById('masterSpeedText').innerText = parseFloat(val).toFixed(1) + 'x';
             if(!characteristic) return;
@@ -199,7 +208,6 @@
         }
         function resetMasterSpeed() { document.getElementById('masterSpeedSlider').value = 1.0; updateMasterSpeed(1.0); }
 
-        // --- Bluetooth ---
         document.getElementById('connectBtn').onclick = async () => {
             const btn = document.getElementById('connectBtn');
             if(device && device.gatt.connected) { device.gatt.disconnect(); return; }
@@ -237,7 +245,6 @@
             } catch(e) { btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]"; }
         }
 
-        // --- Render & Play ---
         function renderPads() {
             grid.innerHTML = '';
             patterns.forEach((p, index) => {
@@ -245,8 +252,7 @@
                 const isPotenZone = index < 10;
                 btn.className = `pad-btn ${isPotenZone ? 'poten-slot' : ''} ${p.code ? 'has-code' : ''}`;
                 
-                if (index === activePadIndex) btn.classList.add('playing'); // ล็อคปุ่มเล่นค้างไว้
-                
+                if (index === activePadIndex) btn.classList.add('playing');
                 if(!p.code) { const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
                 btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
                 
@@ -276,11 +282,8 @@
                     Array.from(grid.children).forEach((btn, i) => {
                         if (i < 10) btn.classList.add('poten-slot'); else btn.classList.remove('poten-slot');
                     });
-                    
-                    // อัปเดตตำแหน่ง activePadIndex ให้ตรงหลังสลับ
                     if(activePadIndex === evt.oldIndex) activePadIndex = evt.newIndex;
                     else if(activePadIndex === evt.newIndex) activePadIndex = evt.oldIndex;
-
                     autoSyncTop10();
                     setTimeout(() => { isDraggingPad = false; }, 50);
                 }
@@ -301,9 +304,9 @@
         }
 
         async function playFX(idx, btnElement) {
-            activePadIndex = idx; // จำว่าปุ่มไหนกำลังถูกกด
+            activePadIndex = idx;
             document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
-            if(btnElement) btnElement.classList.add('playing'); // ใส่ playing ค้างไว้ ไม่ใช้ setTimeout แล้ว
+            if(btnElement) btnElement.classList.add('playing'); 
             
             if(!characteristic || !patterns[idx].code) return;
             try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
@@ -315,11 +318,10 @@
         sideScroll.addEventListener('touchmove', (e) => { if (!isScrolling) return; grid.scrollTop = startScrollTop - ((e.touches[0].pageY - startY) * 2); }, {passive: true});
         sideScroll.addEventListener('touchend', () => isScrolling = false);
 
-        // --- ระบบ Popup Designer ---
         function markUnsaved() { hasUnsavedChanges = true; }
 
         function openPopup(idx) {
-            selectedIdx = idx; clips = []; hasUnsavedChanges = false;
+            selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
             let rawCode = patterns[idx].code || "";
             let brackets = rawCode.match(/m?\(([^)]+)\)/g);
             if (brackets) {
@@ -338,38 +340,30 @@
             document.getElementById('modal').classList.remove('hidden');
             initColors(); renderClips();
             if(clips.length > 0) selectClip(clips[0].id);
-            if (!isPlaying) togglePlay(); 
+            if (!isPlaying) togglePlay(); // Autoplay ทันที
         }
 
-        // ระบบ Back ตรวจสอบการ Save
         function handleBack() {
-            if (hasUnsavedChanges) {
-                document.getElementById('unsavedModal').classList.remove('hidden');
-            } else {
-                discardAndClose();
-            }
+            if (hasUnsavedChanges) document.getElementById('unsavedModal').classList.remove('hidden');
+            else discardAndClose();
         }
 
         function discardAndClose() {
             document.getElementById('unsavedModal').classList.add('hidden');
-            stopPlayback(); 
-            document.getElementById('modal').classList.add('hidden'); 
+            stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
             
-            // เล่นไฟใหม่ทันทีเมื่อออกมา
+            // กลับมาเริ่มเล่นปุ่มเดิมทันที
             let btn = grid.children[selectedIdx];
             playFX(selectedIdx, btn);
-            selectedIdx = -1; 
-            updatePadsVisuals();
+            selectedIdx = -1; updatePadsVisuals();
         }
 
-        // --- Zoom FIT / FOLLOW ---
         function fitToScreen() {
             const vpWidth = document.getElementById('timelineViewport').clientWidth;
             if(currentLoopLimit > 0) {
-                let newPx = (vpWidth - 20) / currentLoopLimit; // เผื่อขอบ 20px
+                let newPx = (vpWidth - 20) / currentLoopLimit; 
                 newPx = Math.max(20, Math.min(300, newPx));
-                document.getElementById('zoomSlider').value = newPx;
-                updateZoom(newPx);
+                document.getElementById('zoomSlider').value = newPx; updateZoom(newPx);
             }
         }
         function toggleFollow() {
@@ -387,7 +381,6 @@
             markUnsaved(); renderClips(); updateCodeMonitor();
         }
 
-        // --- ระบบ Timeline ล้วนๆ ---
         function renderClips() {
             const area = document.getElementById('trackArea'); area.innerHTML = '';
             clips.forEach(c => {
@@ -405,81 +398,77 @@
                 
                 area.appendChild(div);
                 
-                interact(div)
-                    .draggable({
-                        listeners: {
-                            start(e) { c.tempY = c.track * 20; },
-                            move(e) {
-                                c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start);
-                                c.tempY += e.dy; c.track = Math.max(0, Math.min(5, Math.round(c.tempY / 20))); 
-                                e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.top = (c.track * 20) + 'px';
-                                if(!isPlaying) sendLiveFrame();
-                            },
-                            end(e) { c.tempY = undefined; markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
-                        }
-                    })
-                    .resizable({ 
-                        edges: { right: true, left: true }, 
-                        listeners: { 
-                            move(e) { 
-                                if(e.edges.left) { c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start); }
-                                c.duration = e.rect.width / pxPerSec; c.duration = Math.max(0.1, c.duration); 
-                                e.target.style.left = (c.start * pxPerSec) + 'px';
-                                e.target.style.width = (c.duration * pxPerSec) + 'px'; 
-                                if(!isPlaying) sendLiveFrame(); 
-                            },
-                            end(e) { markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
-                        } 
-                    })
-                    .on('tap', function(event) { selectClip(c.id); })
-                    .on('hold', function(event) {
-                        selectClip(c.id);
-                        let newClip = JSON.parse(JSON.stringify(c));
-                        newClip.id = Date.now(); newClip.start += 0.5; newClip.track = Math.min(5, newClip.track + 1); 
-                        clips.push(newClip); markUnsaved(); renderClips();
-                        if (window.navigator.vibrate) window.navigator.vibrate(50);
-                    });
+                interact(div).draggable({
+                    listeners: {
+                        start(e) { c.tempY = c.track * 20; },
+                        move(e) {
+                            c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start);
+                            c.tempY += e.dy; c.track = Math.max(0, Math.min(5, Math.round(c.tempY / 20))); 
+                            e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.top = (c.track * 20) + 'px';
+                            if(!isPlaying) sendLiveFrame();
+                        },
+                        end(e) { c.tempY = undefined; markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
+                    }
+                }).resizable({ 
+                    edges: { right: true, left: true }, 
+                    listeners: { 
+                        move(e) { 
+                            if(e.edges.left) { c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start); }
+                            c.duration = e.rect.width / pxPerSec; c.duration = Math.max(0.1, c.duration); 
+                            e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.width = (c.duration * pxPerSec) + 'px'; 
+                            if(!isPlaying) sendLiveFrame(); 
+                        },
+                        end(e) { markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
+                    } 
+                }).on('tap', function(event) { selectClip(c.id); })
+                  .on('hold', function(event) {
+                    selectClip(c.id);
+                    let newClip = JSON.parse(JSON.stringify(c));
+                    newClip.id = Date.now(); newClip.start += 0.5; newClip.track = Math.min(5, newClip.track + 1); 
+                    clips.push(newClip); markUnsaved(); renderClips();
+                    if (window.navigator.vibrate) window.navigator.vibrate(50);
+                });
             });
             updateLoopLine(); updateCodeMonitor();
         }
 
-        // --- ระบบ Color Builder อัปเกรด ลบสีได้ ---
+        // --- ระบบ Color Builder อัปเกรด (จิ้มเปลี่ยน/ลบแต่ละบล็อกได้อิสระ) ---
         function addColorSlot() {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                parts.push(parts[parts.length-1]); 
+                parts.push(parts[parts.length-1]); // เพิ่มสีต่อท้าย
                 c.color = parts.join('2');
+                activeColorIndex = parts.length - 1; // ล็อคโฟกัสบล็อกใหม่
                 markUnsaved(); updateSelectedClip();
             }
         }
-        function delColorSlot() {
+        function setActiveColor(k) {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                if(parts.length > 1) { parts.pop(); c.color = parts.join('2'); markUnsaved(); updateSelectedClip(); }
-            }
-        }
-        function setLastColor(k) {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                parts[parts.length - 1] = k; 
+                // ถ้ามีโฟกัสอยู่ ให้เปลี่ยนสีบล็อกนั้น ไม่งั้นเปลี่ยนสีบล็อกสุดท้าย
+                if (activeColorIndex >= 0 && activeColorIndex < parts.length) {
+                    parts[activeColorIndex] = k;
+                } else {
+                    parts[parts.length - 1] = k;
+                }
                 c.color = parts.join('2');
                 markUnsaved(); updateSelectedClip();
             }
         }
         function resetColorBuilder() {
             const c = clips.find(x => x.id === selectedClipId);
-            if(c) { c.color = 'bl'; markUnsaved(); updateSelectedClip(); }
+            if(c) { c.color = 'bl'; activeColorIndex = 0; markUnsaved(); updateSelectedClip(); }
         }
         function removeColorAtIdx(idxToRemove) {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                if(parts.length > 1) {
+                if(parts.length > 1) { // ห้ามลบจนหมด
                     parts.splice(idxToRemove, 1);
                     c.color = parts.join('2');
+                    activeColorIndex = parts.length - 1; 
                     markUnsaved(); updateSelectedClip();
                 }
             }
@@ -492,26 +481,43 @@
             if(!c) return;
 
             let colors = c.color.split('2');
+            // เคลียร์ค่าที่หลุดขอบเขต
+            if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
+
             colors.forEach((col, idx) => {
+                let wrapper = document.createElement('div');
+                wrapper.className = "relative flex-shrink-0 cursor-pointer";
+                
                 let box = document.createElement('div');
-                const isLast = (idx === colors.length - 1);
-                box.className = `w-5 h-5 rounded shadow-lg flex-shrink-0 transition-transform cursor-pointer border-2 ${isLast ? 'border-white scale-110' : 'border-gray-700'}`;
+                const isSelected = (idx === activeColorIndex);
+                box.className = `w-6 h-6 rounded border-2 shadow-lg transition-transform ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
                 box.style.backgroundColor = colorMap[col] || '#333';
-                // ถ้าจิ้มที่สีนั้น จะลบสีนั้นทิ้งทันที
-                box.onclick = () => { removeColorAtIdx(idx); };
-                slots.appendChild(box);
+                
+                // กดที่กล่องเพื่อเลือกแก้ไข
+                box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
+                wrapper.appendChild(box);
+
+                // ปุ่มกากบาทมุมขวาบน สำหรับลบสีนั้นทิ้ง (ถ้ามีมากกว่า 1 สี)
+                if (colors.length > 1) {
+                    let delBtn = document.createElement('div');
+                    delBtn.className = "absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[7px] font-bold z-10 hover:bg-red-500 shadow-md";
+                    delBtn.innerText = "✕";
+                    delBtn.onclick = (e) => { e.stopPropagation(); removeColorAtIdx(idx); };
+                    wrapper.appendChild(delBtn);
+                }
+                slots.appendChild(wrapper);
             });
         }
+
         function initColors() {
             const p = document.getElementById('colorPalette'); p.innerHTML = '';
             Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'w-6 h-6 rounded border border-gray-700 flex-shrink-0 cursor-pointer shadow'; d.style.backgroundColor = colorMap[k];
-                d.onclick = () => setLastColor(k);
+                const d = document.createElement('div'); d.className = 'w-6 h-6 rounded border border-gray-700 flex-shrink-0 cursor-pointer shadow active:scale-95'; d.style.backgroundColor = colorMap[k];
+                d.onclick = () => setActiveColor(k);
                 p.appendChild(d);
             });
         }
 
-        // --- ระบบ Mirror & Selection ---
         function toggleMirror() {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
@@ -529,14 +535,15 @@
         }
         function updateMirrorUI(isMirror) {
             const btn = document.getElementById('cMirrorBtn');
-            if(isMirror) { btn.className = "w-5 h-5 rounded-full border-2 border-green-500 bg-green-500 shadow-[0_0_8px_#00e676]"; } 
-            else { btn.className = "w-5 h-5 rounded-full border-2 border-gray-600 bg-transparent"; }
+            if(isMirror) { btn.className = "w-4 h-4 rounded-full border-2 border-green-500 bg-green-500 shadow-[0_0_8px_#00e676]"; } 
+            else { btn.className = "w-4 h-4 rounded-full border-2 border-gray-600 bg-transparent"; }
         }
 
         function selectClip(id) {
             selectedClipId = id; const c = clips.find(x => x.id === id);
             document.getElementById('editorPanel').style.opacity = "1"; document.getElementById('editorPanel').style.pointerEvents = "auto";
             document.getElementById('cBright').value = c.bright; document.getElementById('cFX').value = c.fx;
+            activeColorIndex = -1; // รีเซ็ตโฟกัสสี
             updateMirrorUI(c.mirror); 
             renderLEDGrid(); renderColorBuilderSlots();
             
@@ -553,7 +560,6 @@
             renderClips(); renderColorBuilderSlots(); if(!isPlaying) sendLiveFrame(); else sendFullCodeToBT();
         }
 
-        // --- ระบบ LED ---
         function renderLEDGrid() {
             const grid = document.getElementById('ledGrid'); grid.innerHTML = '';
             const c = clips.find(x => x.id === selectedClipId);
@@ -585,23 +591,44 @@
             }
         }
 
-        // --- Live Code Input System ---
+        // --- Live Code Editor (Modal) ---
         function generateCodeStr() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
+                // ความยาว (Duration) ส่งแบบเต้มแม็กซ์ให้ ESP32 สเกลได้ถูกต้อง
                 let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             return code;
         }
-        function updateCodeMonitor() { document.getElementById('liveCode').value = generateCodeStr(); }
-        function copyCode() { navigator.clipboard.writeText(generateCodeStr()).then(() => alert("Copied!")); }
+        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
         
-        // แปลงโค้ดที่วางกลับไปเป็นไฟบนจอ!
+        function openCodeModal() {
+            document.getElementById('codeTextarea').value = generateCodeStr();
+            document.getElementById('codeModal').classList.remove('hidden');
+            document.getElementById('codeTextarea').focus();
+        }
+        function closeCodeModal() { document.getElementById('codeModal').classList.add('hidden'); }
+        
+        async function pasteCode() {
+            try { const text = await navigator.clipboard.readText(); document.getElementById('codeTextarea').value = text; } 
+            catch (err) { alert('Paste from clipboard failed. Try manual paste.'); }
+        }
+        function copyFromModal() {
+            const text = document.getElementById('codeTextarea').value;
+            navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+        }
+        
+        function applyCodeModal() {
+            const val = document.getElementById('codeTextarea').value;
+            applyCodeFromInput(val);
+            closeCodeModal();
+        }
+
         function applyCodeFromInput(val) {
             let code = val;
-            if(code.startsWith("5")) code = code.substring(1); // เผื่อติดเลข 5 มา
+            if(code.startsWith("5")) code = code.substring(1); 
             clips = [];
             let brackets = code.match(/m?\(([^)]+)\)/g);
             if (brackets) {
@@ -622,19 +649,15 @@
         }
 
         async function saveAndSend() {
-            document.getElementById('unsavedModal').classList.add('hidden'); // ซ่อน popup ถ้ากดมาจาก popup
+            document.getElementById('unsavedModal').classList.add('hidden'); 
             hasUnsavedChanges = false;
             patterns[selectedIdx].code = generateCodeStr();
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${patterns[selectedIdx].code}`));
             
-            // กลับไปหน้าแรกและสั่งเล่นทันที
-            stopPlayback(); 
-            document.getElementById('modal').classList.add('hidden'); 
+            stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
             let btn = grid.children[selectedIdx];
             playFX(selectedIdx, btn);
-            selectedIdx = -1; 
-            updatePadsVisuals();
-            
+            selectedIdx = -1; updatePadsVisuals();
             if(selectedIdx < 10) autoSyncTop10();
         }
         
@@ -653,7 +676,6 @@
             document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px'; 
             document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`; 
             
-            // วิ่งตามจอ (Follow)
             if(isFollowingPlayhead) {
                 const vp = document.getElementById('timelineViewport');
                 vp.scrollLeft = (playheadTime * pxPerSec) - (vp.clientWidth / 2);
@@ -662,7 +684,8 @@
         }
         
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5" + generateCodeStr(); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
-        async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},o9900,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
+        // แก้ไข: ให้ sendLiveFrame ส่งค่า duration ไปให้ ESP32 เต็มเวลาเพื่อไม่ให้ไฟตัดดับก่อน
+        async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let d = Math.round(c.duration*10).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
 
         renderPads();
     </script>
