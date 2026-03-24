@@ -195,7 +195,7 @@
         
         let isWritingBLE = false;
 
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pi': '#FF00FF', 'cy': '#00FFFF' };
         
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
@@ -738,18 +738,25 @@
         function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5" + generateCodeStr(); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
         
+        let lastSentOff = false;
+
         async function scrubLiveFrame() { 
             if(!characteristic || isPlaying || isWritingBLE) return; 
             
             let activeClips = clips.filter(c => playheadTime >= c.start && playheadTime <= c.start + c.duration);
             if (activeClips.length === 0) {
-                try { 
-                    isWritingBLE = true;
-                    await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); 
-                    isWritingBLE = false;
-                } catch(e){ isWritingBLE = false; }
+                if (!lastSentOff) {
+                    try { 
+                        isWritingBLE = true;
+                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); 
+                        isWritingBLE = false;
+                        lastSentOff = true;
+                    } catch(e){ isWritingBLE = false; }
+                }
                 return;
             }
+            
+            lastSentOff = false;
             
             let code = "5";
             activeClips.forEach(c => {
@@ -767,8 +774,9 @@
                 let br = Math.max(0, Math.min(99, Math.round(c.bright * f)));
                 let bStr = br.toString().padStart(2, '0');
                 let m = c.mirror ? 'm' : '';
+                let showColor = c.color.split('2')[0]; 
                 
-                code += `${m}(00${bStr},${c.target || 'a'},${c.color},o9900)`; 
+                code += `${m}(00${bStr},${c.target || 'a'},${showColor},o9900)`; 
             });
             try { 
                 isWritingBLE = true;
