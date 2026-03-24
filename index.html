@@ -58,29 +58,31 @@
 </head>
 <body class="p-4">
 
-    <div id="consoleView" class="max-w-xl mx-auto w-full">
-        <div class="flex justify-between items-center mb-2 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
-            <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
-            <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+    <div id="mainView" class="flex flex-col h-full">
+        <div id="consoleView" class="max-w-xl mx-auto w-full flex-none">
+            <div class="flex justify-between items-center mb-2 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
+                <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
+                <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 mb-4 flex items-center space-x-3 shadow-lg">
+                <input type="range" id="masterSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterSpeed(this.value)">
+                <div id="masterSpeedText" class="text-orange-500 font-black text-xs w-8 text-right">1.0x</div>
+                <button onclick="resetMasterSpeed()" class="bg-gray-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-bold active:bg-gray-500 transition">1x</button>
+            </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 mb-4 flex items-center space-x-3 shadow-lg">
-            <input type="range" id="masterSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterSpeed(this.value)">
-            <div id="masterSpeedText" class="text-orange-500 font-black text-xs w-8 text-right">1.0x</div>
-            <button onclick="resetMasterSpeed()" class="bg-gray-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-bold active:bg-gray-500 transition">1x</button>
+        <div class="pad-container max-w-xl shadow-2xl flex-none mb-4">
+            <div id="padGrid"></div>
+            <div class="side-scroll-track" id="sideScroll"></div>
         </div>
-    </div>
 
-    <div class="pad-container max-w-xl shadow-2xl">
-        <div id="padGrid"></div>
-        <div class="side-scroll-track" id="sideScroll"></div>
-    </div>
-
-    <div class="max-w-xl mx-auto w-full mt-auto pt-4">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 flex items-center space-x-3 shadow-lg">
-            <span class="text-yellow-500 font-black text-[10px] w-12 text-center">BRIGHT</span>
-            <input type="range" id="masterBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterBrightness(this.value)">
-            <div id="masterBrightText" class="text-yellow-500 font-black text-xs w-10 text-right">100%</div>
+        <div class="max-w-xl mx-auto w-full mt-auto flex-none">
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 flex items-center space-x-3 shadow-lg">
+                <span class="text-yellow-500 font-black text-[10px] w-12 text-center">BRIGHT</span>
+                <input type="range" id="masterBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterBrightness(this.value)">
+                <div id="masterBrightText" class="text-yellow-500 font-black text-xs w-10 text-right">100%</div>
+            </div>
         </div>
     </div>
 
@@ -203,7 +205,8 @@
         
         let isWritingBLE = false;
 
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pi': '#FF00FF', 'cy': '#00FFFF' };
+        // 🔥 แก้ไข: เปลี่ยนตัวย่อสีชมพูจาก pi เป็น pk เพื่อให้ตรงกับบอร์ด 100% 🔥
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
@@ -243,11 +246,9 @@
         }
         function resetMasterSpeed() { document.getElementById('masterSpeedSlider').value = 1.0; updateMasterSpeed(1.0); }
 
-        // 🔥 อัปเดต: ฟังก์ชันควบคุมความสว่างหน้าจอหลักผ่านแอป 🔥
         async function updateMasterBrightness(val) {
             document.getElementById('masterBrightText').innerText = Math.round(val * 100) + '%';
             if(!characteristic) return;
-            // ส่งคำสั่ง B นำหน้าตัวเลขความสว่าง (เช่น B1.00 หรือ B0.50)
             try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("B" + parseFloat(val).toFixed(2))); } catch(e) {}
         }
 
@@ -405,21 +406,48 @@
             else closePopupDirectly();
         }
 
+        // 🔥 แก้ไข: ซ่อมปุ่ม FIT ให้กลับมาทำงานได้ 100% 🔥
         function fitToScreen() {
-            const vpWidth = document.getElementById('timelineViewport').clientWidth;
+            const vp = document.getElementById('timelineViewport');
             if(currentLoopLimit > 0) {
-                let newPx = (vpWidth - 20) / currentLoopLimit; 
+                let newPx = vp.clientWidth / currentLoopLimit; 
                 newPx = Math.max(20, Math.min(300, newPx));
-                document.getElementById('zoomSlider').value = newPx; updateZoom(newPx);
+                document.getElementById('zoomSlider').value = newPx; 
+                updateZoom(newPx);
             }
         }
+
+        // 🔥 แก้ไข: ซ่อมปุ่ม FOLLOW ให้ทำงานสมูทขึ้น ไม่ตีกับ Scroll 🔥
         function toggleFollow() {
             isFollowingPlayhead = !isFollowingPlayhead;
             const btn = document.getElementById('followBtn');
-            if(isFollowingPlayhead) btn.className = "bg-blue-500 text-white px-2 py-1 rounded text-[9px] font-bold shadow";
-            else btn.className = "bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold";
+            if(isFollowingPlayhead) {
+                btn.className = "bg-blue-500 text-white px-2 py-1 rounded text-[9px] font-bold shadow";
+                if(isPlaying) {
+                    const vp = document.getElementById('timelineViewport');
+                    vp.dataset.ignoreScroll = "true";
+                    vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
+                    setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 300);
+                }
+            }
+            else {
+                btn.className = "bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold";
+            }
         }
-        function updateZoom(val) { pxPerSec = parseInt(val); document.getElementById('timelineContent').style.backgroundSize = `${pxPerSec}px 100%`; renderClips(); }
+
+        function updateZoom(val) { 
+            pxPerSec = parseInt(val); 
+            document.getElementById('timelineContent').style.backgroundSize = `${pxPerSec}px 100%`; 
+            renderClips(); 
+            
+            if (!isPlaying) {
+                const vp = document.getElementById('timelineViewport');
+                vp.dataset.ignoreScroll = "true";
+                vp.scrollLeft = playheadTime * pxPerSec;
+                setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 50);
+                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+            }
+        }
 
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
@@ -790,7 +818,13 @@
                 let br = Math.max(0, Math.min(99, Math.round(c.bright * f)));
                 let bStr = br.toString().padStart(2, '0');
                 let m = c.mirror ? 'm' : '';
-                let showColor = c.color.split('2')[0]; 
+                
+                // 🔥 แก้ไข: ให้ Scrubbing เล่นสีผสมตามเวลาจริงได้เหมือนตอนกด Play 🔥
+                let colorCodes = c.color.split('2');
+                let step = 1.0 / (colorCodes.length > 1 ? colorCodes.length - 1 : 1);
+                let idx = Math.floor(p / step);
+                if (idx >= colorCodes.length) idx = colorCodes.length - 1;
+                let showColor = colorCodes[idx] || colorCodes[0];
                 
                 code += `${m}(00${bStr},${c.target || 'a'},${showColor},o9900)`; 
             });
