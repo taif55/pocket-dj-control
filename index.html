@@ -32,7 +32,6 @@
         .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #00e676 !important; pointer-events: none; }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
-        /* เปิด touch-action: pan-x ให้ปัดจอได้ */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,255,255,0.25) 1px, transparent 1px); }
         
@@ -78,7 +77,6 @@
     </div>
 
     <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
-        
         <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙 BACK</button>
             <div class="flex space-x-1">
@@ -118,7 +116,10 @@
             <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex justify-between items-center flex-none">
                 <button onclick="addColorSlot()" class="bg-blue-600 text-white font-bold text-[9px] px-2 py-1 rounded shadow mr-2 flex-shrink-0">+ ADD</button>
                 <div id="colorSlots" class="flex items-center space-x-1 flex-1 overflow-x-auto color-scroll pb-1"></div>
-                <button onclick="resetColorBuilder()" class="text-red-500 font-bold text-[9px] px-2 flex-shrink-0">RST</button>
+                <div class="flex space-x-1 ml-2 flex-shrink-0">
+                    <button onclick="delColorSlot()" class="bg-red-900 text-white font-bold text-[9px] px-2 py-1 rounded shadow">- DEL</button>
+                    <button onclick="resetColorBuilder()" class="text-red-500 font-bold text-[9px] px-2">RST</button>
+                </div>
             </div>
             <div id="colorPalette" class="color-scroll flex flex-nowrap overflow-x-auto gap-2 pb-1 px-1 flex-none"></div>
 
@@ -192,10 +193,10 @@
         let activePadIndex = -1; 
         let activeColorIndex = -1; 
         
-        // เพิ่มตัวแปรกันบลูทูธค้าง
         let isWritingBLE = false;
 
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pi': '#FF00FF', 'cy': '#00FFFF' };
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
+        
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
         const grid = document.getElementById('padGrid');
@@ -350,7 +351,6 @@
             window.location.hash = 'edit'; 
             selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
             
-            // 🔥 ปรับ Margin เพื่อให้เวลา 0.0s เข้ามาอยู่ตรงกลางหน้าจอได้พอดีเป๊ะ 🔥
             document.getElementById('modal').classList.remove('hidden');
             const vp = document.getElementById('timelineViewport');
             const padding = vp.clientWidth / 2;
@@ -473,6 +473,18 @@
                 markUnsaved(); updateSelectedClip();
             }
         }
+        function delColorSlot() {
+            const c = clips.find(x => x.id === selectedClipId);
+            if(c) {
+                let parts = c.color.split('2');
+                if(parts.length > 1) { 
+                    parts.pop(); 
+                    c.color = parts.join('2');
+                    activeColorIndex = parts.length - 1; 
+                    markUnsaved(); updateSelectedClip();
+                }
+            }
+        }
         function setActiveColor(k) {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
@@ -484,17 +496,6 @@
             }
         }
         function resetColorBuilder() { const c = clips.find(x => x.id === selectedClipId); if(c) { c.color = 'bl'; activeColorIndex = 0; markUnsaved(); updateSelectedClip(); } }
-        
-        function removeColorAtIdx(idxToRemove) {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                if(parts.length > 1) { 
-                    parts.splice(idxToRemove, 1); c.color = parts.join('2');
-                    activeColorIndex = parts.length - 1; markUnsaved(); updateSelectedClip();
-                }
-            }
-        }
 
         function renderColorBuilderSlots() {
             const c = clips.find(x => x.id === selectedClipId);
@@ -506,24 +507,12 @@
             if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
 
             colors.forEach((col, idx) => {
-                let wrapper = document.createElement('div');
-                wrapper.className = "relative flex-shrink-0 cursor-pointer p-1";
-                
                 let box = document.createElement('div');
                 const isSelected = (idx === activeColorIndex);
-                box.className = `w-6 h-6 rounded border-2 shadow-lg transition-transform ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
+                box.className = `w-6 h-6 rounded border-2 shadow-lg flex-shrink-0 transition-transform cursor-pointer ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
                 box.style.backgroundColor = colorMap[col] || '#333';
                 box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
-                wrapper.appendChild(box);
-
-                if (colors.length > 1) {
-                    let delBtn = document.createElement('div');
-                    delBtn.className = "absolute top-0 right-0 bg-red-600 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold z-10 hover:bg-red-500 shadow-md";
-                    delBtn.innerText = "✕";
-                    delBtn.onclick = (e) => { e.stopPropagation(); removeColorAtIdx(idx); };
-                    wrapper.appendChild(delBtn);
-                }
-                slots.appendChild(wrapper);
+                slots.appendChild(box);
             });
         }
 
@@ -567,7 +556,6 @@
                 if (el.id === `clip-${id}`) el.classList.add('selected'); else el.classList.remove('selected');
             });
             
-            // 🔥 เมื่อคลิกก้อนไฟ ให้เลื่อนหน้าจอ (Scroll) ไปหาก้อนไฟแบบสมูท 🔥
             if(!isPlaying) {
                 playheadTime = c.start;
                 const vp = document.getElementById('timelineViewport');
@@ -694,7 +682,6 @@
         function addClipAtPlayhead() { const id = Date.now(); clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 6 }); markUnsaved(); renderClips(); selectClip(id); }
         function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; markUnsaved(); renderClips(); } }
         
-        // 🔥 พระเอกของการปัดหน้าจอ (Scroll to Scrub) 🔥
         document.getElementById('timelineViewport').addEventListener('scroll', function() {
             if (!isPlaying && this.dataset.ignoreScroll !== "true") {
                 playheadTime = Math.max(0, this.scrollLeft / pxPerSec);
@@ -720,7 +707,6 @@
             if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-blue-600'); } 
             cancelAnimationFrame(playInterval); 
             
-            // 🔥 ดึงเส้นสีแดงมาไว้กลางจอแบบสมูท เมื่อกด STOP 🔥
             const vp = document.getElementById('timelineViewport');
             vp.dataset.ignoreScroll = "true";
             vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
@@ -752,7 +738,6 @@
         function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5" + generateCodeStr(); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
         
-        // 🔥 ระบบส่งภาพนิ่งไปโชว์ตอนรูดหน้าจอ หรือหยุดเล่น 🔥
         async function scrubLiveFrame() { 
             if(!characteristic || isPlaying || isWritingBLE) return; 
             
@@ -782,9 +767,8 @@
                 let br = Math.max(0, Math.min(99, Math.round(c.bright * f)));
                 let bStr = br.toString().padStart(2, '0');
                 let m = c.mirror ? 'm' : '';
-                let showColor = c.color.split('2')[0]; 
                 
-                code += `${m}(00${bStr},${c.target || 'a'},${showColor},o9900)`; 
+                code += `${m}(00${bStr},${c.target || 'a'},${c.color},o9900)`; 
             });
             try { 
                 isWritingBLE = true;
