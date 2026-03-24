@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - The Ultimate</title>
+    <title>Pocket DJ Studio - The True Ultimate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -32,14 +32,15 @@
         .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #00e676 !important; pointer-events: none; }
         .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
 
-        /* --- Timeline & Designer --- */
+        /* --- Designer UI & Timeline --- */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; }
-        /* เส้นกริดทุกๆ 1 วินาที ชัดเจนขึ้น */
+        /* เส้นกริดทุก 1 วินาที ให้เห็นชัดขึ้น */
         #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px); }
         
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
         
+        /* ก้อนไฟเตี้ยลงครึ่งนึง (16px) */
         .light-clip { position: absolute; height: 16px; color: black; border-radius: 4px; font-size: 8px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.4); cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .light-clip:active { cursor: grabbing; }
         .light-clip.selected { border: 2px solid white; box-shadow: 0 0 10px #00e676; z-index: 40; }
@@ -47,14 +48,14 @@
         .color-scroll::-webkit-scrollbar { height: 4px; }
         .color-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
 
-        /* LED Grid ยืดหยุ่นเต็มจอ */
-        #ledGrid { touch-action: pan-y; padding-right: 5px; }
+        /* LED Grid เลื่อนลงไปสุดจอ */
+        #ledGrid { touch-action: pan-y; padding-right: 5px; overflow-y: auto; }
         #ledGrid::-webkit-scrollbar { display: block; width: 14px; }
         #ledGrid::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
         #ledGrid::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 3px solid #0a0a0a; }
 
+        /* กรอบสีเทาจางๆ และไฟสีเขียวตอนติด */
         .led-mark { border: 1px solid #444 !important; background: #151515; }
-        /* หลอดถูกเลือกเป็นสีเขียวเด่น */
         .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
         
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
@@ -81,7 +82,8 @@
     </div>
 
     <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
-        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800">
+        
+        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙 BACK</button>
             <div class="flex space-x-1">
                 <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-16">STOP</button>
@@ -91,16 +93,16 @@
             <button onclick="saveAndSend()" class="bg-white text-black font-black px-3 py-2 rounded-lg text-[10px] uppercase active:bg-gray-300">SAVE</button>
         </div>
         
-        <div id="timelineViewport" onclick="handleTimelineClick(event)">
+        <div id="timelineViewport" onclick="handleTimelineClick(event)" class="flex-none">
             <div id="timelineContent">
                 <div id="playhead"></div>
                 <div id="loopLine"></div>
                 <div id="trackArea" class="relative h-full py-2"></div>
             </div>
         </div>
-        <div class="flex justify-between bg-black text-[9px] text-gray-500 font-mono px-2 py-1 border-b border-gray-800">
+        <div class="flex justify-between bg-black text-[9px] text-gray-500 font-mono px-2 py-1 border-b border-gray-800 flex-none">
             <span id="timeText">PLAYHEAD: 0.0s</span>
-            <span>* กดก้อนแช่ไว้เพื่อ COPY</span>
+            <span>* กดก้อนแช่ไว้ 0.6 วิเพื่อ COPY</span>
         </div>
 
         <div class="bg-gray-900 border-b border-gray-800 p-2 grid grid-cols-2 gap-4 flex-none">
@@ -142,12 +144,12 @@
             </div>
 
             <div class="flex-1 bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex flex-col min-h-0">
-                <div id="ledGrid" class="flex-1 grid grid-cols-10 gap-1 bg-black p-1 rounded-lg border border-gray-900 overflow-y-auto content-start"></div>
+                <div id="ledGrid" class="flex-1 grid grid-cols-10 gap-1 bg-black p-1 rounded-lg border border-gray-900 content-start"></div>
             </div>
         </div>
 
         <div class="fixed bottom-0 w-full bg-gray-950 border-t border-gray-800 p-2 flex justify-between items-center z-50 cursor-pointer" onclick="openCodeModal()">
-            <div id="liveCode" class="text-[10px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 px-2 font-bold tracking-widest">No code yet...</div>
+            <div id="liveCode" class="text-[10px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 px-2 font-bold tracking-widest pointer-events-none">No code yet...</div>
             <button onclick="event.stopPropagation(); copyCode()" class="bg-gray-700 text-white text-[9px] font-bold px-3 py-1 rounded shadow">COPY</button>
         </div>
     </div>
@@ -155,10 +157,10 @@
     <div id="codeModal" class="fixed inset-0 hidden z-[70] bg-[#050505] p-4 flex flex-col">
         <div class="flex justify-between items-center mb-3">
             <span class="text-green-500 font-bold text-sm">💻 LIVE CODE EDITOR</span>
-            <button onclick="closeCodeModal()" class="text-gray-400 font-bold text-xs">CLOSE</button>
+            <button onclick="closeCodeModal()" class="text-gray-400 font-bold text-xs px-2 py-1">CLOSE</button>
         </div>
         <textarea id="codeTextarea" class="flex-1 w-full bg-gray-900 text-green-400 font-mono p-4 rounded-xl border border-gray-700 outline-none focus:border-green-500 text-sm tracking-wider"></textarea>
-        <div class="flex space-x-2 mt-4">
+        <div class="flex space-x-2 mt-4 flex-none">
             <button onclick="pasteCode()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold">PASTE</button>
             <button onclick="copyFromModal()" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">COPY</button>
             <button onclick="applyCodeModal()" class="flex-1 bg-green-600 text-black py-3 rounded-xl font-bold shadow-[0_0_15px_#00e676]">APPLY TO PADS</button>
@@ -191,7 +193,7 @@
         let isFollowingPlayhead = false;
         let hasUnsavedChanges = false; 
         let activePadIndex = -1; 
-        let activeColorIndex = -1; // จำบล็อกสีที่ถูกเลือก
+        let activeColorIndex = -1; 
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pi': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK' };
@@ -200,7 +202,35 @@
         let sortableInstance = null; 
         let isDraggingPad = false; 
 
-        // --- Bluetooth & Speed ---
+        // ---------------------------------------------------------
+        // 🔥 ระบบประวัติหน้าจอ History API (ดักปุ่ม Back มือถือ) 🔥
+        // ---------------------------------------------------------
+        window.addEventListener('hashchange', function() {
+            const hash = window.location.hash;
+            if (hash === '#edit') { document.getElementById('codeModal').classList.add('hidden'); } 
+            else if (hash === '') {
+                if (!document.getElementById('modal').classList.contains('hidden')) {
+                    if (hasUnsavedChanges) {
+                        window.location.hash = 'edit';
+                        document.getElementById('unsavedModal').classList.remove('hidden');
+                    } else {
+                        closePopupDirectly();
+                    }
+                }
+            }
+        });
+
+        function closePopupDirectly() {
+            document.getElementById('unsavedModal').classList.add('hidden');
+            stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
+            if(selectedIdx !== -1) {
+                let btn = grid.children[selectedIdx];
+                playFX(selectedIdx, btn);
+                selectedIdx = -1; updatePadsVisuals();
+            }
+        }
+        // ---------------------------------------------------------
+
         async function updateMasterSpeed(val) {
             document.getElementById('masterSpeedText').innerText = parseFloat(val).toFixed(1) + 'x';
             if(!characteristic) return;
@@ -321,6 +351,7 @@
         function markUnsaved() { hasUnsavedChanges = true; }
 
         function openPopup(idx) {
+            window.location.hash = 'edit'; // จำลอง URL
             selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
             let rawCode = patterns[idx].code || "";
             let brackets = rawCode.match(/m?\(([^)]+)\)/g);
@@ -340,22 +371,18 @@
             document.getElementById('modal').classList.remove('hidden');
             initColors(); renderClips();
             if(clips.length > 0) selectClip(clips[0].id);
-            if (!isPlaying) togglePlay(); // Autoplay ทันที
+            if (!isPlaying) togglePlay(); 
         }
 
         function handleBack() {
             if (hasUnsavedChanges) document.getElementById('unsavedModal').classList.remove('hidden');
-            else discardAndClose();
+            else history.back();
         }
 
         function discardAndClose() {
-            document.getElementById('unsavedModal').classList.add('hidden');
-            stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
-            
-            // กลับมาเริ่มเล่นปุ่มเดิมทันที
-            let btn = grid.children[selectedIdx];
-            playFX(selectedIdx, btn);
-            selectedIdx = -1; updatePadsVisuals();
+            hasUnsavedChanges = false;
+            if(window.location.hash === '#edit') history.back();
+            else closePopupDirectly();
         }
 
         function fitToScreen() {
@@ -432,14 +459,14 @@
             updateLoopLine(); updateCodeMonitor();
         }
 
-        // --- ระบบ Color Builder อัปเกรด (จิ้มเปลี่ยน/ลบแต่ละบล็อกได้อิสระ) ---
+        // --- ระบบ Color Builder อัปเกรด ลบสีได้ทันที ---
         function addColorSlot() {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                parts.push(parts[parts.length-1]); // เพิ่มสีต่อท้าย
+                parts.push(parts[parts.length-1]); 
                 c.color = parts.join('2');
-                activeColorIndex = parts.length - 1; // ล็อคโฟกัสบล็อกใหม่
+                activeColorIndex = parts.length - 1; 
                 markUnsaved(); updateSelectedClip();
             }
         }
@@ -447,29 +474,21 @@
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                // ถ้ามีโฟกัสอยู่ ให้เปลี่ยนสีบล็อกนั้น ไม่งั้นเปลี่ยนสีบล็อกสุดท้าย
-                if (activeColorIndex >= 0 && activeColorIndex < parts.length) {
-                    parts[activeColorIndex] = k;
-                } else {
-                    parts[parts.length - 1] = k;
-                }
+                if (activeColorIndex >= 0 && activeColorIndex < parts.length) { parts[activeColorIndex] = k; } 
+                else { parts[parts.length - 1] = k; }
                 c.color = parts.join('2');
                 markUnsaved(); updateSelectedClip();
             }
         }
-        function resetColorBuilder() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) { c.color = 'bl'; activeColorIndex = 0; markUnsaved(); updateSelectedClip(); }
-        }
+        function resetColorBuilder() { const c = clips.find(x => x.id === selectedClipId); if(c) { c.color = 'bl'; activeColorIndex = 0; markUnsaved(); updateSelectedClip(); } }
+        
         function removeColorAtIdx(idxToRemove) {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
                 let parts = c.color.split('2');
-                if(parts.length > 1) { // ห้ามลบจนหมด
-                    parts.splice(idxToRemove, 1);
-                    c.color = parts.join('2');
-                    activeColorIndex = parts.length - 1; 
-                    markUnsaved(); updateSelectedClip();
+                if(parts.length > 1) { 
+                    parts.splice(idxToRemove, 1); c.color = parts.join('2');
+                    activeColorIndex = parts.length - 1; markUnsaved(); updateSelectedClip();
                 }
             }
         }
@@ -481,26 +500,22 @@
             if(!c) return;
 
             let colors = c.color.split('2');
-            // เคลียร์ค่าที่หลุดขอบเขต
             if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
 
             colors.forEach((col, idx) => {
                 let wrapper = document.createElement('div');
-                wrapper.className = "relative flex-shrink-0 cursor-pointer";
+                wrapper.className = "relative flex-shrink-0 cursor-pointer p-1";
                 
                 let box = document.createElement('div');
                 const isSelected = (idx === activeColorIndex);
                 box.className = `w-6 h-6 rounded border-2 shadow-lg transition-transform ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
                 box.style.backgroundColor = colorMap[col] || '#333';
-                
-                // กดที่กล่องเพื่อเลือกแก้ไข
                 box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
                 wrapper.appendChild(box);
 
-                // ปุ่มกากบาทมุมขวาบน สำหรับลบสีนั้นทิ้ง (ถ้ามีมากกว่า 1 สี)
                 if (colors.length > 1) {
                     let delBtn = document.createElement('div');
-                    delBtn.className = "absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[7px] font-bold z-10 hover:bg-red-500 shadow-md";
+                    delBtn.className = "absolute top-0 right-0 bg-red-600 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[8px] font-bold z-10 hover:bg-red-500 shadow-md";
                     delBtn.innerText = "✕";
                     delBtn.onclick = (e) => { e.stopPropagation(); removeColorAtIdx(idx); };
                     wrapper.appendChild(delBtn);
@@ -543,9 +558,7 @@
             selectedClipId = id; const c = clips.find(x => x.id === id);
             document.getElementById('editorPanel').style.opacity = "1"; document.getElementById('editorPanel').style.pointerEvents = "auto";
             document.getElementById('cBright').value = c.bright; document.getElementById('cFX').value = c.fx;
-            activeColorIndex = -1; // รีเซ็ตโฟกัสสี
-            updateMirrorUI(c.mirror); 
-            renderLEDGrid(); renderColorBuilderSlots();
+            activeColorIndex = -1; updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
             
             document.querySelectorAll('.light-clip').forEach(el => {
                 if (el.id === `clip-${id}`) el.classList.add('selected'); else el.classList.remove('selected');
@@ -591,25 +604,31 @@
             }
         }
 
-        // --- Live Code Editor (Modal) ---
+        // --- แก้ไข: ลิมิตเวลาไม่ให้เกิน 99 (9.9s) เพื่อไม่ให้บั๊ก ESP32 ---
         function generateCodeStr() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                // ความยาว (Duration) ส่งแบบเต้มแม็กซ์ให้ ESP32 สเกลได้ถูกต้อง
-                let s = Math.round(c.start*10).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.round(c.duration*10).toString().padStart(2,'0');
+                // Math.min(99, ...) ป้องกันเลขเกิน 2 หลัก
+                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0');
+                let b = parseInt(c.bright).toString().padStart(2,'0');
+                let d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
+                
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`;
             });
             return code;
         }
-        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
         
         function openCodeModal() {
             document.getElementById('codeTextarea').value = generateCodeStr();
             document.getElementById('codeModal').classList.remove('hidden');
             document.getElementById('codeTextarea').focus();
+            window.location.hash = 'code'; 
         }
-        function closeCodeModal() { document.getElementById('codeModal').classList.add('hidden'); }
+        function closeCodeModal() { 
+            if(window.location.hash === '#code') history.back();
+            else document.getElementById('codeModal').classList.add('hidden');
+        }
         
         async function pasteCode() {
             try { const text = await navigator.clipboard.readText(); document.getElementById('codeTextarea').value = text; } 
@@ -619,7 +638,6 @@
             const text = document.getElementById('codeTextarea').value;
             navigator.clipboard.writeText(text).then(() => alert("Copied!"));
         }
-        
         function applyCodeModal() {
             const val = document.getElementById('codeTextarea').value;
             applyCodeFromInput(val);
@@ -654,11 +672,11 @@
             patterns[selectedIdx].code = generateCodeStr();
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${patterns[selectedIdx].code}`));
             
-            stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
-            let btn = grid.children[selectedIdx];
-            playFX(selectedIdx, btn);
-            selectedIdx = -1; updatePadsVisuals();
-            if(selectedIdx < 10) autoSyncTop10();
+            let savedIdx = selectedIdx;
+            if(window.location.hash === '#edit') history.back();
+            else closePopupDirectly();
+            
+            if(savedIdx < 10) autoSyncTop10();
         }
         
         function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
@@ -683,9 +701,17 @@
             playInterval = requestAnimationFrame(animatePlayhead); 
         }
         
+        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
         async function sendFullCodeToBT() { if(!characteristic) return; let code = "5" + generateCodeStr(); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
-        // แก้ไข: ให้ sendLiveFrame ส่งค่า duration ไปให้ ESP32 เต็มเวลาเพื่อไม่ให้ไฟตัดดับก่อน
-        async function sendLiveFrame() { if(!characteristic || !selectedClipId) return; const c = clips.find(x => x.id === selectedClipId); let b = parseInt(c.bright).toString().padStart(2,'0'); let d = Math.round(c.duration*10).toString().padStart(2,'0'); let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`; try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
+        // แก้ไข: บังคับ duration ไม่เกิน 99 ตอนส่ง Preview สดเหมือนกัน
+        async function sendLiveFrame() { 
+            if(!characteristic || !selectedClipId) return; 
+            const c = clips.find(x => x.id === selectedClipId); 
+            let b = parseInt(c.bright).toString().padStart(2,'0'); 
+            let d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0'); 
+            let code = `5${c.mirror?'m':''}(00${b},${c.target || 'a'},${c.color},${c.fx}${d}00,1)`; 
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} 
+        }
 
         renderPads();
     </script>
