@@ -15,12 +15,12 @@
             margin: 0; padding: 0;
         }
 
-        /* --- แก้ไข: ระบบแบ่งสัดส่วนหน้าจอแบบ Flexbox (พอดีจอ 100%) --- */
+        /* --- ระบบแบ่งสัดส่วนหน้าจอแบบ Flexbox (พอดีจอ 100vh) --- */
         #mainView {
             display: flex;
             flex-direction: column;
-            height: 100vh; /* เต็มจอ */
-            overflow: hidden; /* ห้ามให้หน้าจอหลักขยับ */
+            height: 100vh; 
+            overflow: hidden; 
             padding: 5px;
             box-sizing: border-box;
             gap: 5px;
@@ -39,7 +39,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
 
-        /* Block (BG และ FG) ใช้วิธี Flex 1 เท่าๆ กันเพื่อแบ่งพื้นที่ที่เหลือ (ประมาณบล็อคละ 45%) */
+        /* Block (BG และ FG) แบ่งพื้นที่ที่เหลือ (ประมาณบล็อคละ 45%) */
         .layer-block {
             flex: 1;
             display: flex;
@@ -64,11 +64,11 @@
             letter-spacing: 1px;
         }
 
-        /* --- แก้ไข: ให้กล่องปุ่มขยายกินพื้นที่ที่เหลือในบล็อคอัตโนมัติ --- */
+        /* กล่องปุ่มเลื่อนได้ */
         .pad-container { 
-            flex: 1; /* ขยายเต็มพื้นที่ว่าง */
+            flex: 1; 
             width: 100%; 
-            overflow-y: scroll; /* ให้เลื่อนนิ้วได้เฉพาะในนี้ */
+            overflow-y: scroll; 
             padding: 5px; 
             touch-action: pan-y; 
             margin-bottom: 5px;
@@ -347,7 +347,14 @@
         function onDisconnected() { characteristic = null; const btn = document.getElementById('connectBtn'); btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; }
 
         function renderLayerPads(layer) {
-            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+            const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
+            const grid = document.getElementById(gridId);
+            
+            // --- อัพเกรด: ระบบเช็คความถูกต้องของ HTML ป้องกันการก๊อปปี้มาไม่ครบ ---
+            if (!grid) {
+                throw new Error("หากล่อง " + gridId + " ไม่เจอ กรุณาก๊อปปี้โค้ด HTML มาให้ครบถ้วนครับ!");
+            }
+
             grid.innerHTML = '';
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
@@ -382,7 +389,10 @@
             try {
                 if (typeof Sortable === 'undefined') return;
 
-                const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+                const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
+                const grid = document.getElementById(gridId);
+                if (!grid) return;
+
                 let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
                 
                 const config = {
@@ -418,7 +428,10 @@
         }
 
         function updatePadsVisuals(layer) {
-            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+            const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
             const btns = grid.children;
@@ -891,7 +904,11 @@
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
         window.onload = () => {
-            try { renderPads(); } catch (err) { alert("เกิดข้อผิดพลาดในการสร้างปุ่ม: " + err.message); }
+            try {
+                renderPads();
+            } catch (err) {
+                alert("เกิดข้อผิดพลาด: " + err.message + "\n\n(รบกวนแคปจอนี้ให้พี่เจดูหน่อยนะครับ)");
+            }
         };
     </script>
 </body>
