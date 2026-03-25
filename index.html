@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - The Ultimate</title>
+    <title>Pocket DJ Studio - 2 Layers Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -14,23 +14,17 @@
             display: flex; flex-direction: column; touch-action: none; 
         }
 
-        .pad-container { margin: 0 auto; width: 95%; height: 60vh; background: #0a0a0a; border: 2px solid #222; border-radius: 20px; position: relative; overflow: hidden; display: flex; }
-        #padGrid { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; overflow-y: scroll; scrollbar-width: none; touch-action: none; }
-        #padGrid::-webkit-scrollbar { display: none; } 
-        .side-scroll-track { width: 30px; background: #111; border-left: 1px solid #222; display: flex; align-items: center; justify-content: center; touch-action: pan-y; }
-        .side-scroll-track::after { content: '↕'; color: #444; font-size: 20px; }
+        .pad-container { margin: 0 auto; width: 100%; height: 260px; overflow-y: scroll; padding: 5px; }
+        .grid-style { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 
         .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
         .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        .pad-btn.playing { box-shadow: 0 0 20px #00e676; border-color: #fff; background: #00e676 !important; color: black; }
+        .pad-btn.playing { box-shadow: 0 0 20px #fff; border-color: #fff; background: #fff !important; color: black; }
 
-        .poten-slot { border: 2px dashed #ff9100 !important; background: rgba(255, 145, 0, 0.05); }
-        .poten-slot::before { content: 'POTEN'; position: absolute; top: 4px; font-size: 7px; font-weight: 900; color: #ff9100; letter-spacing: 0.5px; opacity: 0.9; }
-        .poten-slot.has-code { border: 2px solid #ff9100 !important; box-shadow: inset 0 0 15px rgba(255, 145, 0, 0.3), 0 0 10px rgba(255, 145, 0, 0.5) !important; }
-        .pad-btn:not(.poten-slot).has-code { border: 2px solid #00e676 !important; box-shadow: inset 0 0 10px rgba(0,230,118,0.2) !important; background-color: #151515 !important; }
+        .pad-btn.has-code { border: 2px solid #555; background-color: #151515 !important; }
 
-        .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #00e676 !important; pointer-events: none; }
-        .sortable-ghost { opacity: 0.1; background: #00e676 !important; }
+        .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #fff !important; pointer-events: none; }
+        .sortable-ghost { opacity: 0.1; background: #fff !important; }
 
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x; }
         #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,255,255,0.25) 1px, transparent 1px); }
@@ -56,39 +50,67 @@
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
     </style>
 </head>
-<body class="p-4">
+<body class="p-2">
 
-    <div id="mainView" class="flex flex-col h-full">
-        <div id="consoleView" class="max-w-xl mx-auto w-full flex-none">
-            <div class="flex justify-between items-center mb-2 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl">
-                <h1 class="text-lg font-black text-green-500 italic uppercase">DJ Master Sync</h1>
-                <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
-            </div>
-
-            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 mb-4 flex items-center space-x-3 shadow-lg">
-                <input type="range" id="masterSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterSpeed(this.value)">
-                <div id="masterSpeedText" class="text-orange-500 font-black text-xs w-8 text-right">1.0x</div>
-                <button onclick="resetMasterSpeed()" class="bg-gray-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-bold active:bg-gray-500 transition">1x</button>
-            </div>
+    <div id="mainView" class="flex flex-col h-full overflow-y-auto pb-10">
+        
+        <div class="flex justify-between items-center mb-4 bg-gray-900/50 p-4 rounded-3xl border border-gray-800 shadow-xl mx-auto w-full max-w-xl">
+            <h1 class="text-sm font-black text-white italic uppercase tracking-wider">Pocket DJ <span class="text-orange-500">Ultimate</span></h1>
+            <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
         </div>
 
-        <div class="pad-container max-w-xl shadow-2xl flex-none mb-4">
-            <div id="padGrid"></div>
-            <div class="side-scroll-track" id="sideScroll"></div>
+        <div class="border-2 border-green-500 rounded-3xl p-3 mb-6 mx-auto w-full max-w-xl bg-green-900/10 shadow-lg relative pt-6">
+            <h2 class="text-green-500 font-black text-xs absolute -top-2 bg-[#050505] px-2 left-4 shadow-xl">BACKGROUND LAYER</h2>
+            
+            <div class="flex space-x-3 mb-3 bg-gray-900/50 p-2 rounded-xl">
+                <div class="flex-1 flex items-center space-x-2">
+                    <span class="text-[9px] font-bold text-gray-400">SPD</span>
+                    <input type="range" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'BG')">
+                    <span id="bgSpeedText" class="text-orange-500 font-black text-xs w-6 text-right">1.0</span>
+                </div>
+                <div class="w-[1px] bg-gray-700"></div>
+                <div class="flex-1 flex items-center space-x-2">
+                    <span class="text-[9px] font-bold text-gray-400">BRT</span>
+                    <input type="range" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
+                    <span id="bgBrightText" class="text-yellow-500 font-black text-xs w-8 text-right">100%</span>
+                </div>
+            </div>
+
+            <div class="pad-container">
+                <div id="padGridBG" class="grid-style"></div>
+            </div>
+            <button onclick="stopBG()" class="w-full mt-3 bg-red-900/80 hover:bg-red-600 text-white font-black text-xs py-3 rounded-xl shadow-lg transition">STOP BACKGROUND</button>
         </div>
 
-        <div class="max-w-xl mx-auto w-full mt-auto flex-none">
-            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-2 flex items-center space-x-3 shadow-lg">
-                <span class="text-yellow-500 font-black text-[10px] w-12 text-center">BRIGHT</span>
-                <input type="range" id="masterBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateMasterBrightness(this.value)">
-                <div id="masterBrightText" class="text-yellow-500 font-black text-xs w-10 text-right">100%</div>
+        <div class="border-2 border-blue-500 rounded-3xl p-3 mb-4 mx-auto w-full max-w-xl bg-blue-900/10 shadow-lg relative pt-6">
+            <h2 class="text-blue-500 font-black text-xs absolute -top-2 bg-[#050505] px-2 left-4 shadow-xl">FOREGROUND LAYER</h2>
+            
+            <div class="flex space-x-3 mb-3 bg-gray-900/50 p-2 rounded-xl">
+                <div class="flex-1 flex items-center space-x-2">
+                    <span class="text-[9px] font-bold text-gray-400">SPD</span>
+                    <input type="range" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'FG')">
+                    <span id="fgSpeedText" class="text-orange-500 font-black text-xs w-6 text-right">1.0</span>
+                </div>
+                <div class="w-[1px] bg-gray-700"></div>
+                <div class="flex-1 flex items-center space-x-2">
+                    <span class="text-[9px] font-bold text-gray-400">BRT</span>
+                    <input type="range" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
+                    <span id="fgBrightText" class="text-yellow-500 font-black text-xs w-8 text-right">100%</span>
+                </div>
             </div>
+
+            <div class="pad-container">
+                <div id="padGridFG" class="grid-style"></div>
+            </div>
+            <button onclick="stopFG()" class="w-full mt-3 bg-red-900/80 hover:bg-red-600 text-white font-black text-xs py-3 rounded-xl shadow-lg transition">STOP FOREGROUND</button>
         </div>
+
     </div>
 
     <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
-        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
-            <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙 BACK</button>
+        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none relative">
+            <h2 id="modalTitle" class="absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-white pointer-events-none">EDIT LAYER</h2>
+            <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
             <div class="flex space-x-1">
                 <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-16">STOP</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
@@ -106,7 +128,7 @@
         </div>
         <div class="flex justify-between bg-black text-[9px] text-gray-500 font-mono px-2 py-1 border-b border-gray-800 flex-none">
             <span id="timeText">PLAYHEAD: 0.0s</span>
-            <span>* กดก้อนแช่ไว้ 0.6 วิเพื่อ COPY</span>
+            <span>* กดก้อนแช่ไว้เพื่อ COPY</span>
         </div>
 
         <div class="bg-gray-900 border-b border-gray-800 p-2 grid grid-cols-2 gap-4 flex-none">
@@ -156,29 +178,14 @@
             </div>
         </div>
 
-        <div class="fixed bottom-0 w-full bg-gray-950 border-t border-gray-800 p-2 flex justify-between items-center z-50 cursor-pointer" onclick="openCodeModal()">
-            <div id="liveCode" class="text-[10px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 px-2 font-bold tracking-widest pointer-events-none">No code yet...</div>
-            <button onclick="event.stopPropagation(); copyCode()" class="bg-gray-700 text-white text-[9px] font-bold px-3 py-1 rounded shadow">COPY</button>
-        </div>
-    </div>
-
-    <div id="codeModal" class="fixed inset-0 hidden z-[70] bg-[#050505] p-4 flex flex-col">
-        <div class="flex justify-between items-center mb-3">
-            <span class="text-green-500 font-bold text-sm">💻 LIVE CODE EDITOR</span>
-            <button onclick="closeCodeModal()" class="text-gray-400 font-bold text-xs px-2 py-1">CLOSE</button>
-        </div>
-        <textarea id="codeTextarea" class="flex-1 w-full bg-gray-900 text-green-400 font-mono p-4 rounded-xl border border-gray-700 outline-none focus:border-green-500 text-sm tracking-wider"></textarea>
-        <div class="flex space-x-2 mt-4 flex-none">
-            <button onclick="pasteCode()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold">PASTE</button>
-            <button onclick="copyFromModal()" class="flex-1 bg-gray-700 text-white py-3 rounded-xl font-bold">COPY</button>
-            <button onclick="applyCodeModal()" class="flex-1 bg-green-600 text-black py-3 rounded-xl font-bold shadow-[0_0_15px_#00e676]">APPLY TO PADS</button>
+        <div class="fixed bottom-0 w-full bg-gray-950 border-t border-gray-800 p-2 flex justify-between items-center z-50">
+            <div id="liveCode" class="text-[10px] font-mono text-gray-500 overflow-hidden whitespace-nowrap text-ellipsis flex-1 px-2 font-bold tracking-widest pointer-events-none">CODE...</div>
         </div>
     </div>
 
     <div id="unsavedModal" class="fixed inset-0 hidden z-[60] modal-overlay flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 text-center space-y-4 w-full max-w-sm shadow-2xl">
             <h3 class="text-white font-bold text-lg">มีข้อมูลยังไม่ได้บันทึก!</h3>
-            <p class="text-gray-400 text-xs">คุณต้องการเซฟลายไฟนี้ก่อนกลับไปหน้าแรกหรือไม่?</p>
             <div class="flex space-x-3 justify-center pt-3">
                 <button onclick="discardAndClose()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ทิ้งข้อมูล</button>
                 <button onclick="saveAndSend()" class="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl text-xs font-bold flex-1 shadow-[0_0_10px_#00e676] transition">เซฟก่อน</button>
@@ -188,43 +195,33 @@
 
     <script>
         let device, characteristic;
-        let patterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        // แยกข้อมูลเป็น 2 ชุด 
+        let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         
         let clips = []; 
-        let selectedClipId = null;
-        let selectedIdx = -1;
-        let playheadTime = 0;
-        let isPlaying = false;
+        let activeLayer = 'BG'; // เอาไว้จำว่ากำลังแก้ไข BG หรือ FG
+        let activeIdxBG = -1;
+        let activeIdxFG = -1;
+        
+        let selectedClipId = null; let selectedIdx = -1;
+        let playheadTime = 0; let isPlaying = false;
         let playInterval, startAnimateTime;
-        let currentLoopLimit = 1.0;
-        let pxPerSec = 100;
-        let isFollowingPlayhead = false;
-        let hasUnsavedChanges = false; 
-        let activePadIndex = -1; 
-        let activeColorIndex = -1; 
-        
-        let isWritingBLE = false;
+        let currentLoopLimit = 1.0; let pxPerSec = 100;
+        let isFollowingPlayhead = false; let hasUnsavedChanges = false; 
+        let activeColorIndex = -1; let isWritingBLE = false;
 
-        // 🔥 แก้ไข: เปลี่ยนตัวย่อสีชมพูจาก pi เป็น pk เพื่อให้ตรงกับบอร์ด 100% 🔥
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
-        
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
-
-        const grid = document.getElementById('padGrid');
-        let sortableInstance = null; 
-        let isDraggingPad = false; 
 
         window.addEventListener('hashchange', function() {
             const hash = window.location.hash;
-            if (hash === '#edit') { document.getElementById('codeModal').classList.add('hidden'); } 
-            else if (hash === '') {
+            if (hash === '') {
                 if (!document.getElementById('modal').classList.contains('hidden')) {
                     if (hasUnsavedChanges) {
                         window.location.hash = 'edit';
                         document.getElementById('unsavedModal').classList.remove('hidden');
-                    } else {
-                        closePopupDirectly();
-                    }
+                    } else { closePopupDirectly(); }
                 }
             }
         });
@@ -233,23 +230,28 @@
             document.getElementById('unsavedModal').classList.add('hidden');
             stopPlayback(); document.getElementById('modal').classList.add('hidden'); 
             if(selectedIdx !== -1) {
-                let btn = grid.children[selectedIdx];
-                playFX(selectedIdx, btn);
-                selectedIdx = -1; updatePadsVisuals();
+                playFX(selectedIdx, null, activeLayer);
+                selectedIdx = -1; updatePadsVisuals(activeLayer);
             }
         }
 
-        async function updateMasterSpeed(val) {
-            document.getElementById('masterSpeedText').innerText = parseFloat(val).toFixed(1) + 'x';
-            if(!characteristic) return;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + parseFloat(val).toFixed(1))); } catch(e) {}
+        async function updateSpeed(val, layer) {
+            if(layer === 'BG') {
+                document.getElementById('bgSpeedText').innerText = parseFloat(val).toFixed(1);
+                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + parseFloat(val).toFixed(1))); }catch(e){} }
+            } else {
+                document.getElementById('fgSpeedText').innerText = parseFloat(val).toFixed(1);
+                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FGT" + parseFloat(val).toFixed(1))); }catch(e){} }
+            }
         }
-        function resetMasterSpeed() { document.getElementById('masterSpeedSlider').value = 1.0; updateMasterSpeed(1.0); }
-
-        async function updateMasterBrightness(val) {
-            document.getElementById('masterBrightText').innerText = Math.round(val * 100) + '%';
-            if(!characteristic) return;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("B" + parseFloat(val).toFixed(2))); } catch(e) {}
+        async function updateBright(val, layer) {
+            if(layer === 'BG') {
+                document.getElementById('bgBrightText').innerText = Math.round(val*100) + '%';
+                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + parseFloat(val).toFixed(2))); }catch(e){} }
+            } else {
+                document.getElementById('fgBrightText').innerText = Math.round(val*100) + '%';
+                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FGB:" + parseFloat(val).toFixed(2))); }catch(e){} }
+            }
         }
 
         document.getElementById('connectBtn').onclick = async () => {
@@ -265,9 +267,12 @@
                 await characteristic.startNotifications();
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
-                    if (val.startsWith("D")) {
-                        let p = val.substring(1).split(":");
-                        if(p.length >= 3) { patterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals(); }
+                    if (val.startsWith("DB")) {
+                        let p = val.substring(2).split(":");
+                        if(p.length >= 3) { bgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('BG'); }
+                    } else if (val.startsWith("DF")) {
+                        let p = val.substring(2).split(":");
+                        if(p.length >= 3) { fgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('FG'); }
                     }
                 });
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
@@ -275,66 +280,67 @@
         };
         function onDisconnected() { characteristic = null; const btn = document.getElementById('connectBtn'); btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; }
 
-        async function autoSyncTop10() {
-            if(!characteristic) return; 
-            const btn = document.getElementById('connectBtn');
-            btn.innerText = "SYNCING..."; btn.className = "bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-xl transition";
-            try {
-                for(let i=0; i<10; i++) {
-                    let codeToSend = patterns[i].code ? patterns[i].code : ""; 
-                    await characteristic.writeValue(new TextEncoder().encode(`S${i}:${codeToSend}`));
-                    await new Promise(r => setTimeout(r, 60)); 
-                }
-                btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]";
-            } catch(e) { btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676]"; }
-        }
-
-        function renderPads() {
+        function renderLayerPads(layer) {
+            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
             grid.innerHTML = '';
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
+
             patterns.forEach((p, index) => {
                 const btn = document.createElement('div');
-                const isPotenZone = index < 10;
-                btn.className = `pad-btn ${isPotenZone ? 'poten-slot' : ''} ${p.code ? 'has-code' : ''}`;
+                btn.className = `pad-btn ${p.code ? 'has-code' : ''}`;
                 
-                if (index === activePadIndex) btn.classList.add('playing');
+                if (index === activeIdx) btn.classList.add('playing');
                 if(!p.code) { const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
-                btn.innerHTML = `<span class="text-lg font-black pad-num">${p.id + 1}</span>`;
+                btn.innerHTML = `<span class="text-lg font-black pad-num text-white/80">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
-                btn.addEventListener('pointerdown', (e) => {
-                    if (isDraggingPad) return; 
+                btn.addEventListener('pointerdown', () => {
                     const currentVisualIndex = patterns.indexOf(p);
                     if (clickTimer) {
                         clearTimeout(clickTimer); clickTimer = null;
-                        openPopup(currentVisualIndex); 
+                        openPopup(currentVisualIndex, layer); 
                     } else {
-                        playFX(currentVisualIndex, btn); 
+                        playFX(currentVisualIndex, btn, layer); 
                         clickTimer = setTimeout(() => { clickTimer = null; }, 300);
                     }
                 });
                 grid.appendChild(btn);
             });
+            setupSortable(layer);
+        }
 
-            if (sortableInstance) sortableInstance.destroy();
-            sortableInstance = new Sortable(grid, {
+        function renderPads() {
+            renderLayerPads('BG');
+            renderLayerPads('FG');
+        }
+
+        function setupSortable(layer) {
+            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            new Sortable(grid, {
                 animation: 150, delay: 250, delayOnTouchOnly: false, touchStartThreshold: 5,
-                forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true, swapThreshold: 0.65,
-                onStart: () => { isDraggingPad = true; if (window.navigator.vibrate) window.navigator.vibrate(30); },
+                forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true,
+                onStart: () => { if (window.navigator.vibrate) window.navigator.vibrate(30); },
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
-                    Array.from(grid.children).forEach((btn, i) => {
-                        if (i < 10) btn.classList.add('poten-slot'); else btn.classList.remove('poten-slot');
-                    });
-                    if(activePadIndex === evt.oldIndex) activePadIndex = evt.newIndex;
-                    else if(activePadIndex === evt.newIndex) activePadIndex = evt.oldIndex;
-                    autoSyncTop10();
-                    setTimeout(() => { isDraggingPad = false; }, 50);
+                    if(layer === 'BG') {
+                        if(activeIdxBG === evt.oldIndex) activeIdxBG = evt.newIndex;
+                        else if(activeIdxBG === evt.newIndex) activeIdxBG = evt.oldIndex;
+                    } else {
+                        if(activeIdxFG === evt.oldIndex) activeIdxFG = evt.newIndex;
+                        else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
+                    }
+                    renderLayerPads(layer); 
                 }
             });
         }
 
-        function updatePadsVisuals() {
+        function updatePadsVisuals(layer) {
+            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
             const btns = grid.children;
             patterns.forEach((p, index) => {
                 const btn = btns[index];
@@ -342,32 +348,46 @@
                 if(p.code) { btn.classList.add('has-code'); btn.style.backgroundColor = ""; } 
                 else { btn.classList.remove('has-code'); const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
                 
-                if (index === activePadIndex) btn.classList.add('playing');
+                if (index === activeIdx) btn.classList.add('playing');
                 else btn.classList.remove('playing');
             });
         }
 
-        async function playFX(idx, btnElement) {
-            activePadIndex = idx;
-            document.querySelectorAll('.pad-btn').forEach(b => b.classList.remove('playing'));
-            if(btnElement) btnElement.classList.add('playing'); 
-            
-            if(!characteristic || !patterns[idx].code) return;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
+        async function playFX(idx, btnElement, layer) {
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            if (layer === 'BG') {
+                activeIdxBG = idx;
+                document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
+                if(btnElement) btnElement.classList.add('playing'); 
+                if(!characteristic || !patterns[idx].code) return;
+                try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
+            } else {
+                activeIdxFG = idx;
+                document.querySelectorAll('#padGridFG .pad-btn').forEach(b => b.classList.remove('playing'));
+                if(btnElement) btnElement.classList.add('playing'); 
+                if(!characteristic || !patterns[idx].code) return;
+                try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:5" + patterns[idx].code)); } catch(e){}
+            }
         }
 
-        const sideScroll = document.getElementById('sideScroll');
-        let isScrolling = false, startY, startScrollTop;
-        sideScroll.addEventListener('touchstart', (e) => { isScrolling = true; startY = e.touches[0].pageY; startScrollTop = grid.scrollTop; }, {passive: true});
-        sideScroll.addEventListener('touchmove', (e) => { if (!isScrolling) return; grid.scrollTop = startScrollTop - ((e.touches[0].pageY - startY) * 2); }, {passive: true});
-        sideScroll.addEventListener('touchend', () => isScrolling = false);
+        async function stopBG() {
+            activeIdxBG = -1; updatePadsVisuals('BG');
+            if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); }catch(e){} }
+        }
+        async function stopFG() {
+            activeIdxFG = -1; updatePadsVisuals('FG');
+            if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:off")); }catch(e){} }
+        }
 
         function markUnsaved() { hasUnsavedChanges = true; }
 
-        function openPopup(idx) {
+        function openPopup(idx, layer) {
             window.location.hash = 'edit'; 
-            selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
+            activeLayer = layer; selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
             
+            document.getElementById('modalTitle').innerText = (layer === 'BG') ? "EDIT BACKGROUND" : "EDIT FOREGROUND";
+            document.getElementById('modalTitle').className = (layer === 'BG') ? "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-green-500 pointer-events-none" : "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-blue-500 pointer-events-none";
+
             document.getElementById('modal').classList.remove('hidden');
             const vp = document.getElementById('timelineViewport');
             const padding = vp.clientWidth / 2;
@@ -375,6 +395,7 @@
             content.style.marginLeft = padding + 'px';
             content.style.borderRight = padding + 'px solid transparent';
 
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             let rawCode = patterns[idx].code || "";
             let brackets = rawCode.match(/m?\(([^)]+)\)/g);
             if (brackets) {
@@ -406,7 +427,6 @@
             else closePopupDirectly();
         }
 
-        // 🔥 แก้ไข: ซ่อมปุ่ม FIT ให้กลับมาทำงานได้ 100% 🔥
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
             if(currentLoopLimit > 0) {
@@ -417,7 +437,6 @@
             }
         }
 
-        // 🔥 แก้ไข: ซ่อมปุ่ม FOLLOW ให้ทำงานสมูทขึ้น ไม่ตีกับ Scroll 🔥
         function toggleFollow() {
             isFollowingPlayhead = !isFollowingPlayhead;
             const btn = document.getElementById('followBtn');
@@ -429,17 +448,13 @@
                     vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
                     setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 300);
                 }
-            }
-            else {
-                btn.className = "bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold";
-            }
+            } else { btn.className = "bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold"; }
         }
 
         function updateZoom(val) { 
             pxPerSec = parseInt(val); 
             document.getElementById('timelineContent').style.backgroundSize = `${pxPerSec}px 100%`; 
             renderClips(); 
-            
             if (!isPlaying) {
                 const vp = document.getElementById('timelineViewport');
                 vp.dataset.ignoreScroll = "true";
@@ -510,10 +525,8 @@
         function addColorSlot() {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
-                let parts = c.color.split('2');
-                parts.push(parts[parts.length-1]); 
-                c.color = parts.join('2');
-                activeColorIndex = parts.length - 1; 
+                let parts = c.color.split('2'); parts.push(parts[parts.length-1]); 
+                c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
                 markUnsaved(); updateSelectedClip();
             }
         }
@@ -522,9 +535,7 @@
             if(c) {
                 let parts = c.color.split('2');
                 if(parts.length > 1) { 
-                    parts.pop(); 
-                    c.color = parts.join('2');
-                    activeColorIndex = parts.length - 1; 
+                    parts.pop(); c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
                     markUnsaved(); updateSelectedClip();
                 }
             }
@@ -543,8 +554,7 @@
 
         function renderColorBuilderSlots() {
             const c = clips.find(x => x.id === selectedClipId);
-            const slots = document.getElementById('colorSlots');
-            slots.innerHTML = '';
+            const slots = document.getElementById('colorSlots'); slots.innerHTML = '';
             if(!c) return;
 
             let colors = c.color.split('2');
@@ -577,7 +587,8 @@
                     let currentLEDs = c.target.match(/<(\d+)>/g) || [];
                     currentLEDs.forEach(led => {
                         let num = parseInt(led.replace(/<|>/g, ''));
-                        let pair = 69 - num; 
+                        // กระจกสุดที่ 67 สำหรับแอปพลิเคชันให้สะท้อนอัตโนมัติก็ตั้งเป็น 68-num ก็ได้ (โค้ดบอร์ดจัดการให้แล้ว)
+                        let pair = 68 - num; 
                         if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
                     });
                 }
@@ -605,7 +616,6 @@
                 const vp = document.getElementById('timelineViewport');
                 vp.dataset.ignoreScroll = "true";
                 vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
-                
                 setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 500);
                 
                 document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
@@ -626,7 +636,7 @@
             const c = clips.find(x => x.id === selectedClipId);
             if(!c) return;
 
-            const markers = [7,8,9,10, 18,19,20,21, 29,30,31,32, 37,38,39,40, 48,49,50,51, 59,60,61,62];
+            const markers = [7,8,9,10, 18,19,20,21, 29,30,31,32, 37,38,39,40, 48,49,50,51, 59,60,61,62, 68,69,70];
 
             for(let i=1; i<=300; i++) { 
                 const d = document.createElement('div'); d.innerText = i;
@@ -636,7 +646,7 @@
                 d.className = `text-[8px] h-6 border rounded flex items-center justify-center cursor-pointer ${isMarked} ${isActive}`;
                 d.addEventListener('click', (e) => { 
                     let targetStr = '<' + i + '>';
-                    let pair = c.mirror ? (69 - i) : null;
+                    let pair = c.mirror ? (68 - i) : null;
                     let pairStr = pair ? '<' + pair + '>' : '';
 
                     if(c.target.includes(targetStr)) { 
@@ -661,65 +671,19 @@
             });
             return code;
         }
-        
-        function openCodeModal() {
-            document.getElementById('codeTextarea').value = generateCodeStr();
-            document.getElementById('codeModal').classList.remove('hidden');
-            document.getElementById('codeTextarea').focus();
-            window.location.hash = 'code'; 
-        }
-        function closeCodeModal() { 
-            if(window.location.hash === '#code') history.back();
-            else document.getElementById('codeModal').classList.add('hidden');
-        }
-        
-        async function pasteCode() {
-            try { const text = await navigator.clipboard.readText(); document.getElementById('codeTextarea').value = text; } 
-            catch (err) { alert('Paste from clipboard failed. Try manual paste.'); }
-        }
-        function copyFromModal() {
-            const text = document.getElementById('codeTextarea').value;
-            navigator.clipboard.writeText(text).then(() => alert("Copied!"));
-        }
-        function applyCodeModal() {
-            const val = document.getElementById('codeTextarea').value;
-            applyCodeFromInput(val);
-            closeCodeModal();
-        }
-
-        function applyCodeFromInput(val) {
-            let code = val;
-            if(code.startsWith("5")) code = code.substring(1); 
-            clips = [];
-            let brackets = code.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 4) { 
-                        clips.push({ 
-                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
-                            target: content[1], color: content[2], fx: content[3].charAt(0), duration: parseInt(content[3].substring(1,3))/10, 
-                            loop: 1, mirror: m, track: i % 6 
-                        });
-                    }
-                });
-            }
-            markUnsaved(); renderClips();
-            if(clips.length > 0) selectClip(clips[0].id);
-        }
 
         async function saveAndSend() {
             document.getElementById('unsavedModal').classList.add('hidden'); 
             hasUnsavedChanges = false;
-            patterns[selectedIdx].code = generateCodeStr();
-            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`S${selectedIdx}:${patterns[selectedIdx].code}`));
             
-            let savedIdx = selectedIdx;
+            let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
+            patterns[selectedIdx].code = generateCodeStr();
+            
+            let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
+            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`));
+            
             if(window.location.hash === '#edit') history.back();
             else closePopupDirectly();
-            
-            if(savedIdx < 10) autoSyncTop10();
         }
         
         function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
@@ -738,7 +702,7 @@
         function togglePlay() { 
             const btn = document.getElementById('playBtn'); 
             if (!isPlaying) { 
-                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); 
+                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-red-600', 'bg-blue-600'); 
                 sendFullCodeToBT(); 
                 startAnimateTime = performance.now() - (playheadTime * 1000); 
                 playInterval = requestAnimationFrame(animatePlayhead); 
@@ -748,7 +712,7 @@
         function stopPlayback() { 
             isPlaying = false; 
             const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-blue-600'); } 
+            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
             cancelAnimationFrame(playInterval); 
             
             const vp = document.getElementById('timelineViewport');
@@ -779,8 +743,14 @@
             playInterval = requestAnimationFrame(animatePlayhead); 
         }
 
-        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "No code yet..."; }
-        async function sendFullCodeToBT() { if(!characteristic) return; let code = "5" + generateCodeStr(); try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); } catch(e){} }
+        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "CODE..."; }
+        
+        async function sendFullCodeToBT() { 
+            if(!characteristic) return; 
+            let codeStr = generateCodeStr();
+            let cmd = (activeLayer === 'BG') ? "5" + codeStr : "FG:5" + codeStr;
+            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); } catch(e){} 
+        }
         
         let lastSentOff = false;
 
@@ -792,17 +762,17 @@
                 if (!lastSentOff) {
                     try { 
                         isWritingBLE = true;
-                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); 
-                        isWritingBLE = false;
-                        lastSentOff = true;
+                        let cmd = (activeLayer === 'BG') ? "off" : "FG:off";
+                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); 
+                        isWritingBLE = false; lastSentOff = true;
                     } catch(e){ isWritingBLE = false; }
                 }
                 return;
             }
             
             lastSentOff = false;
-            
-            let code = "5";
+            let code = (activeLayer === 'BG') ? "5" : "FG:5";
+
             activeClips.forEach(c => {
                 let p = (playheadTime - c.start) / c.duration;
                 if(p < 0) p = 0; if(p > 1) p = 1;
@@ -819,7 +789,6 @@
                 let bStr = br.toString().padStart(2, '0');
                 let m = c.mirror ? 'm' : '';
                 
-                // 🔥 แก้ไข: ให้ Scrubbing เล่นสีผสมตามเวลาจริงได้เหมือนตอนกด Play 🔥
                 let colorCodes = c.color.split('2');
                 let step = 1.0 / (colorCodes.length > 1 ? colorCodes.length - 1 : 1);
                 let idx = Math.floor(p / step);
@@ -835,34 +804,12 @@
             } catch(e){ isWritingBLE = false; } 
         }
 
-        // -------------------------------------------------------------
-        // 🔥 ระบบป้องกันหน้าจอดับ (Screen Wake Lock API) 🔥
-        // -------------------------------------------------------------
         let wakeLock = null;
-
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Screen Wake Lock released');
-                    });
-                }
-            } catch (err) {
-                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
-            }
+            try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {}
         }
-
-        document.addEventListener('pointerdown', () => {
-            if (!wakeLock) requestWakeLock();
-        }, { once: true });
-
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
-            }
-        });
-        // -------------------------------------------------------------
+        document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
+        document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
         renderPads();
     </script>
