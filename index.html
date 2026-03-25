@@ -79,7 +79,6 @@
             margin-bottom: 5px;
         }
         
-        /* --- แก้ไข: ขยายแถบ Scrollbar จาก 14px เป็น 26px ให้รูดง่ายๆ --- */
         .pad-container::-webkit-scrollbar { display: block; width: 26px; }
         .pad-container::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
         .pad-container::-webkit-scrollbar-thumb { background: #444; border-radius: 8px; border: 4px solid #0a0a0a; }
@@ -131,47 +130,47 @@
         <div class="layer-block layer-bg">
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
             
-            <div class="flex space-x-3 mb-2 bg-gray-900/50 p-2 rounded-xl flex-none mt-2">
+            <div class="flex space-x-2 mb-2 bg-gray-900/50 p-2 px-3 mx-1 rounded-xl flex-none mt-2">
                 <div class="flex-1 flex items-center space-x-2">
                     <button onclick="resetSpeed('BG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">SPD</button>
                     <input type="range" id="bgSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'BG')">
-                    <span id="bgSpeedText" class="text-orange-500 font-black text-[10px] w-8 text-right">1.0</span>
+                    <span id="bgSpeedText" class="text-orange-500 font-black text-[10px] w-6 shrink-0 text-right">1.0</span>
                 </div>
                 <div class="w-[1px] bg-gray-700"></div>
                 <div class="flex-1 flex items-center space-x-2">
                     <button onclick="resetBright('BG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">BRT</button>
                     <input type="range" id="bgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
-                    <span id="bgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">100%</span>
+                    <span id="bgBrightText" class="text-yellow-500 font-black text-[10px] w-9 shrink-0 text-right">100%</span>
                 </div>
             </div>
 
             <div class="pad-container">
                 <div id="padGridBG" class="grid-style"></div>
             </div>
-            <button onclick="stopBG()" class="w-full flex-none bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP BACKGROUND</button>
+            <button id="stopBtnBG" onclick="stopBG()" class="w-full flex-none bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP BACKGROUND</button>
         </div>
 
         <div class="layer-block layer-fg">
             <h2 class="layer-title text-blue-500">FOREGROUND LAYER</h2>
             
-            <div class="flex space-x-3 mb-2 bg-gray-900/50 p-2 rounded-xl flex-none mt-2">
+            <div class="flex space-x-2 mb-2 bg-gray-900/50 p-2 px-3 mx-1 rounded-xl flex-none mt-2">
                 <div class="flex-1 flex items-center space-x-2">
                     <button onclick="resetSpeed('FG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">SPD</button>
                     <input type="range" id="fgSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'FG')">
-                    <span id="fgSpeedText" class="text-orange-500 font-black text-[10px] w-8 text-right">1.0</span>
+                    <span id="fgSpeedText" class="text-orange-500 font-black text-[10px] w-6 shrink-0 text-right">1.0</span>
                 </div>
                 <div class="w-[1px] bg-gray-700"></div>
                 <div class="flex-1 flex items-center space-x-2">
                     <button onclick="resetBright('FG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">BRT</button>
                     <input type="range" id="fgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
-                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">100%</span>
+                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-9 shrink-0 text-right">100%</span>
                 </div>
             </div>
 
             <div class="pad-container">
                 <div id="padGridFG" class="grid-style"></div>
             </div>
-            <button onclick="stopFG()" class="w-full flex-none bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FOREGROUND</button>
+            <button id="stopBtnFG" onclick="stopFG()" class="w-full flex-none bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FOREGROUND</button>
         </div>
 
     </div>
@@ -298,7 +297,6 @@
             }
         });
 
-        // --- แก้ไข: กด Back แล้วเล่นลายไฟต่อทันที ไม่ต้องรอกดเอง ---
         function closePopupDirectly() {
             document.getElementById('unsavedModal').classList.add('hidden');
             
@@ -340,7 +338,6 @@
             }
         }
 
-        // --- เพิ่มฟังก์ชันรีเซ็ตความเร็วและความสว่าง ---
         function resetSpeed(layer) {
             let slider = document.getElementById(layer === 'BG' ? 'bgSpeedSlider' : 'fgSpeedSlider');
             if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
@@ -361,6 +358,20 @@
                 characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
                 btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676] transition";
                 await characteristic.startNotifications();
+                
+                // --- เพิ่มการโหลดและเล่นไฟล่าสุดเมื่อเสียบเครื่องต่อ BT อัตโนมัติ ---
+                setTimeout(() => {
+                    let savedBG = parseInt(localStorage.getItem('lastActiveBG'));
+                    if (!isNaN(savedBG) && savedBG >= 0 && savedBG < 60 && bgPatterns[savedBG].code) {
+                        playFX(savedBG, null, 'BG');
+                    }
+                    let savedFG = parseInt(localStorage.getItem('lastActiveFG'));
+                    if (!isNaN(savedFG) && savedFG >= 0 && savedFG < 60 && fgPatterns[savedFG].code) {
+                        playFX(savedFG, null, 'FG');
+                    }
+                }, 1500); // ดีเลย์นิดนึงเผื่อบอร์ดกำลังโหลดข้อมูล
+                // -------------------------------------------------------------
+
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     if (val.startsWith("DB")) {
@@ -397,7 +408,8 @@
                 btn.innerHTML = `<span class="text-lg font-black pad-num text-white/80">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
-                btn.addEventListener('pointerdown', () => {
+                // --- แก้ไข: เปลี่ยน pointerdown เป็น click กันนิ้วลั่นตอนรูดจอ ---
+                btn.addEventListener('click', () => {
                     if (isDraggingPad) return;
                     
                     const currentVisualIndex = patterns.indexOf(p);
@@ -412,6 +424,7 @@
                 grid.appendChild(btn);
             });
             setupSortable(layer);
+            updatePadsVisuals(layer); // อัปเดตสีปุ่ม STOP ทันทีตอนโหลด
         }
 
         function renderPads() {
@@ -478,31 +491,53 @@
                 if (index === activeIdx) btn.classList.add('playing');
                 else btn.classList.remove('playing');
             });
+
+            // --- แก้ไข: เปลี่ยนสีปุ่ม STOP แดง/เขียว ตามสถานะ ---
+            const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
+            if (stopBtn) {
+                if (activeIdx !== -1) {
+                    stopBtn.className = "w-full flex-none bg-green-600 hover:bg-green-500 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
+                } else {
+                    stopBtn.className = "w-full flex-none bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
+                }
+            }
         }
 
         async function playFX(idx, btnElement, layer) {
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             if (layer === 'BG') {
                 activeIdxBG = idx;
+                localStorage.setItem('lastActiveBG', idx); // เซฟค่าลงเครื่อง
+                
                 document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
                 if(btnElement) btnElement.classList.add('playing'); 
+                updatePadsVisuals('BG'); // สั่งอัปเดตสีปุ่ม STOP
+
                 if(!characteristic || !patterns[idx].code) return;
                 try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
             } else {
                 activeIdxFG = idx;
+                localStorage.setItem('lastActiveFG', idx); // เซฟค่าลงเครื่อง
+                
                 document.querySelectorAll('#padGridFG .pad-btn').forEach(b => b.classList.remove('playing'));
                 if(btnElement) btnElement.classList.add('playing'); 
+                updatePadsVisuals('FG'); // สั่งอัปเดตสีปุ่ม STOP
+
                 if(!characteristic || !patterns[idx].code) return;
                 try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:5" + patterns[idx].code)); } catch(e){}
             }
         }
 
         async function stopBG() {
-            activeIdxBG = -1; updatePadsVisuals('BG');
+            activeIdxBG = -1; 
+            localStorage.setItem('lastActiveBG', -1);
+            updatePadsVisuals('BG');
             if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); }catch(e){} }
         }
         async function stopFG() {
-            activeIdxFG = -1; updatePadsVisuals('FG');
+            activeIdxFG = -1; 
+            localStorage.setItem('lastActiveFG', -1);
+            updatePadsVisuals('FG');
             if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:off")); }catch(e){} }
         }
 
