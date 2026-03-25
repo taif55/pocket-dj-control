@@ -37,7 +37,6 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
 
-        /* --- เพิ่มสไตล์สำหรับหลอดวัดพลังงาน --- */
         .power-bar-container {
             width: 60px;
             height: 12px;
@@ -49,8 +48,8 @@
         }
         .power-bar-fill {
             height: 100%;
-            width: 0%; /* เริ่มต้นที่ 0 จนกว่าจะต่อติด */
-            background-color: #22c55e; /* สีเขียว */
+            width: 0%; 
+            background-color: #22c55e; 
             transition: width 0.3s ease, background-color 0.3s ease;
         }
         .power-text {
@@ -155,9 +154,9 @@
             <div class="flex items-center space-x-3">
                 <div class="flex flex-col items-center">
                     <span class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
-                    <div class="power-bar-container">
+                    <div class="power-bar-container" ondblclick="togglePowerMode()">
                         <div id="powerBarFill" class="power-bar-fill"></div>
-                        <div id="powerBarText" class="power-text">OFF</div>
+                        <div id="powerBarText" class="power-text" style="cursor: pointer;">OFF</div>
                     </div>
                 </div>
                 <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
@@ -319,6 +318,11 @@
         let sortableFG = null;
         let isDraggingPad = false;
 
+        // --- เพิ่มตัวแปรสำหรับโหมดสลับดูค่าดิบ ---
+        let showRawPower = false;
+        let currentPowerPercent = 0;
+        let currentRawPower = 0;
+
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
@@ -423,16 +427,30 @@
             }
         }
 
-        // --- เพิ่มฟังก์ชันอัปเดตหลอดไฟ ---
-        function updatePowerBar(percent) {
+        // --- เพิ่มฟังก์ชันสลับโหมดและแสดงผลเมื่อดับเบิลคลิก ---
+        function togglePowerMode() {
+            showRawPower = !showRawPower;
+            updatePowerBar(currentPowerPercent, currentRawPower);
+        }
+
+        function updatePowerBar(percent, raw = 0) {
+            currentPowerPercent = percent;
+            currentRawPower = raw;
             const fill = document.getElementById('powerBarFill');
             const text = document.getElementById('powerBarText');
             if(fill && text) {
                 fill.style.width = percent + '%';
-                text.innerText = percent + '%';
-                if(percent >= 80) fill.style.backgroundColor = '#22c55e'; // เขียว (ไฟแรง)
-                else if(percent >= 40) fill.style.backgroundColor = '#f59e0b'; // ส้ม (เริ่มตก)
-                else fill.style.backgroundColor = '#ef4444'; // แดง (ตกหนักมาก)
+                
+                // ตรวจสอบว่าจะแสดงค่าเป็น % หรือค่าดิบ
+                if (showRawPower && raw > 0) {
+                    text.innerText = raw;
+                } else {
+                    text.innerText = percent + '%';
+                }
+
+                if(percent >= 80) fill.style.backgroundColor = '#22c55e'; 
+                else if(percent >= 40) fill.style.backgroundColor = '#f59e0b'; 
+                else fill.style.backgroundColor = '#ef4444'; 
             }
         }
 
@@ -448,7 +466,6 @@
                 btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676] transition";
                 await characteristic.startNotifications();
                 
-                // พอต่อติดให้หลอดไฟเริ่มทำงาน (สมมติ 100% ไปก่อนจนกว่าบอร์ดจะส่งค่าจริงมา)
                 updatePowerBar(100);
 
                 setTimeout(() => {
@@ -465,10 +482,12 @@
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     
-                    // --- เพิ่มการรับค่าพลังงาน ---
+                    // --- แก้ไข: รับค่า Raw จากบอร์ด ---
                     if (val.startsWith("PWR:")) {
-                        let percent = parseInt(val.substring(4));
-                        updatePowerBar(percent);
+                        let parts = val.substring(4).split(':');
+                        let percent = parseInt(parts[0]);
+                        let raw = parts.length > 1 ? parseInt(parts[1]) : 0;
+                        updatePowerBar(percent, raw);
                     }
                     else if (val.startsWith("DB")) {
                         let p = val.substring(2).split(":");
@@ -500,7 +519,7 @@
             characteristic = null; 
             const btn = document.getElementById('connectBtn'); 
             btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
-            updatePowerBar(0); // หลอดไฟดับเมื่อหลุดการเชื่อมต่อ
+            updatePowerBar(0); 
             document.getElementById('powerBarText').innerText = "OFF";
         }
 
