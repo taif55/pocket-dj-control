@@ -10,12 +10,11 @@
     <style>
         body { 
             font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
-            user-select: none; overflow: hidden; height: 100vh; /* ล็อกความสูงเต็มจอ */
+            user-select: none; overflow: hidden; height: 100vh;
             display: flex; flex-direction: column; touch-action: none; 
             margin: 0; padding: 0;
         }
 
-        /* --- ระบบแบ่งสัดส่วนหน้าจอแบบ Flexbox (พอดีจอ 100vh) --- */
         #mainView {
             display: flex;
             flex-direction: column;
@@ -26,7 +25,6 @@
             gap: 5px;
         }
 
-        /* Head 10% */
         .header-section {
             flex: 0 0 10%;
             display: flex;
@@ -39,7 +37,6 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
 
-        /* Block (BG และ FG) แบ่งพื้นที่ที่เหลือ (ประมาณบล็อคละ 45%) */
         .layer-block {
             flex: 1;
             display: flex;
@@ -64,7 +61,6 @@
             letter-spacing: 1px;
         }
 
-        /* กล่องปุ่มเลื่อนได้ */
         .pad-container { 
             flex: 1; 
             width: 100%; 
@@ -350,7 +346,6 @@
             const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
             const grid = document.getElementById(gridId);
             
-            // --- อัพเกรด: ระบบเช็คความถูกต้องของ HTML ป้องกันการก๊อปปี้มาไม่ครบ ---
             if (!grid) {
                 throw new Error("หากล่อง " + gridId + " ไม่เจอ กรุณาก๊อปปี้โค้ด HTML มาให้ครบถ้วนครับ!");
             }
@@ -383,6 +378,12 @@
                 grid.appendChild(btn);
             });
             setupSortable(layer);
+        }
+
+        // --- เพิ่มฟังก์ชัน renderPads() กลับเข้าไปให้ครบถ้วน ---
+        function renderPads() {
+            renderLayerPads('BG');
+            renderLayerPads('FG');
         }
 
         function setupSortable(layer) {
@@ -903,6 +904,7 @@
         document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
+        // --- แก้ไข: ใส่ฟังก์ชัน renderPads() กลับคืนมาแล้วครับ ---
         window.onload = () => {
             try {
                 renderPads();
