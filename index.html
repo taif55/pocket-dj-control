@@ -347,6 +347,48 @@
             if(slider) { slider.value = 1.0; updateBright(1.0, layer); }
         }
 
+        // --- แก้ไข: ฟังชันดึงค่าจัดเรียงปุ่มจาก localStorage คืนมา ---
+        function loadPatternOrder() {
+            let savedOrderBG = localStorage.getItem('padOrderBG');
+            if (savedOrderBG) {
+                let orderArr = savedOrderBG.split(',').map(Number);
+                if (orderArr.length === 60) {
+                    let newPatterns = [];
+                    orderArr.forEach(id => {
+                        let p = bgPatterns.find(x => x.id === id);
+                        if(p) newPatterns.push(p);
+                    });
+                    bgPatterns = newPatterns;
+                }
+            }
+
+            let savedOrderFG = localStorage.getItem('padOrderFG');
+            if (savedOrderFG) {
+                let orderArr = savedOrderFG.split(',').map(Number);
+                if (orderArr.length === 60) {
+                    let newPatterns = [];
+                    orderArr.forEach(id => {
+                        let p = fgPatterns.find(x => x.id === id);
+                        if(p) newPatterns.push(p);
+                    });
+                    fgPatterns = newPatterns;
+                }
+            }
+        }
+
+        // --- แก้ไข: เซฟตำแหน่งปุ่มลง localStorage ทุกครั้งที่สลับ ---
+        function savePatternOrder(layer) {
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            let orderStr = patterns.map(p => p.id).join(',');
+            localStorage.setItem(layer === 'BG' ? 'padOrderBG' : 'padOrderFG', orderStr);
+            
+            // ส่งไปให้ ESP32 จำด้วย
+            if(characteristic) {
+                let prefix = (layer === 'BG') ? "OBG:" : "OFG:";
+                characteristic.writeValue(new TextEncoder().encode(prefix + orderStr)).catch(e=>{});
+            }
+        }
+
         document.getElementById('connectBtn').onclick = async () => {
             const btn = document.getElementById('connectBtn');
             if(device && device.gatt.connected) { device.gatt.disconnect(); return; }
@@ -359,7 +401,6 @@
                 btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676] transition";
                 await characteristic.startNotifications();
                 
-                // --- เพิ่มการโหลดและเล่นไฟล่าสุดเมื่อเสียบเครื่องต่อ BT อัตโนมัติ ---
                 setTimeout(() => {
                     let savedBG = parseInt(localStorage.getItem('lastActiveBG'));
                     if (!isNaN(savedBG) && savedBG >= 0 && savedBG < 60 && bgPatterns[savedBG].code) {
@@ -369,8 +410,7 @@
                     if (!isNaN(savedFG) && savedFG >= 0 && savedFG < 60 && fgPatterns[savedFG].code) {
                         playFX(savedFG, null, 'FG');
                     }
-                }, 1500); // ดีเลย์นิดนึงเผื่อบอร์ดกำลังโหลดข้อมูล
-                // -------------------------------------------------------------
+                }, 1500); 
 
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
@@ -380,6 +420,22 @@
                     } else if (val.startsWith("DF")) {
                         let p = val.substring(2).split(":");
                         if(p.length >= 3) { fgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('FG'); }
+                    } else if (val.startsWith("OBG:")) {
+                        // ดึงลำดับจาก ESP32 (ถ้ามี)
+                        let orderStr = val.substring(4);
+                        if(orderStr) {
+                            localStorage.setItem('padOrderBG', orderStr);
+                            loadPatternOrder();
+                            renderLayerPads('BG');
+                        }
+                    } else if (val.startsWith("OFG:")) {
+                        // ดึงลำดับจาก ESP32 (ถ้ามี)
+                        let orderStr = val.substring(4);
+                        if(orderStr) {
+                            localStorage.setItem('padOrderFG', orderStr);
+                            loadPatternOrder();
+                            renderLayerPads('FG');
+                        }
                     }
                 });
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
@@ -408,7 +464,6 @@
                 btn.innerHTML = `<span class="text-lg font-black pad-num text-white/80">${p.id + 1}</span>`;
                 
                 let clickTimer = null;
-                // --- แก้ไข: เปลี่ยน pointerdown เป็น click กันนิ้วลั่นตอนรูดจอ ---
                 btn.addEventListener('click', () => {
                     if (isDraggingPad) return;
                     
@@ -424,10 +479,11 @@
                 grid.appendChild(btn);
             });
             setupSortable(layer);
-            updatePadsVisuals(layer); // อัปเดตสีปุ่ม STOP ทันทีตอนโหลด
+            updatePadsVisuals(layer); 
         }
 
         function renderPads() {
+            loadPatternOrder(); // --- โหลดลำดับจากเครื่องก่อนวาด ---
             renderLayerPads('BG');
             renderLayerPads('FG');
         }
@@ -459,6 +515,7 @@
                             if(activeIdxFG === evt.oldIndex) activeIdxFG = evt.newIndex;
                             else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
                         }
+                        savePatternOrder(layer); // --- เซฟลำดับทันทีที่ลากเสร็จ ---
                         renderLayerPads(layer); 
                         setTimeout(() => { isDraggingPad = false; }, 50);
                     }
@@ -492,7 +549,6 @@
                 else btn.classList.remove('playing');
             });
 
-            // --- แก้ไข: เปลี่ยนสีปุ่ม STOP แดง/เขียว ตามสถานะ ---
             const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
             if (stopBtn) {
                 if (activeIdx !== -1) {
@@ -507,21 +563,21 @@
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             if (layer === 'BG') {
                 activeIdxBG = idx;
-                localStorage.setItem('lastActiveBG', idx); // เซฟค่าลงเครื่อง
+                localStorage.setItem('lastActiveBG', idx); 
                 
                 document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
                 if(btnElement) btnElement.classList.add('playing'); 
-                updatePadsVisuals('BG'); // สั่งอัปเดตสีปุ่ม STOP
+                updatePadsVisuals('BG'); 
 
                 if(!characteristic || !patterns[idx].code) return;
                 try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); } catch(e){}
             } else {
                 activeIdxFG = idx;
-                localStorage.setItem('lastActiveFG', idx); // เซฟค่าลงเครื่อง
+                localStorage.setItem('lastActiveFG', idx); 
                 
                 document.querySelectorAll('#padGridFG .pad-btn').forEach(b => b.classList.remove('playing'));
                 if(btnElement) btnElement.classList.add('playing'); 
-                updatePadsVisuals('FG'); // สั่งอัปเดตสีปุ่ม STOP
+                updatePadsVisuals('FG'); 
 
                 if(!characteristic || !patterns[idx].code) return;
                 try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:5" + patterns[idx].code)); } catch(e){}
