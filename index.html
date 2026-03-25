@@ -37,6 +37,33 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
 
+        /* --- เพิ่มสไตล์สำหรับหลอดวัดพลังงาน --- */
+        .power-bar-container {
+            width: 60px;
+            height: 12px;
+            background-color: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #555;
+            position: relative;
+        }
+        .power-bar-fill {
+            height: 100%;
+            width: 0%; /* เริ่มต้นที่ 0 จนกว่าจะต่อติด */
+            background-color: #22c55e; /* สีเขียว */
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        .power-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 8px;
+            font-weight: 900;
+            line-height: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+
         .layer-block {
             display: flex;
             flex-direction: column;
@@ -124,7 +151,17 @@
         
         <div class="header-section">
             <h1 class="text-sm font-black text-white italic uppercase tracking-wider">Pocket DJ <span class="text-orange-500">Ultimate</span></h1>
-            <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+            
+            <div class="flex items-center space-x-3">
+                <div class="flex flex-col items-center">
+                    <span class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
+                    <div class="power-bar-container">
+                        <div id="powerBarFill" class="power-bar-fill"></div>
+                        <div id="powerBarText" class="power-text">OFF</div>
+                    </div>
+                </div>
+                <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+            </div>
         </div>
 
         <div class="layer-block layer-bg">
@@ -347,7 +384,6 @@
             if(slider) { slider.value = 1.0; updateBright(1.0, layer); }
         }
 
-        // --- แก้ไข: ฟังชันดึงค่าจัดเรียงปุ่มจาก localStorage คืนมา ---
         function loadPatternOrder() {
             let savedOrderBG = localStorage.getItem('padOrderBG');
             if (savedOrderBG) {
@@ -376,16 +412,27 @@
             }
         }
 
-        // --- แก้ไข: เซฟตำแหน่งปุ่มลง localStorage ทุกครั้งที่สลับ ---
         function savePatternOrder(layer) {
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             let orderStr = patterns.map(p => p.id).join(',');
             localStorage.setItem(layer === 'BG' ? 'padOrderBG' : 'padOrderFG', orderStr);
             
-            // ส่งไปให้ ESP32 จำด้วย
             if(characteristic) {
                 let prefix = (layer === 'BG') ? "OBG:" : "OFG:";
                 characteristic.writeValue(new TextEncoder().encode(prefix + orderStr)).catch(e=>{});
+            }
+        }
+
+        // --- เพิ่มฟังก์ชันอัปเดตหลอดไฟ ---
+        function updatePowerBar(percent) {
+            const fill = document.getElementById('powerBarFill');
+            const text = document.getElementById('powerBarText');
+            if(fill && text) {
+                fill.style.width = percent + '%';
+                text.innerText = percent + '%';
+                if(percent >= 80) fill.style.backgroundColor = '#22c55e'; // เขียว (ไฟแรง)
+                else if(percent >= 40) fill.style.backgroundColor = '#f59e0b'; // ส้ม (เริ่มตก)
+                else fill.style.backgroundColor = '#ef4444'; // แดง (ตกหนักมาก)
             }
         }
 
@@ -401,6 +448,9 @@
                 btn.innerText = "ONLINE"; btn.className = "bg-green-500 text-black text-[10px] font-black px-4 py-2 rounded-xl shadow-[0_0_15px_#00e676] transition";
                 await characteristic.startNotifications();
                 
+                // พอต่อติดให้หลอดไฟเริ่มทำงาน (สมมติ 100% ไปก่อนจนกว่าบอร์ดจะส่งค่าจริงมา)
+                updatePowerBar(100);
+
                 setTimeout(() => {
                     let savedBG = parseInt(localStorage.getItem('lastActiveBG'));
                     if (!isNaN(savedBG) && savedBG >= 0 && savedBG < 60 && bgPatterns[savedBG].code) {
@@ -414,14 +464,19 @@
 
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
-                    if (val.startsWith("DB")) {
+                    
+                    // --- เพิ่มการรับค่าพลังงาน ---
+                    if (val.startsWith("PWR:")) {
+                        let percent = parseInt(val.substring(4));
+                        updatePowerBar(percent);
+                    }
+                    else if (val.startsWith("DB")) {
                         let p = val.substring(2).split(":");
                         if(p.length >= 3) { bgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('BG'); }
                     } else if (val.startsWith("DF")) {
                         let p = val.substring(2).split(":");
                         if(p.length >= 3) { fgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('FG'); }
                     } else if (val.startsWith("OBG:")) {
-                        // ดึงลำดับจาก ESP32 (ถ้ามี)
                         let orderStr = val.substring(4);
                         if(orderStr) {
                             localStorage.setItem('padOrderBG', orderStr);
@@ -429,7 +484,6 @@
                             renderLayerPads('BG');
                         }
                     } else if (val.startsWith("OFG:")) {
-                        // ดึงลำดับจาก ESP32 (ถ้ามี)
                         let orderStr = val.substring(4);
                         if(orderStr) {
                             localStorage.setItem('padOrderFG', orderStr);
@@ -441,7 +495,14 @@
                 await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
             } catch (e) { alert("BT Error: " + e.message); }
         };
-        function onDisconnected() { characteristic = null; const btn = document.getElementById('connectBtn'); btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; }
+        
+        function onDisconnected() { 
+            characteristic = null; 
+            const btn = document.getElementById('connectBtn'); 
+            btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
+            updatePowerBar(0); // หลอดไฟดับเมื่อหลุดการเชื่อมต่อ
+            document.getElementById('powerBarText').innerText = "OFF";
+        }
 
         function renderLayerPads(layer) {
             const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
@@ -483,7 +544,7 @@
         }
 
         function renderPads() {
-            loadPatternOrder(); // --- โหลดลำดับจากเครื่องก่อนวาด ---
+            loadPatternOrder(); 
             renderLayerPads('BG');
             renderLayerPads('FG');
         }
@@ -515,7 +576,7 @@
                             if(activeIdxFG === evt.oldIndex) activeIdxFG = evt.newIndex;
                             else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
                         }
-                        savePatternOrder(layer); // --- เซฟลำดับทันทีที่ลากเสร็จ ---
+                        savePatternOrder(layer); 
                         renderLayerPads(layer); 
                         setTimeout(() => { isDraggingPad = false; }, 50);
                     }
