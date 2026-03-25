@@ -14,6 +14,7 @@
             display: flex; flex-direction: column; touch-action: none; 
         }
 
+        /* --- แก้ไข: เพิ่ม touch-action: pan-y ให้เลื่อนนิ้วได้ และแสดง Scrollbar --- */
         .pad-container { margin: 0 auto; width: 100%; height: 260px; overflow-y: scroll; padding: 5px; touch-action: pan-y; }
         .pad-container::-webkit-scrollbar { display: block; width: 14px; }
         .pad-container::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
@@ -214,6 +215,7 @@
         let isFollowingPlayhead = false; let hasUnsavedChanges = false; 
         let activeColorIndex = -1; let isWritingBLE = false;
 
+        // --- แก้ไข: เพิ่มตัวแปรสำหรับระบบการลากไม่ให้ทำงานซ้ำซ้อน ---
         let sortableBG = null;
         let sortableFG = null;
         let isDraggingPad = false;
@@ -303,7 +305,7 @@
                 
                 let clickTimer = null;
                 btn.addEventListener('pointerdown', () => {
-                    if (isDraggingPad) return;
+                    if (isDraggingPad) return; // --- แก้ไข: ป้องกันการกดระหว่างลากเพื่อไม่ให้รวน ---
                     
                     const currentVisualIndex = patterns.indexOf(p);
                     if (clickTimer) {
@@ -319,48 +321,44 @@
             setupSortable(layer);
         }
 
-        // --- เพิ่มระบบความปลอดภัย (Try-Catch) ป้องกันสคริปต์ตาย ---
+        function renderPads() {
+            renderLayerPads('BG');
+            renderLayerPads('FG');
+        }
+
+        // --- แก้ไข: ป้องกันบั๊กการสร้างระบบลากซ้อนทับกัน (Destroy ก่อนสร้างใหม่) ---
         function setupSortable(layer) {
-            try {
-                if (typeof Sortable === 'undefined') {
-                    console.warn("ระบบลากปุ่ม (SortableJS) ยังโหลดไม่เสร็จ");
-                    return; 
-                }
-
-                const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
-                let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-                
-                const config = {
-                    animation: 150, delay: 250, delayOnTouchOnly: false, touchStartThreshold: 5,
-                    forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true,
-                    onStart: () => { 
-                        isDraggingPad = true; 
-                        if (window.navigator.vibrate) window.navigator.vibrate(30); 
-                    },
-                    onEnd: (evt) => {
-                        const item = patterns.splice(evt.oldIndex, 1)[0];
-                        patterns.splice(evt.newIndex, 0, item);
-                        if(layer === 'BG') {
-                            if(activeIdxBG === evt.oldIndex) activeIdxBG = evt.newIndex;
-                            else if(activeIdxBG === evt.newIndex) activeIdxBG = evt.oldIndex;
-                        } else {
-                            if(activeIdxFG === evt.oldIndex) activeIdxFG = evt.newIndex;
-                            else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
-                        }
-                        renderLayerPads(layer); 
-                        setTimeout(() => { isDraggingPad = false; }, 50);
+            const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            
+            const config = {
+                animation: 150, delay: 250, delayOnTouchOnly: false, touchStartThreshold: 5,
+                forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true,
+                onStart: () => { 
+                    isDraggingPad = true; 
+                    if (window.navigator.vibrate) window.navigator.vibrate(30); 
+                },
+                onEnd: (evt) => {
+                    const item = patterns.splice(evt.oldIndex, 1)[0];
+                    patterns.splice(evt.newIndex, 0, item);
+                    if(layer === 'BG') {
+                        if(activeIdxBG === evt.oldIndex) activeIdxBG = evt.newIndex;
+                        else if(activeIdxBG === evt.newIndex) activeIdxBG = evt.oldIndex;
+                    } else {
+                        if(activeIdxFG === evt.oldIndex) activeIdxFG = evt.newIndex;
+                        else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
                     }
-                };
-
-                if(layer === 'BG') {
-                    if (sortableBG) sortableBG.destroy();
-                    sortableBG = new Sortable(grid, config);
-                } else {
-                    if (sortableFG) sortableFG.destroy();
-                    sortableFG = new Sortable(grid, config);
+                    renderLayerPads(layer); 
+                    setTimeout(() => { isDraggingPad = false; }, 50);
                 }
-            } catch (err) {
-                console.error("Sortable error:", err);
+            };
+
+            if(layer === 'BG') {
+                if (sortableBG) sortableBG.destroy();
+                sortableBG = new Sortable(grid, config);
+            } else {
+                if (sortableFG) sortableFG.destroy();
+                sortableFG = new Sortable(grid, config);
             }
         }
 
@@ -837,14 +835,7 @@
         document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
-        // --- แก้ไข: สั่งให้รอจนกว่าหน้าเว็บจะโหลดเสร็จสมบูรณ์ ถึงค่อยวาดปุ่ม ---
-        window.onload = () => {
-            try {
-                renderPads();
-            } catch (err) {
-                alert("เกิดข้อผิดพลาดในการสร้างปุ่ม: " + err.message);
-            }
-        };
+        renderPads();
     </script>
 </body>
 </html>
