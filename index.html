@@ -14,7 +14,12 @@
             display: flex; flex-direction: column; touch-action: none; 
         }
 
-        .pad-container { margin: 0 auto; width: 100%; height: 260px; overflow-y: scroll; padding: 5px; }
+        /* --- แก้ไข: เพิ่ม touch-action: pan-y ให้เลื่อนนิ้วได้ และแสดง Scrollbar --- */
+        .pad-container { margin: 0 auto; width: 100%; height: 260px; overflow-y: scroll; padding: 5px; touch-action: pan-y; }
+        .pad-container::-webkit-scrollbar { display: block; width: 14px; }
+        .pad-container::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
+        .pad-container::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 3px solid #0a0a0a; }
+
         .grid-style { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 
         .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
@@ -195,12 +200,11 @@
 
     <script>
         let device, characteristic;
-        // แยกข้อมูลเป็น 2 ชุด 
         let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         
         let clips = []; 
-        let activeLayer = 'BG'; // เอาไว้จำว่ากำลังแก้ไข BG หรือ FG
+        let activeLayer = 'BG'; 
         let activeIdxBG = -1;
         let activeIdxFG = -1;
         
@@ -210,6 +214,11 @@
         let currentLoopLimit = 1.0; let pxPerSec = 100;
         let isFollowingPlayhead = false; let hasUnsavedChanges = false; 
         let activeColorIndex = -1; let isWritingBLE = false;
+
+        // --- แก้ไข: เพิ่มตัวแปรสำหรับระบบการลากไม่ให้ทำงานซ้ำซ้อน ---
+        let sortableBG = null;
+        let sortableFG = null;
+        let isDraggingPad = false;
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
@@ -296,6 +305,8 @@
                 
                 let clickTimer = null;
                 btn.addEventListener('pointerdown', () => {
+                    if (isDraggingPad) return; // --- แก้ไข: ป้องกันการกดระหว่างลากเพื่อไม่ให้รวน ---
+                    
                     const currentVisualIndex = patterns.indexOf(p);
                     if (clickTimer) {
                         clearTimeout(clickTimer); clickTimer = null;
@@ -315,13 +326,18 @@
             renderLayerPads('FG');
         }
 
+        // --- แก้ไข: ป้องกันบั๊กการสร้างระบบลากซ้อนทับกัน (Destroy ก่อนสร้างใหม่) ---
         function setupSortable(layer) {
             const grid = document.getElementById(layer === 'BG' ? 'padGridBG' : 'padGridFG');
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            new Sortable(grid, {
+            
+            const config = {
                 animation: 150, delay: 250, delayOnTouchOnly: false, touchStartThreshold: 5,
                 forceFallback: true, fallbackClass: "sortable-drag", fallbackOnBody: true,
-                onStart: () => { if (window.navigator.vibrate) window.navigator.vibrate(30); },
+                onStart: () => { 
+                    isDraggingPad = true; 
+                    if (window.navigator.vibrate) window.navigator.vibrate(30); 
+                },
                 onEnd: (evt) => {
                     const item = patterns.splice(evt.oldIndex, 1)[0];
                     patterns.splice(evt.newIndex, 0, item);
@@ -333,8 +349,17 @@
                         else if(activeIdxFG === evt.newIndex) activeIdxFG = evt.oldIndex;
                     }
                     renderLayerPads(layer); 
+                    setTimeout(() => { isDraggingPad = false; }, 50);
                 }
-            });
+            };
+
+            if(layer === 'BG') {
+                if (sortableBG) sortableBG.destroy();
+                sortableBG = new Sortable(grid, config);
+            } else {
+                if (sortableFG) sortableFG.destroy();
+                sortableFG = new Sortable(grid, config);
+            }
         }
 
         function updatePadsVisuals(layer) {
@@ -373,445 +398,3 @@
         async function stopBG() {
             activeIdxBG = -1; updatePadsVisuals('BG');
             if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); }catch(e){} }
-        }
-        async function stopFG() {
-            activeIdxFG = -1; updatePadsVisuals('FG');
-            if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:off")); }catch(e){} }
-        }
-
-        function markUnsaved() { hasUnsavedChanges = true; }
-
-        function openPopup(idx, layer) {
-            window.location.hash = 'edit'; 
-            activeLayer = layer; selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
-            
-            document.getElementById('modalTitle').innerText = (layer === 'BG') ? "EDIT BACKGROUND" : "EDIT FOREGROUND";
-            document.getElementById('modalTitle').className = (layer === 'BG') ? "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-green-500 pointer-events-none" : "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-blue-500 pointer-events-none";
-
-            document.getElementById('modal').classList.remove('hidden');
-            const vp = document.getElementById('timelineViewport');
-            const padding = vp.clientWidth / 2;
-            const content = document.getElementById('timelineContent');
-            content.style.marginLeft = padding + 'px';
-            content.style.borderRight = padding + 'px solid transparent';
-
-            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            let rawCode = patterns[idx].code || "";
-            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 4) {
-                        clips.push({ 
-                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
-                            target: content[1], color: content[2], fx: content[3].charAt(0), duration: parseInt(content[3].substring(1,3))/10, 
-                            loop: 1, mirror: m, track: i % 6 
-                        });
-                    }
-                });
-            }
-            initColors(); renderClips();
-            if(clips.length > 0) selectClip(clips[0].id);
-            if (!isPlaying) togglePlay(); 
-        }
-
-        function handleBack() {
-            if (hasUnsavedChanges) document.getElementById('unsavedModal').classList.remove('hidden');
-            else history.back();
-        }
-
-        function discardAndClose() {
-            hasUnsavedChanges = false;
-            if(window.location.hash === '#edit') history.back();
-            else closePopupDirectly();
-        }
-
-        function fitToScreen() {
-            const vp = document.getElementById('timelineViewport');
-            if(currentLoopLimit > 0) {
-                let newPx = vp.clientWidth / currentLoopLimit; 
-                newPx = Math.max(20, Math.min(300, newPx));
-                document.getElementById('zoomSlider').value = newPx; 
-                updateZoom(newPx);
-            }
-        }
-
-        function toggleFollow() {
-            isFollowingPlayhead = !isFollowingPlayhead;
-            const btn = document.getElementById('followBtn');
-            if(isFollowingPlayhead) {
-                btn.className = "bg-blue-500 text-white px-2 py-1 rounded text-[9px] font-bold shadow";
-                if(isPlaying) {
-                    const vp = document.getElementById('timelineViewport');
-                    vp.dataset.ignoreScroll = "true";
-                    vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
-                    setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 300);
-                }
-            } else { btn.className = "bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold"; }
-        }
-
-        function updateZoom(val) { 
-            pxPerSec = parseInt(val); 
-            document.getElementById('timelineContent').style.backgroundSize = `${pxPerSec}px 100%`; 
-            renderClips(); 
-            if (!isPlaying) {
-                const vp = document.getElementById('timelineViewport');
-                vp.dataset.ignoreScroll = "true";
-                vp.scrollLeft = playheadTime * pxPerSec;
-                setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 50);
-                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-            }
-        }
-
-        function applySpeedScale(val) {
-            let scaleRatio = parseFloat(val);
-            clips.forEach(c => { c.start = c.start * scaleRatio; c.duration = c.duration * scaleRatio; });
-            document.getElementById('speedSlider').value = 1.0;
-            markUnsaved(); renderClips(); updateCodeMonitor();
-        }
-
-        function renderClips() {
-            const area = document.getElementById('trackArea'); area.innerHTML = '';
-            clips.forEach(c => {
-                const div = document.createElement('div');
-                div.id = `clip-${c.id}`; div.className = `light-clip ${selectedClipId === c.id ? 'selected' : ''}`;
-                div.style.left = (c.start * pxPerSec) + 'px'; div.style.width = (c.duration * pxPerSec) + 'px'; 
-                div.style.top = (c.track * 20) + 'px';
-                div.innerText = fxNames[c.fx] || c.fx.toUpperCase();
-                
-                if (!c.target || c.target === '') { div.style.backgroundColor = '#555555'; div.style.color = '#aaaaaa'; } 
-                else if(c.color.includes('2')) {
-                    const parts = c.color.split('2');
-                    div.style.background = `linear-gradient(to right, ${colorMap[parts[0]] || '#333'}, ${colorMap[parts[1]] || '#333'})`;
-                } else { div.style.backgroundColor = colorMap[c.color] || '#555'; }
-                
-                area.appendChild(div);
-                
-                interact(div).draggable({
-                    listeners: {
-                        start(e) { c.tempY = c.track * 20; },
-                        move(e) {
-                            c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start);
-                            c.tempY += e.dy; c.track = Math.max(0, Math.min(5, Math.round(c.tempY / 20))); 
-                            e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.top = (c.track * 20) + 'px';
-                            if(!isPlaying) scrubLiveFrame();
-                        },
-                        end(e) { c.tempY = undefined; markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
-                    }
-                }).resizable({ 
-                    edges: { right: true, left: true }, 
-                    listeners: { 
-                        move(e) { 
-                            if(e.edges.left) { c.start += e.dx / pxPerSec; c.start = Math.max(0, c.start); }
-                            c.duration = e.rect.width / pxPerSec; c.duration = Math.max(0.1, c.duration); 
-                            e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.width = (c.duration * pxPerSec) + 'px'; 
-                            if(!isPlaying) scrubLiveFrame(); 
-                        },
-                        end(e) { markUnsaved(); updateLoopLine(); renderClips(); sendFullCodeToBT(); updateCodeMonitor(); }
-                    } 
-                }).on('tap', function(event) { selectClip(c.id); })
-                  .on('hold', function(event) {
-                    selectClip(c.id);
-                    let newClip = JSON.parse(JSON.stringify(c));
-                    newClip.id = Date.now(); newClip.start += 0.5; newClip.track = Math.min(5, newClip.track + 1); 
-                    clips.push(newClip); markUnsaved(); renderClips();
-                    if (window.navigator.vibrate) window.navigator.vibrate(50);
-                });
-            });
-            updateLoopLine(); updateCodeMonitor();
-        }
-
-        function addColorSlot() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2'); parts.push(parts[parts.length-1]); 
-                c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-        function delColorSlot() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                if(parts.length > 1) { 
-                    parts.pop(); c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
-                    markUnsaved(); updateSelectedClip();
-                }
-            }
-        }
-        function setActiveColor(k) {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                if (activeColorIndex >= 0 && activeColorIndex < parts.length) { parts[activeColorIndex] = k; } 
-                else { parts[parts.length - 1] = k; }
-                c.color = parts.join('2');
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-        function resetColorBuilder() { const c = clips.find(x => x.id === selectedClipId); if(c) { c.color = 'bl'; activeColorIndex = 0; markUnsaved(); updateSelectedClip(); } }
-
-        function renderColorBuilderSlots() {
-            const c = clips.find(x => x.id === selectedClipId);
-            const slots = document.getElementById('colorSlots'); slots.innerHTML = '';
-            if(!c) return;
-
-            let colors = c.color.split('2');
-            if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
-
-            colors.forEach((col, idx) => {
-                let box = document.createElement('div');
-                const isSelected = (idx === activeColorIndex);
-                box.className = `w-6 h-6 rounded border-2 shadow-lg flex-shrink-0 transition-transform cursor-pointer ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
-                box.style.backgroundColor = colorMap[col] || '#333';
-                box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
-                slots.appendChild(box);
-            });
-        }
-
-        function initColors() {
-            const p = document.getElementById('colorPalette'); p.innerHTML = '';
-            Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'w-6 h-6 rounded border border-gray-700 flex-shrink-0 cursor-pointer shadow active:scale-95'; d.style.backgroundColor = colorMap[k];
-                d.onclick = () => setActiveColor(k);
-                p.appendChild(d);
-            });
-        }
-
-        function toggleMirror() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                c.mirror = !c.mirror;
-                if(c.mirror) {
-                    let currentLEDs = c.target.match(/<(\d+)>/g) || [];
-                    currentLEDs.forEach(led => {
-                        let num = parseInt(led.replace(/<|>/g, ''));
-                        // กระจกสุดที่ 67 สำหรับแอปพลิเคชันให้สะท้อนอัตโนมัติก็ตั้งเป็น 68-num ก็ได้ (โค้ดบอร์ดจัดการให้แล้ว)
-                        let pair = 68 - num; 
-                        if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
-                    });
-                }
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-        function updateMirrorUI(isMirror) {
-            const btn = document.getElementById('cMirrorBtn');
-            if(isMirror) { btn.className = "w-4 h-4 rounded-full border-2 border-green-500 bg-green-500 shadow-[0_0_8px_#00e676]"; } 
-            else { btn.className = "w-4 h-4 rounded-full border-2 border-gray-600 bg-transparent"; }
-        }
-
-        function selectClip(id) {
-            selectedClipId = id; const c = clips.find(x => x.id === id);
-            document.getElementById('editorPanel').style.opacity = "1"; document.getElementById('editorPanel').style.pointerEvents = "auto";
-            document.getElementById('cBright').value = c.bright; document.getElementById('cFX').value = c.fx;
-            activeColorIndex = -1; updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
-            
-            document.querySelectorAll('.light-clip').forEach(el => {
-                if (el.id === `clip-${id}`) el.classList.add('selected'); else el.classList.remove('selected');
-            });
-            
-            if(!isPlaying) {
-                playheadTime = c.start;
-                const vp = document.getElementById('timelineViewport');
-                vp.dataset.ignoreScroll = "true";
-                vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
-                setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 500);
-                
-                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
-                scrubLiveFrame();
-            }
-        }
-
-        function updateSelectedClip() {
-            if(!selectedClipId) return; const c = clips.find(x => x.id === selectedClipId);
-            c.bright = document.getElementById('cBright').value; c.fx = document.getElementById('cFX').value;
-            markUnsaved(); updateMirrorUI(c.mirror);
-            renderClips(); renderColorBuilderSlots(); if(!isPlaying) scrubLiveFrame(); else sendFullCodeToBT();
-        }
-
-        function renderLEDGrid() {
-            const grid = document.getElementById('ledGrid'); grid.innerHTML = '';
-            const c = clips.find(x => x.id === selectedClipId);
-            if(!c) return;
-
-            const markers = [7,8,9,10, 18,19,20,21, 29,30,31,32, 37,38,39,40, 48,49,50,51, 59,60,61,62, 68,69,70];
-
-            for(let i=1; i<=300; i++) { 
-                const d = document.createElement('div'); d.innerText = i;
-                let isMarked = markers.includes(i) ? 'led-mark' : 'border-[#222]';
-                let isActive = c.target.includes('<'+i+'>') ? 'led-active' : 'bg-[#111] text-gray-400';
-                
-                d.className = `text-[8px] h-6 border rounded flex items-center justify-center cursor-pointer ${isMarked} ${isActive}`;
-                d.addEventListener('click', (e) => { 
-                    let targetStr = '<' + i + '>';
-                    let pair = c.mirror ? (68 - i) : null;
-                    let pairStr = pair ? '<' + pair + '>' : '';
-
-                    if(c.target.includes(targetStr)) { 
-                        c.target = c.target.replace(targetStr,''); 
-                        if(pairStr) c.target = c.target.replace(pairStr,'');
-                    } else { 
-                        c.target += targetStr; 
-                        if(pairStr && !c.target.includes(pairStr)) c.target += pairStr;
-                    } 
-                    markUnsaved(); renderLEDGrid(); updateSelectedClip(); 
-                });
-                grid.appendChild(d);
-            }
-        }
-
-        function generateCodeStr() {
-            let code = "";
-            clips.sort((a,b)=>a.start-b.start).forEach(c => {
-                let m = c.mirror ? 'm' : '';
-                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
-                code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00)`; 
-            });
-            return code;
-        }
-
-        async function saveAndSend() {
-            document.getElementById('unsavedModal').classList.add('hidden'); 
-            hasUnsavedChanges = false;
-            
-            let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
-            patterns[selectedIdx].code = generateCodeStr();
-            
-            let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
-            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`));
-            
-            if(window.location.hash === '#edit') history.back();
-            else closePopupDirectly();
-        }
-        
-        function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
-        function addClipAtPlayhead() { const id = Date.now(); clips.push({ id, start: playheadTime, duration: 1.0, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: clips.length % 6 }); markUnsaved(); renderClips(); selectClip(id); }
-        function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; markUnsaved(); renderClips(); } }
-        
-        document.getElementById('timelineViewport').addEventListener('scroll', function() {
-            if (!isPlaying && this.dataset.ignoreScroll !== "true") {
-                playheadTime = Math.max(0, this.scrollLeft / pxPerSec);
-                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
-                scrubLiveFrame();
-            }
-        });
-
-        function togglePlay() { 
-            const btn = document.getElementById('playBtn'); 
-            if (!isPlaying) { 
-                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-red-600', 'bg-blue-600'); 
-                sendFullCodeToBT(); 
-                startAnimateTime = performance.now() - (playheadTime * 1000); 
-                playInterval = requestAnimationFrame(animatePlayhead); 
-            } else { stopPlayback(); } 
-        }
-        
-        function stopPlayback() { 
-            isPlaying = false; 
-            const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
-            cancelAnimationFrame(playInterval); 
-            
-            const vp = document.getElementById('timelineViewport');
-            vp.dataset.ignoreScroll = "true";
-            vp.scrollTo({ left: playheadTime * pxPerSec, behavior: 'smooth' });
-            setTimeout(() => { vp.dataset.ignoreScroll = "false"; }, 50);
-
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
-            
-            scrubLiveFrame(); 
-        }
-        
-        function animatePlayhead(currentTime) { 
-            if (!isPlaying) return; 
-            let elapsed = (currentTime - startAnimateTime) / 1000; 
-            if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; sendFullCodeToBT(); } 
-            playheadTime = elapsed; 
-            
-            document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px'; 
-            document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`; 
-            
-            if(isFollowingPlayhead) {
-                const vp = document.getElementById('timelineViewport');
-                vp.dataset.ignoreScroll = "true";
-                vp.scrollLeft = playheadTime * pxPerSec;
-            }
-            playInterval = requestAnimationFrame(animatePlayhead); 
-        }
-
-        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "CODE..."; }
-        
-        async function sendFullCodeToBT() { 
-            if(!characteristic) return; 
-            let codeStr = generateCodeStr();
-            let cmd = (activeLayer === 'BG') ? "5" + codeStr : "FG:5" + codeStr;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); } catch(e){} 
-        }
-        
-        let lastSentOff = false;
-
-        async function scrubLiveFrame() { 
-            if(!characteristic || isPlaying || isWritingBLE) return; 
-            
-            let activeClips = clips.filter(c => playheadTime >= c.start && playheadTime <= c.start + c.duration);
-            if (activeClips.length === 0) {
-                if (!lastSentOff) {
-                    try { 
-                        isWritingBLE = true;
-                        let cmd = (activeLayer === 'BG') ? "off" : "FG:off";
-                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); 
-                        isWritingBLE = false; lastSentOff = true;
-                    } catch(e){ isWritingBLE = false; }
-                }
-                return;
-            }
-            
-            lastSentOff = false;
-            let code = (activeLayer === 'BG') ? "5" : "FG:5";
-
-            activeClips.forEach(c => {
-                let p = (playheadTime - c.start) / c.duration;
-                if(p < 0) p = 0; if(p > 1) p = 1;
-                
-                let f = 1.0;
-                if (c.fx === 'u') f = p;
-                else if (c.fx === 'f') f = 1.0 - p;
-                else if (c.fx === 'w') f = 0.3 + (0.7 * Math.sin(Math.PI * p));
-                else if (c.fx === 'p') f = Math.pow(Math.sin(Math.PI * p), 4);
-                else if (c.fx === 'd') f = Math.pow(1.0 - p, 4);
-                else if (c.fx === 'z') f = 1.0 - ((p * 4.0) % 1.0);
-                
-                let br = Math.max(0, Math.min(99, Math.round(c.bright * f)));
-                let bStr = br.toString().padStart(2, '0');
-                let m = c.mirror ? 'm' : '';
-                
-                let colorCodes = c.color.split('2');
-                let step = 1.0 / (colorCodes.length > 1 ? colorCodes.length - 1 : 1);
-                let idx = Math.floor(p / step);
-                if (idx >= colorCodes.length) idx = colorCodes.length - 1;
-                let showColor = colorCodes[idx] || colorCodes[0];
-                
-                code += `${m}(00${bStr},${c.target || 'a'},${showColor},o9900)`; 
-            });
-            try { 
-                isWritingBLE = true;
-                await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); 
-                isWritingBLE = false;
-            } catch(e){ isWritingBLE = false; } 
-        }
-
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {}
-        }
-        document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
-        document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
-
-        renderPads();
-    </script>
-</body>
-</html>
