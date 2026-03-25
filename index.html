@@ -153,8 +153,8 @@
             
             <div class="flex items-center space-x-3">
                 <div class="flex flex-col items-center">
-                    <span class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
-                    <div class="power-bar-container" onclick="togglePowerMode()" style="cursor: pointer;">
+                    <span id="powerLabel" class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
+                    <div class="power-bar-container">
                         <div id="powerBarFill" class="power-bar-fill"></div>
                         <div id="powerBarText" class="power-text">OFF</div>
                     </div>
@@ -317,7 +317,6 @@
         let sortableFG = null;
         let isDraggingPad = false;
 
-        let showRawPower = false;
         let currentPowerPercent = 0;
         let currentRawPower = 0;
         let activeColorIndex = -1; let isWritingBLE = false;
@@ -426,24 +425,20 @@
             }
         }
 
-        function togglePowerMode() {
-            showRawPower = !showRawPower;
-            updatePowerBar(currentPowerPercent, currentRawPower);
-        }
-
-        // --- แก้ไข: ถ้าสลับแล้วบอร์ดยังไม่ส่งค่า Raw มา ให้ขึ้น WAIT.. แทน ---
+        // --- แก้ไข: ให้โชว์คำว่า RAW: พร้อมตัวเลข ด้านบนหลอดตลอดเวลา (ถ้ามีค่าส่งมา) ---
         function updatePowerBar(percent, raw = 0) {
             currentPowerPercent = percent;
             currentRawPower = raw;
             const fill = document.getElementById('powerBarFill');
             const text = document.getElementById('powerBarText');
+            const label = document.getElementById('powerLabel');
+            
             if(fill && text) {
                 fill.style.width = percent + '%';
+                text.innerText = percent + '%';
                 
-                if (showRawPower) {
-                    text.innerText = raw > 0 ? raw : 'WAIT..';
-                } else {
-                    text.innerText = percent + '%';
+                if (label) {
+                    label.innerText = raw > 0 ? 'RAW: ' + raw : 'POWER';
                 }
 
                 if(percent >= 80) fill.style.backgroundColor = '#22c55e'; 
@@ -518,6 +513,7 @@
             btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
             updatePowerBar(0); 
             document.getElementById('powerBarText').innerText = "OFF";
+            document.getElementById('powerLabel').innerText = "POWER"; // กลับเป็นคำว่า POWER เมื่อหลุด
         }
 
         function renderLayerPads(layer) {
