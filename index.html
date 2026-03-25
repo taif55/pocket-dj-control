@@ -154,9 +154,9 @@
             <div class="flex items-center space-x-3">
                 <div class="flex flex-col items-center">
                     <span class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
-                    <div class="power-bar-container" ondblclick="togglePowerMode()">
+                    <div class="power-bar-container" onclick="togglePowerMode()" style="cursor: pointer;">
                         <div id="powerBarFill" class="power-bar-fill"></div>
-                        <div id="powerBarText" class="power-text" style="cursor: pointer;">OFF</div>
+                        <div id="powerBarText" class="power-text">OFF</div>
                     </div>
                 </div>
                 <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
@@ -312,16 +312,15 @@
         let playInterval, startAnimateTime;
         let currentLoopLimit = 1.0; let pxPerSec = 100;
         let isFollowingPlayhead = false; let hasUnsavedChanges = false; 
-        let activeColorIndex = -1; let isWritingBLE = false;
-
+        
         let sortableBG = null;
         let sortableFG = null;
         let isDraggingPad = false;
 
-        // --- เพิ่มตัวแปรสำหรับโหมดสลับดูค่าดิบ ---
         let showRawPower = false;
         let currentPowerPercent = 0;
         let currentRawPower = 0;
+        let activeColorIndex = -1; let isWritingBLE = false;
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
@@ -427,12 +426,12 @@
             }
         }
 
-        // --- เพิ่มฟังก์ชันสลับโหมดและแสดงผลเมื่อดับเบิลคลิก ---
         function togglePowerMode() {
             showRawPower = !showRawPower;
             updatePowerBar(currentPowerPercent, currentRawPower);
         }
 
+        // --- แก้ไข: ถ้าสลับแล้วบอร์ดยังไม่ส่งค่า Raw มา ให้ขึ้น WAIT.. แทน ---
         function updatePowerBar(percent, raw = 0) {
             currentPowerPercent = percent;
             currentRawPower = raw;
@@ -441,9 +440,8 @@
             if(fill && text) {
                 fill.style.width = percent + '%';
                 
-                // ตรวจสอบว่าจะแสดงค่าเป็น % หรือค่าดิบ
-                if (showRawPower && raw > 0) {
-                    text.innerText = raw;
+                if (showRawPower) {
+                    text.innerText = raw > 0 ? raw : 'WAIT..';
                 } else {
                     text.innerText = percent + '%';
                 }
@@ -482,7 +480,6 @@
                 characteristic.addEventListener('characteristicvaluechanged', (e) => {
                     let val = new TextDecoder().decode(e.target.value);
                     
-                    // --- แก้ไข: รับค่า Raw จากบอร์ด ---
                     if (val.startsWith("PWR:")) {
                         let parts = val.substring(4).split(':');
                         let percent = parseInt(parts[0]);
