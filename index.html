@@ -333,8 +333,8 @@
         let globalBPM = 128;
         let baseBPM = 128; 
         
-        let editorBPM = 128; // NEW: ตัวแปรคุมเส้น Grid ในหน้า Edit อิสระ
-        let editorTapTimes = []; // NEW: ประวัติการเคาะหน้า Edit
+        let editorBPM = 128; 
+        let editorTapTimes = []; 
 
         let tapTimes = [];
         let audioCtx = null; let micStream = null; let analyzer = null; 
@@ -441,7 +441,6 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
-        // --- NEW: TAP TEMPO สำหรับหน้า Edit อิสระ ---
         function editorTapTempo() {
             const now = Date.now();
             editorTapTimes.push(now);
@@ -453,10 +452,9 @@
                 let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
-                    updateGridBackground(); // ตีเส้น Grid ใหม่ทันที
+                    updateGridBackground(); 
                 }
             }
-            // เอฟเฟกต์ปุ่มบุ๋มเวลากด
             const btn = document.getElementById('editorTapBtn');
             btn.style.transform = 'scale(0.9)';
             btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
@@ -569,7 +567,7 @@
         }
 
         function updateGridBackground() {
-            let fixedBeatTime = 60 / editorBPM; // เปลี่ยนมาใช้ตัวแปรเฉพาะของหน้า Edit
+            let fixedBeatTime = 60 / editorBPM; 
             let beatPx = fixedBeatTime * pxPerSec;
             let secPx = 1.0 * pxPerSec; 
             
@@ -972,7 +970,7 @@
             
             document.getElementById('modal').classList.remove('hidden');
 
-            editorBPM = 128; // ล้างค่า BPM ให้กลับมาที่ 128 เสมอตอนเปิด
+            editorBPM = 128; 
             editorTapTimes = [];
 
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
@@ -1043,9 +1041,32 @@
             }
         }
 
+        // --- NEW: SMART LOOP QUANTIZE (Speed Slider) ---
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
-            clips.forEach(c => { c.start = c.start * scaleRatio; c.duration = c.duration * scaleRatio; });
+            
+            // 1. หาจุดสิ้นสุดของ Loop เดิม
+            let maxT = 0; 
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let rawTarget = maxT * scaleRatio;
+                let beatTime = 60 / editorBPM; // ใช้เส้นจังหวะของ Editor
+                
+                // 2. หาว่ามันใกล้กับเส้น Beat ไหนมากที่สุด (Round to nearest grid line)
+                let nearestBeat = Math.round(rawTarget / beatTime) * beatTime;
+                if (nearestBeat <= 0) nearestBeat = beatTime; // กันไม่ให้ความยาวเป็น 0
+                
+                // 3. คำนวณตัวคูณที่เป๊ะจริงๆ (ที่จะทำให้เส้นเขียวไปหยุดที่เส้นแดงพอดี)
+                let actualRatio = nearestBeat / maxT;
+                
+                clips.forEach(c => { 
+                    c.start = c.start * actualRatio; 
+                    c.duration = c.duration * actualRatio; 
+                });
+            }
+            
+            // เด้งสไลเดอร์กลับไปตรงกลาง
             document.getElementById('speedSlider').value = 1.0;
             markUnsaved(); renderClips(); updateCodeMonitor();
         }
@@ -1067,7 +1088,7 @@
                 
                 area.appendChild(div);
                 
-                // --- NEW: MAGNETIC SMART SNAP LOGIC ---
+                // --- SMART MAGNETIC SNAP FOR DRAGGING ---
                 interact(div).draggable({
                     listeners: {
                         start(e) { c.tempY = c.track * 20; c.tempStart = c.start; },
@@ -1075,12 +1096,12 @@
                             c.tempStart += e.dx / pxPerSec;
                             let beatTime = 60 / editorBPM; 
                             let closestBeat = Math.round(c.tempStart / beatTime) * beatTime;
-                            let threshold = 15 / pxPerSec; // รัศมีแม่เหล็กดูด 15 pixels
+                            let threshold = 15 / pxPerSec; // รัศมีแม่เหล็ก 15px
                             
                             if (Math.abs(c.tempStart - closestBeat) <= threshold) {
-                                c.start = closestBeat;
+                                c.start = closestBeat; // ถ้าใกล้เส้น ให้ดูดเข้าหา
                             } else {
-                                c.start = c.tempStart;
+                                c.start = c.tempStart; // ถ้าห่างเส้น ให้อิสระ
                             }
                             c.start = Math.max(0, c.start);
                             
