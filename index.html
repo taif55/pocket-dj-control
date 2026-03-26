@@ -271,7 +271,10 @@
                 </div>
             </div>
             
-            <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-lg flex-none transition duration-75">TAP</button>
+            <div class="flex flex-col items-center justify-center w-[50px] flex-none">
+                <span id="editorBpmDisplay" class="text-[10px] text-orange-400 font-black leading-none mb-1 px-2 py-0.5 rounded cursor-pointer active:bg-gray-700 transition">128</span>
+                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white w-full py-1.5 rounded-lg text-[10px] font-black shadow-lg transition duration-75 active:scale-95">TAP</button>
+            </div>
         </div>
         
         <div id="editorPanel" class="flex-1 flex flex-col p-2 space-y-2 opacity-30 pointer-events-none overflow-hidden">
@@ -441,6 +444,30 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
+        // --- NEW: ฟังก์ชันดูดเส้นเขียวเข้าหาเส้นแดง ---
+        function snapLoopToGrid() {
+            let maxT = 0;
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let beatTime = 60 / editorBPM;
+                let nearestBeat = Math.round(maxT / beatTime) * beatTime;
+                if (nearestBeat <= 0) nearestBeat = beatTime; 
+                
+                let actualRatio = nearestBeat / maxT;
+                
+                if (actualRatio !== 1.0) {
+                    clips.forEach(c => { 
+                        c.start = c.start * actualRatio; 
+                        c.duration = c.duration * actualRatio; 
+                    });
+                    markUnsaved(); 
+                    renderClips(); 
+                    updateCodeMonitor();
+                }
+            }
+        }
+
         function editorTapTempo() {
             const now = Date.now();
             editorTapTimes.push(now);
@@ -452,7 +479,9 @@
                 let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
+                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     updateGridBackground(); 
+                    snapLoopToGrid(); // สั่งให้เส้นเขียววิ่งหาเส้นแดงทันที
                 }
             }
             const btn = document.getElementById('editorTapBtn');
@@ -566,14 +595,15 @@
             }
         }
 
+        // --- UPDATE: ขีดเส้นให้ชัดเจนขึ้น ---
         function updateGridBackground() {
             let fixedBeatTime = 60 / editorBPM; 
             let beatPx = fixedBeatTime * pxPerSec;
             let secPx = 1.0 * pxPerSec; 
             
             document.getElementById('timelineContent').style.backgroundImage = 
-                `linear-gradient(to right, rgba(255,165,0,0.4) 1px, transparent 1px), 
-                 linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px)`;
+                `linear-gradient(to right, rgba(255, 61, 0, 0.7) 2px, transparent 2px), 
+                 linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
             document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
         }
 
@@ -971,6 +1001,7 @@
             document.getElementById('modal').classList.remove('hidden');
 
             editorBPM = 128; 
+            document.getElementById('editorBpmDisplay').innerText = editorBPM;
             editorTapTimes = [];
 
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
@@ -1041,23 +1072,19 @@
             }
         }
 
-        // --- NEW: SMART LOOP QUANTIZE (Speed Slider) ---
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
             
-            // 1. หาจุดสิ้นสุดของ Loop เดิม
             let maxT = 0; 
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
             
             if (maxT > 0) {
                 let rawTarget = maxT * scaleRatio;
-                let beatTime = 60 / editorBPM; // ใช้เส้นจังหวะของ Editor
+                let beatTime = 60 / editorBPM; 
                 
-                // 2. หาว่ามันใกล้กับเส้น Beat ไหนมากที่สุด (Round to nearest grid line)
                 let nearestBeat = Math.round(rawTarget / beatTime) * beatTime;
-                if (nearestBeat <= 0) nearestBeat = beatTime; // กันไม่ให้ความยาวเป็น 0
+                if (nearestBeat <= 0) nearestBeat = beatTime; 
                 
-                // 3. คำนวณตัวคูณที่เป๊ะจริงๆ (ที่จะทำให้เส้นเขียวไปหยุดที่เส้นแดงพอดี)
                 let actualRatio = nearestBeat / maxT;
                 
                 clips.forEach(c => { 
@@ -1066,7 +1093,6 @@
                 });
             }
             
-            // เด้งสไลเดอร์กลับไปตรงกลาง
             document.getElementById('speedSlider').value = 1.0;
             markUnsaved(); renderClips(); updateCodeMonitor();
         }
@@ -1088,7 +1114,6 @@
                 
                 area.appendChild(div);
                 
-                // --- SMART MAGNETIC SNAP FOR DRAGGING ---
                 interact(div).draggable({
                     listeners: {
                         start(e) { c.tempY = c.track * 20; c.tempStart = c.start; },
@@ -1096,12 +1121,12 @@
                             c.tempStart += e.dx / pxPerSec;
                             let beatTime = 60 / editorBPM; 
                             let closestBeat = Math.round(c.tempStart / beatTime) * beatTime;
-                            let threshold = 15 / pxPerSec; // รัศมีแม่เหล็ก 15px
+                            let threshold = 15 / pxPerSec; 
                             
                             if (Math.abs(c.tempStart - closestBeat) <= threshold) {
-                                c.start = closestBeat; // ถ้าใกล้เส้น ให้ดูดเข้าหา
+                                c.start = closestBeat; 
                             } else {
-                                c.start = c.tempStart; // ถ้าห่างเส้น ให้อิสระ
+                                c.start = c.tempStart; 
                             }
                             c.start = Math.max(0, c.start);
                             
@@ -1443,6 +1468,23 @@
             try {
                 renderPads();
                 updateGridBackground(); 
+                
+                // --- NEW: เพิ่ม Event กดค้างที่ตัวเลข Tempo เพื่อกรอกเอง ---
+                interact('#editorBpmDisplay').on('hold', function (event) {
+                    let input = prompt("ตั้งค่า Tempo (BPM) ใหม่:", editorBPM);
+                    if (input !== null) {
+                        let bpm = parseInt(input);
+                        if (!isNaN(bpm) && bpm >= 30 && bpm <= 300) {
+                            editorBPM = bpm;
+                            document.getElementById('editorBpmDisplay').innerText = editorBPM;
+                            updateGridBackground();
+                            snapLoopToGrid(); // สั่งให้เส้นเขียววิ่งหาเส้นแดงทันที
+                        } else {
+                            alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
+                        }
+                    }
+                });
+
             } catch (err) {
                 alert("เกิดข้อผิดพลาด: " + err.message + "\n\n(รบกวนแคปจอนี้ให้พี่เจดูหน่อยนะครับ)");
             }
