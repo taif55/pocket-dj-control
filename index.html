@@ -272,7 +272,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95">TAP</button>
+                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -287,6 +287,7 @@
                 </div>
                 
                 <div id="colorSlots" class="flex items-center space-x-1 flex-1 overflow-x-auto color-scroll pb-1 min-w-0"></div>
+                
                 <div class="flex items-center space-x-1 flex-shrink-0 w-[55px] bg-black/50 p-1 rounded border border-gray-700 ml-1">
                     <span class="text-[6px] text-gray-400 font-bold">SCL</span>
                     <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500" onchange="applySpeedScale(this.value)">
@@ -345,6 +346,7 @@
         
         let editorBPM = 128; 
         let editorTapTimes = []; 
+        let editorTapTimeout = null; // ตัวแปรสำหรับหน่วงเวลา TAP หน้า Edit
 
         let tapTimes = [];
         let audioCtx = null; let micStream = null; let analyzer = null; 
@@ -478,6 +480,7 @@
             if(isPlaying) {
                 playheadTime = 0;
                 startAnimateTime = performance.now();
+                sendFullCodeToBT(); 
             } else {
                 playheadTime = 0;
                 document.getElementById('playhead').style.left = '0px';
@@ -499,10 +502,15 @@
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    updateGridBackground(); 
-                    snapLoopToGrid(); 
-                    fitToScreen(); 
-                    restartPlayhead(); // เริ่มเล่นใหม่ที่ 0.0s 
+                    
+                    // --- ระบบหน่วงเวลา รอจนเคาะเสร็จ (1.2 วิ) ถึงจะเริ่มทำงานหนักๆ ---
+                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
+                    editorTapTimeout = setTimeout(() => {
+                        updateGridBackground(); 
+                        snapLoopToGrid(); 
+                        fitToScreen(); 
+                        restartPlayhead(); 
+                    }, 1200); 
                 }
             }
             const btn = document.getElementById('editorTapBtn');
@@ -527,7 +535,7 @@
                 
                 markUnsaved(); renderClips(); updateCodeMonitor();
                 fitToScreen(); 
-                restartPlayhead(); // เริ่มเล่นใหม่ที่ 0.0s
+                restartPlayhead(); 
             }
         }
 
@@ -1278,7 +1286,6 @@
             });
         }
 
-        // --- NEW: อัปเกรดระบบ MIRROR (ลบหลอดฝั่งตรงข้ามทิ้งเมื่อกดปิด) ---
         function toggleMirror() {
             const c = clips.find(x => x.id === selectedClipId);
             if(c) {
@@ -1287,14 +1294,12 @@
                 let currentLEDs = c.target.match(/<(\d+)>/g) || [];
                 
                 if(c.mirror) {
-                    // เปิดกระจก: เพิ่มหลอดฝั่งตรงข้าม
                     currentLEDs.forEach(led => {
                         let num = parseInt(led.replace(/<|>/g, ''));
                         let pair = 68 - num; 
                         if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
                     });
                 } else {
-                    // ปิดกระจก: ลบหลอดฝั่งตรงข้าม (ฝั่งซ้าย 34-67) ทิ้งทั้งหมด เหลือแค่ฝั่งขวา (1-33) ที่คลิกเลือกไว้
                     c.target = "";
                     currentLEDs.forEach(led => {
                         let num = parseInt(led.replace(/<|>/g, ''));
