@@ -291,7 +291,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onclick="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -367,6 +367,7 @@
         let editorTapTimes = []; 
         let editorTapTimeout = null; 
 
+        // --- NEW: ตัวแปรคุม Live BG อิสระแบบล่องหน (ฮาร์ดแวร์สเกลลิ่ง) ---
         let bgLiveBPM = 128;
         let bgLiveTapTimes = [];
         let bgLiveTapTimeout = null;
@@ -478,6 +479,7 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
+        // --- NEW: ดึงค่าเวลาสูงสุดแบบไม่แตะโค้ดหลัก ---
         function getBgMaxT() {
             if (activeIdxBG === -1) return 0;
             let rawCode = bgPatterns[activeIdxBG].code;
@@ -497,12 +499,14 @@
             return maxT;
         }
 
+        // --- NEW: รีสตาร์ท ESP32 ทันทีด้วยความเร็วที่คำนวณไว้ ---
         async function triggerLiveBGRectart() {
             if (!characteristic || activeIdxBG === -1) return;
             let rawCode = bgPatterns[activeIdxBG].code;
             if (rawCode) {
                 try {
                     await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + liveBgSpeedMultiplier.toFixed(2)));
+                    // เตะปลั๊กให้เริ่มวินาทีที่ 0.0 ใหม่ทันที
                     setTimeout(async () => {
                         await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + rawCode));
                     }, 40);
@@ -589,6 +593,7 @@
                 setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
             }
         }
+        // -----------------------------------------------------------
 
         function snapLoopToGrid() {
             let maxT = 0;
@@ -626,7 +631,8 @@
             }
         }
 
-        function editorTapTempo() {
+        function editorTapTempo(e) {
+            if(e) e.preventDefault();
             const now = Date.now();
             editorTapTimes.push(now);
             if (editorTapTimes.length > 5) editorTapTimes.shift();
@@ -860,6 +866,7 @@
 
         async function updateSpeed(val, layer) {
             if(layer === 'BG') {
+                document.getElementById('bgSpeedText').innerText = parseFloat(val).toFixed(1);
                 if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + parseFloat(val).toFixed(1))); }catch(e){} }
             } else {
                 document.getElementById('fgSpeedText').innerText = parseFloat(val).toFixed(1);
@@ -1140,12 +1147,12 @@
         }
 
         async function playFX(idx, btnElement, layer) {
-            stopPlayback(); // <--- NEW: สั่งหยุด engine ของหน้า Edit ทันทีที่จิ้ม Pad หน้าแรก
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            
             if (layer === 'BG') {
                 activeIdxBG = idx;
                 localStorage.setItem('lastActiveBG', idx); 
+                
+                // รีเซ็ตความเร็วกลับ 1.0 ทุกครั้งที่เปลี่ยนลายไฟใหม่
                 liveBgSpeedMultiplier = 1.0; 
                 document.getElementById('bgSpeedSlider').value = 1.0;
                 
@@ -1553,7 +1560,6 @@
         }
 
         async function saveAndSend() {
-            stopPlayback(); // <--- NEW: หยุด engine ก่อนปิดหน้าต่าง
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             
