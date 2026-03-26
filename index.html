@@ -185,7 +185,6 @@
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
             
             <div class="flex items-center justify-between mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none mt-2 overflow-x-hidden">
-                
                 <div class="flex items-center space-x-2">
                     <button onclick="resetSpeed('BG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600 border border-gray-600">RST</button>
                     
@@ -204,7 +203,7 @@
 
                 <div class="flex items-center space-x-1">
                     <span id="bgBpmDisplay" class="text-[12px] text-orange-400 font-black px-1.5 py-1 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                    <button id="bgTapBtn" onpointerdown="bgTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white w-14 h-14 rounded-xl text-[12px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition flex items-center justify-center">TAP</button>
+                    <button id="bgTapBtn" onclick="bgTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white w-14 h-14 rounded-xl text-[12px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition flex items-center justify-center">TAP</button>
                 </div>
             </div>
 
@@ -292,7 +291,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -366,6 +365,7 @@
         
         let editorBPM = 128; 
         let editorTapTimes = []; 
+        let editorTapTimeout = null; 
 
         let bgLiveBPM = 128;
         let bgLiveTapTimes = [];
@@ -479,9 +479,8 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
-        // --- NEW: เครื่องยนต์สำหรับ Live BG (คำนวณและส่งโค้ดใหม่เหมือนหน้า Edit) ---
         async function modifyLivePatternBG(action, param) {
-            if (activeIdxBG === -1) return; // ถ้าไม่ได้เปิดไฟอยู่ ให้ข้ามไป
+            if (activeIdxBG === -1) return; 
             let rawCode = bgPatterns[activeIdxBG].code;
             if (!rawCode) return;
 
@@ -555,7 +554,6 @@
             if (characteristic) {
                 try {
                     await characteristic.writeValue(new TextEncoder().encode(`SB${activeIdxBG}:${newCode}`));
-                    // สั่งให้ ESP32 เริ่มเล่น 0.0s ทันที!
                     await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + newCode));
                 } catch(e) {}
             }
@@ -573,8 +571,7 @@
             }
         }
 
-        function bgTapTempo(e) {
-            if(e) e.preventDefault();
+        function bgTapTempo() {
             const now = Date.now();
             bgLiveTapTimes.push(now);
             if (bgLiveTapTimes.length > 5) bgLiveTapTimes.shift();
@@ -594,9 +591,97 @@
                 }
             }
             const btn = document.getElementById('bgTapBtn');
-            btn.style.transform = 'scale(0.95)';
-            btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
-            setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+            if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
+                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+            }
+        }
+
+        function snapLoopToGrid() {
+            let maxT = 0;
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let beatTime = 60 / editorBPM;
+                let nearestBeat = Math.round(maxT / beatTime) * beatTime;
+                if (nearestBeat <= 0) nearestBeat = beatTime; 
+                
+                let actualRatio = nearestBeat / maxT;
+                
+                if (actualRatio !== 1.0) {
+                    clips.forEach(c => { 
+                        c.start = c.start * actualRatio; 
+                        c.duration = c.duration * actualRatio; 
+                    });
+                    markUnsaved(); 
+                    renderClips(); 
+                    updateCodeMonitor();
+                }
+            }
+        }
+
+        function restartPlayhead() {
+            if(isPlaying) {
+                playheadTime = 0;
+                startAnimateTime = performance.now();
+                sendFullCodeToBT(); 
+            } else {
+                playheadTime = 0;
+                document.getElementById('playhead').style.left = '0px';
+                const vp = document.getElementById('timelineViewport');
+                vp.scrollLeft = 0;
+            }
+        }
+
+        function editorTapTempo() {
+            const now = Date.now();
+            editorTapTimes.push(now);
+            if (editorTapTimes.length > 5) editorTapTimes.shift();
+            if (editorTapTimes.length > 1) {
+                let diffs = [];
+                for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
+                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
+                let bpm = Math.round(60000 / avgDiff);
+                if (bpm > 30 && bpm < 300) {
+                    editorBPM = bpm;
+                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
+                    
+                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
+                    editorTapTimeout = setTimeout(() => {
+                        updateGridBackground(); 
+                        snapLoopToGrid(); 
+                        fitToScreen(); 
+                        restartPlayhead(); 
+                    }, 1200); 
+                }
+            }
+            const btn = document.getElementById('editorTapBtn');
+            if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
+                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+            }
+        }
+
+        function setRoomScale(beats) {
+            let maxT = 0; 
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let beatTime = 60 / editorBPM;
+                let targetTime = beatTime * beats; 
+                let scaleRatio = targetTime / maxT;
+                
+                clips.forEach(c => { 
+                    c.start = c.start * scaleRatio; 
+                    c.duration = c.duration * scaleRatio; 
+                });
+                
+                markUnsaved(); renderClips(); updateCodeMonitor();
+                fitToScreen(); 
+                restartPlayhead(); 
+            }
         }
 
         async function initAudio() {
@@ -1156,24 +1241,6 @@
                     }
                 }
             });
-
-            // ติดตั้ง Hold-to-Edit BPM เฉพาะในหน้า Edit
-            interact('#editorBpmDisplay').on('hold', function (event) {
-                let input = prompt("ตั้งค่า Tempo (BPM) ใหม่:", editorBPM);
-                if (input !== null) {
-                    let bpm = parseInt(input);
-                    if (!isNaN(bpm) && bpm >= 30 && bpm <= 300) {
-                        editorBPM = bpm;
-                        document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                        updateGridBackground();
-                        snapLoopToGrid(); 
-                        fitToScreen(); 
-                        restartPlayhead();
-                    } else {
-                        alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
-                    }
-                }
-            });
         }
 
         function handleBack() {
@@ -1669,9 +1736,8 @@
                 renderPads();
                 updateGridBackground(); 
                 
-                // --- ติดตั้งการ Hold ให้ตัวเลข BPM ทั้ง 2 จุด ---
                 interact('#editorBpmDisplay').on('hold', function (event) {
-                    let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
+                    let input = prompt("ตั้งค่า Tempo (BPM) ใหม่:", editorBPM);
                     if (input !== null) {
                         let bpm = parseInt(input);
                         if (!isNaN(bpm) && bpm >= 30 && bpm <= 300) {
@@ -1681,20 +1747,6 @@
                             snapLoopToGrid(); 
                             fitToScreen(); 
                             restartPlayhead();
-                        } else {
-                            alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
-                        }
-                    }
-                });
-                
-                interact('#bgBpmDisplay').on('hold', function (event) {
-                    let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Live BG:", bgLiveBPM);
-                    if (input !== null) {
-                        let bpm = parseInt(input);
-                        if (!isNaN(bpm) && bpm >= 30 && bpm <= 300) {
-                            bgLiveBPM = bpm;
-                            document.getElementById('bgBpmDisplay').innerText = bgLiveBPM;
-                            modifyLivePatternBG('snap', null);
                         } else {
                             alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
                         }
