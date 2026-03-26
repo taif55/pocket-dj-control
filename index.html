@@ -291,7 +291,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onclick="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -367,7 +367,6 @@
         let editorTapTimes = []; 
         let editorTapTimeout = null; 
 
-        // --- NEW: ตัวแปรคุม Live BG อิสระแบบล่องหน ---
         let bgLiveBPM = 128;
         let bgLiveTapTimes = [];
         let bgLiveTapTimeout = null;
@@ -479,7 +478,6 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
-        // --- NEW: เครื่องยนต์ประมวลผลสำหรับ Live BG ล้วนๆ ---
         function getBgMaxT() {
             if (activeIdxBG === -1) return 0;
             let rawCode = bgPatterns[activeIdxBG].code;
@@ -505,7 +503,6 @@
             if (rawCode) {
                 try {
                     await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + liveBgSpeedMultiplier.toFixed(2)));
-                    // เตะปลั๊กให้เริ่มวินาทีที่ 0.0 ใหม่ทันที
                     setTimeout(async () => {
                         await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + rawCode));
                     }, 40);
@@ -592,7 +589,6 @@
                 setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
             }
         }
-        // -----------------------------------------------------------
 
         function snapLoopToGrid() {
             let maxT = 0;
@@ -630,8 +626,7 @@
             }
         }
 
-        function editorTapTempo(e) {
-            if(e) e.preventDefault();
+        function editorTapTempo() {
             const now = Date.now();
             editorTapTimes.push(now);
             if (editorTapTimes.length > 5) editorTapTimes.shift();
@@ -652,12 +647,6 @@
                         restartPlayhead(); 
                     }, 1200); 
                 }
-            }
-            const btn = document.getElementById('editorTapBtn');
-            if (btn) {
-                btn.style.transform = 'scale(0.95)';
-                btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
-                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
             }
         }
 
@@ -1151,11 +1140,13 @@
         }
 
         async function playFX(idx, btnElement, layer) {
+            stopPlayback(); // <--- NEW: สั่งหยุด engine ของหน้า Edit ทันทีที่จิ้ม Pad หน้าแรก
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            
             if (layer === 'BG') {
                 activeIdxBG = idx;
                 localStorage.setItem('lastActiveBG', idx); 
-                liveBgSpeedMultiplier = 1.0; // Reset live speed
+                liveBgSpeedMultiplier = 1.0; 
                 document.getElementById('bgSpeedSlider').value = 1.0;
                 
                 document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
@@ -1164,7 +1155,7 @@
 
                 if(!characteristic || !patterns[idx].code) return;
                 try { 
-                    await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.0"));
+                    await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.00")); 
                     setTimeout(async () => {
                         await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); 
                     }, 40);
@@ -1562,6 +1553,7 @@
         }
 
         async function saveAndSend() {
+            stopPlayback(); // <--- NEW: หยุด engine ก่อนปิดหน้าต่าง
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             
@@ -1740,6 +1732,7 @@
                 renderPads();
                 updateGridBackground(); 
                 
+                // ตั้งค่า Hold เพื่อใส่เลข BPM ใน Edit
                 interact('#editorBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
                     if (input !== null) {
@@ -1757,6 +1750,7 @@
                     }
                 });
                 
+                // ตั้งค่า Hold เพื่อใส่เลข BPM ใน Live BG
                 interact('#bgBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Live BG:", bgLiveBPM);
                     if (input !== null) {
@@ -1764,7 +1758,17 @@
                         if (!isNaN(bpm) && bpm >= 30 && bpm <= 300) {
                             bgLiveBPM = bpm;
                             document.getElementById('bgBpmDisplay').innerText = bgLiveBPM;
-                            modifyLivePatternBG('snap', null);
+                            // รีเซ็ตการซูมความเร็วในไลฟ์ให้คำนวณใหม่
+                            let maxT = getBgMaxT();
+                            if (maxT > 0) {
+                                let beatTime = 60 / bgLiveBPM;
+                                let currentTargetTime = maxT / liveBgSpeedMultiplier;
+                                let nearestBeat = Math.round(currentTargetTime / beatTime);
+                                if (nearestBeat < 1) nearestBeat = 1;
+                                let targetTime = nearestBeat * beatTime;
+                                liveBgSpeedMultiplier = maxT / targetTime;
+                                triggerLiveBGRectart();
+                            }
                         } else {
                             alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
                         }
