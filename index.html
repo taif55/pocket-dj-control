@@ -120,7 +120,6 @@
         .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #fff !important; pointer-events: none; }
         .sortable-ghost { opacity: 0.1; background: #fff !important; }
 
-        /* แก้ไข timelineViewport ให้รับ Pinch zoom ได้ */
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x pinch-zoom; }
         #timelineContent { position: relative; height: 100%; width: 2000px; transform-origin: left top; }
         
@@ -257,22 +256,22 @@
             <span>* กดก้อนแช่ไว้เพื่อ COPY / ถ่างนิ้วเพื่อซูม</span>
         </div>
 
-        <div class="bg-gray-900 border-b border-gray-800 p-2 flex items-center space-x-1 flex-none overflow-hidden justify-between">
+        <div class="bg-gray-900 border-b border-gray-800 p-2 flex items-center justify-between flex-none overflow-hidden">
             <div class="flex items-center space-x-1">
                 <button onclick="fitToScreen()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black shadow-lg">FIT</button>
                 <button id="followBtn" onclick="toggleFollow()" class="bg-gray-700 text-white px-2 py-1.5 rounded-lg text-[9px] font-bold">FOL</button>
             </div>
             
             <div class="flex items-center space-x-1">
-                <button onclick="setRoomScale(1)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700">R1</button>
-                <button onclick="setRoomScale(2)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700">R2</button>
-                <button onclick="setRoomScale(4)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700">R4</button>
-                <button onclick="setRoomScale(6)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700">R6</button>
+                <button onclick="setRoomScale(1)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700 transition">R1</button>
+                <button onclick="setRoomScale(2)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700 transition">R2</button>
+                <button onclick="setRoomScale(4)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700 transition">R4</button>
+                <button onclick="setRoomScale(6)" class="bg-gray-800 text-green-400 px-2 py-1.5 rounded border border-gray-600 text-[9px] font-bold active:bg-gray-700 transition">R6</button>
             </div>
             
-            <div class="flex flex-col items-center justify-center w-[50px] flex-none">
-                <span id="editorBpmDisplay" class="text-[10px] text-orange-400 font-black leading-none mb-1 px-2 py-0.5 rounded cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white w-full py-1.5 rounded-lg text-[10px] font-black shadow-lg transition duration-75 active:scale-95">TAP</button>
+            <div class="flex items-center space-x-2 flex-none">
+                <span id="editorBpmDisplay" class="text-[12px] text-orange-400 font-black px-2 py-1.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
+                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-4 py-1.5 rounded-lg text-[12px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] transition duration-75 active:scale-95">TAP</button>
             </div>
         </div>
         
@@ -471,7 +470,10 @@
             }
         }
 
-        function editorTapTempo() {
+        // --- NEW: ฟังก์ชัน TAP Editor ไวขึ้นและกันเบิ้ล ---
+        function editorTapTempo(e) {
+            if(e) e.preventDefault(); // กันคลิกเบิ้ลบนมือถือ
+            
             const now = Date.now();
             editorTapTimes.push(now);
             if (editorTapTimes.length > 5) editorTapTimes.shift();
@@ -492,6 +494,27 @@
             btn.style.transform = 'scale(0.9)';
             btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
             setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+        }
+
+        // --- NEW: ฟังก์ชันจัดช่องอัตโนมัติ (R1-R6) ---
+        function setRoomScale(rooms) {
+            let maxT = 0; 
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let beatTime = 60 / editorBPM;
+                let targetTime = beatTime * rooms; // 1 ช่อง = 1 จังหวะตก
+                
+                let scaleRatio = targetTime / maxT;
+                
+                clips.forEach(c => { 
+                    c.start = c.start * scaleRatio; 
+                    c.duration = c.duration * scaleRatio; 
+                });
+                
+                markUnsaved(); renderClips(); updateCodeMonitor();
+                fitToScreen(); // ดึง FIT ทันที
+            }
         }
 
         async function initAudio() {
@@ -1033,7 +1056,6 @@
             
             stateHistory = []; stateIndex = -1; saveState(); 
             
-            // --- NEW: Pinch to Zoom (ถ่างนิ้วซูม) ---
             let initialPxPerSec = pxPerSec;
             interact('#timelineViewport').gesturable({
                 listeners: {
@@ -1046,20 +1068,6 @@
                 }
             });
         }
-
-        // --- NEW: ฟังก์ชันของปุ่มลัด R1-R6 ---
-        function setRoomScale(rooms) {
-            let beatTime = 60 / editorBPM;
-            let totalTime = beatTime * 4 * rooms; // 1 ห้อง = 4 จังหวะตก
-            
-            const vp = document.getElementById('timelineViewport');
-            let newPx = vp.clientWidth / totalTime; 
-            newPx = Math.max(20, Math.min(300, newPx));
-            
-            updateZoom(newPx);
-            vp.scrollLeft = 0; 
-        }
-        // -------------------------------------
 
         function handleBack() {
             saveAndSend(); 
@@ -1101,26 +1109,14 @@
             }
         }
 
+        // --- NEW: SCL เปลี่ยนกลับมาเป็นการสเกลลื่นๆ ตามมือ ---
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
             
-            let maxT = 0; 
-            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
-            
-            if (maxT > 0) {
-                let rawTarget = maxT * scaleRatio;
-                let beatTime = 60 / editorBPM; 
-                
-                let nearestBeat = Math.round(rawTarget / beatTime) * beatTime;
-                if (nearestBeat <= 0) nearestBeat = beatTime; 
-                
-                let actualRatio = nearestBeat / maxT;
-                
-                clips.forEach(c => { 
-                    c.start = c.start * actualRatio; 
-                    c.duration = c.duration * actualRatio; 
-                });
-            }
+            clips.forEach(c => { 
+                c.start = c.start * scaleRatio; 
+                c.duration = c.duration * scaleRatio; 
+            });
             
             document.getElementById('speedSlider').value = 1.0;
             markUnsaved(); renderClips(); updateCodeMonitor();
@@ -1365,7 +1361,6 @@
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
             if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`));
             
-            // ปิดระบบ history back เพราะเราจะซ่อน modal ด้วย class hidden เพื่อความเสถียร
             document.getElementById('modal').classList.add('hidden');
         }
         
@@ -1494,18 +1489,15 @@
         document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
-        // --- NEW: ดักจับการกดปุ่ม Back ของมือถือ Android ---
         window.addEventListener("popstate", function (e) {
             if (!document.getElementById('modal').classList.contains('hidden')) {
-                // ถ้ายกด Back ตอนอยู่หน้า Edit ให้ Save แล้วปิดหน้าจอแทนที่จะย้อนไปหน้าเปล่า
                 saveAndSend(); 
-                history.pushState(null, null, window.location.pathname); // เคลียร์ Hash
+                history.pushState(null, null, window.location.pathname); 
             }
         });
 
         window.onload = () => {
             try {
-                // ดัก Push State เพื่อให้ปุ่ม Back บนมือถือทำงานได้
                 history.pushState(null, null, window.location.pathname);
 
                 renderPads();
