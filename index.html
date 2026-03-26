@@ -121,7 +121,7 @@
         .sortable-ghost { opacity: 0.1; background: #fff !important; }
 
         #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x; }
-        #timelineContent { position: relative; height: 100%; width: 2000px; background-size: 100px 100%; background-image: linear-gradient(to right, rgba(255,165,0,0.3) 1px, transparent 1px); }
+        #timelineContent { position: relative; height: 100%; width: 2000px; }
         
         #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
         #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
@@ -164,17 +164,23 @@
         </div>
 
         <div class="flex items-center justify-between bg-gray-900/50 p-2 mx-1 mt-1 rounded-xl border border-gray-800 flex-none shadow-lg">
-            <button id="btnAutoTempo" onclick="toggleMicListen()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[70px] justify-center">
-                <span>🎙️</span><span>AUTO</span>
-            </button>
+            <div class="flex space-x-1">
+                <button id="btnAutoTempo" onclick="toggleMicListen()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center">
+                    <span>🎙️</span><span>AUTO</span>
+                </button>
+                <button id="btnKickListen" onclick="toggleKickListen()" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center">
+                    <span>🥁</span><span>KICK</span>
+                </button>
+            </div>
             <div class="flex flex-col items-center flex-1">
                 <span class="text-[7px] text-gray-500 font-bold uppercase tracking-widest mb-[2px]">Master Tempo</span>
                 <div class="text-green-400 font-black text-xl leading-none tracking-wider" id="globalBpmDisplay" style="text-shadow: 0 0 10px rgba(74,222,128,0.5);">128 <span class="text-[10px] text-gray-500 font-bold">BPM</span></div>
             </div>
-            <button id="btnTapTempo" onclick="tapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[70px] justify-center active:scale-90">
+            <button id="btnTapTempo" onclick="tapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center active:scale-90">
                 <span>👆</span><span>TAP</span>
             </button>
         </div>
+
         <div class="layer-block layer-bg mt-1">
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
             
@@ -228,11 +234,15 @@
             <h2 id="modalTitle" class="absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-white pointer-events-none">EDIT LAYER</h2>
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
             <div class="flex space-x-1">
-                <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-16">STOP</button>
+                <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">STOP</button>
                 <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-3 py-2 rounded-lg text-[10px] font-black">DEL</button>
+                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-2 py-2 rounded-lg text-[10px] font-black">DEL</button>
             </div>
-            <button onclick="saveAndSend()" class="bg-white text-black font-black px-3 py-2 rounded-lg text-[10px] uppercase active:bg-gray-300">SAVE</button>
+            <div class="flex space-x-1">
+                <button onclick="undoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↩️</button>
+                <button onclick="redoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↪️</button>
+                <button onclick="saveAndSend()" class="bg-white text-black font-black px-3 py-2 rounded-lg text-[10px] uppercase active:bg-gray-300 shadow">SAVE</button>
+            </div>
         </div>
         
         <div id="timelineViewport" class="flex-none">
@@ -249,7 +259,7 @@
 
         <div class="bg-gray-900 border-b border-gray-800 p-2 grid grid-cols-2 gap-4 flex-none">
             <div class="flex items-center space-x-2">
-                <button onclick="fitToScreen()" class="bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold">FIT</button>
+                <button onclick="fitToScreen()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-lg tracking-wide">FIT</button>
                 <input type="range" id="zoomSlider" min="20" max="300" value="100" class="flex-1 accent-blue-500" oninput="updateZoom(this.value)">
                 <button id="followBtn" onclick="toggleFollow()" class="bg-gray-700 text-white px-2 py-1 rounded text-[9px] font-bold">FOLLOW</button>
                 <button id="snapBtn" onclick="toggleSnap()" class="bg-green-600 text-black px-2 py-1 rounded text-[9px] font-bold shadow-[0_0_8px_#00e676]">SNAP: ON</button>
@@ -300,24 +310,65 @@
         </div>
     </div>
 
-    <div id="unsavedModal" class="fixed inset-0 hidden z-[60] modal-overlay flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 text-center space-y-4 w-full max-w-sm shadow-2xl">
-            <h3 class="text-white font-bold text-lg">มีข้อมูลยังไม่ได้บันทึก!</h3>
-            <div class="flex space-x-3 justify-center pt-3">
-                <button onclick="discardAndClose()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ทิ้งข้อมูล</button>
-                <button onclick="saveAndSend()" class="bg-green-500 hover:bg-green-400 text-black px-4 py-2 rounded-xl text-xs font-bold flex-1 shadow-[0_0_10px_#00e676] transition">เซฟก่อน</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // --- NEW VARIABLES FOR TEMPO & SNAP ---
         let globalBPM = 128;
-        let baseBPM = 128; // ความเร็วมาตรฐานตอนออกแบบ
+        let baseBPM = 128; 
         let isSnap = true;
         let tapTimes = [];
         let audioCtx = null; let micStream = null; let analyzer = null; 
         let isListeningMic = false; let micInterval = null; let lastBeatTime = 0; let micBpmArr = [];
+        
+        let isListeningKick = false; let kickInterval = null; let lastKickTime = 0;
+
+        // --- UNDO / REDO STATE ---
+        let stateHistory = [];
+        let stateIndex = -1;
+        let isNavigatingHistory = false;
+
+        function saveState() {
+            if (isNavigatingHistory) return;
+            stateHistory = stateHistory.slice(0, stateIndex + 1);
+            stateHistory.push(JSON.stringify(clips));
+            stateIndex = stateHistory.length - 1;
+        }
+
+        function undoState() {
+            if (stateIndex > 0) {
+                stateIndex--;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
+
+        function redoState() {
+            if (stateIndex < stateHistory.length - 1) {
+                stateIndex++;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
+
+        function updateSelectedClipUI() {
+            if(selectedClipId) {
+                const c = clips.find(x => x.id === selectedClipId);
+                if(c) {
+                    document.getElementById('cBright').value = c.bright; 
+                    document.getElementById('cFX').value = c.fx;
+                    updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
+                } else {
+                    selectedClipId = null; 
+                    document.getElementById('editorPanel').style.opacity = "0.3";
+                    document.getElementById('editorPanel').style.pointerEvents = "none";
+                }
+            }
+        }
         // --------------------------------------
 
         let device, characteristic;
@@ -333,7 +384,7 @@
         let playheadTime = 0; let isPlaying = false;
         let playInterval, startAnimateTime;
         let currentLoopLimit = 1.0; let pxPerSec = 100;
-        let isFollowingPlayhead = false; let hasUnsavedChanges = false; 
+        let isFollowingPlayhead = false;
         
         let sortableBG = null;
         let sortableFG = null;
@@ -350,9 +401,7 @@
         function setGlobalBPM(bpm) {
             globalBPM = bpm;
             document.getElementById('globalBpmDisplay').innerHTML = `${globalBPM} <span class="text-[10px] text-gray-500 font-bold">BPM</span>`;
-            updateGridBackground();
             
-            // Auto scale playing speed based on base tempo
             let ratio = globalBPM / baseBPM;
             let bgSlider = document.getElementById('bgSpeedSlider');
             if(bgSlider) { bgSlider.value = ratio; updateSpeed(ratio, 'BG'); }
@@ -371,26 +420,32 @@
                 let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) setGlobalBPM(bpm);
             }
-            if (isListeningMic) toggleMicListen(); // Override mic if tapped
+            if (isListeningMic) toggleMicListen(); 
+        }
+
+        async function initAudio() {
+            if (!audioCtx) {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyzer = audioCtx.createAnalyser(); analyzer.fftSize = 256;
+                const source = audioCtx.createMediaStreamSource(micStream);
+                source.connect(analyzer);
+            }
         }
 
         async function toggleMicListen() {
             const btn = document.getElementById('btnAutoTempo');
             if (isListeningMic) {
                 isListeningMic = false; clearInterval(micInterval);
-                if (micStream) micStream.getTracks().forEach(t => t.stop());
-                if (audioCtx) audioCtx.close(); audioCtx = null;
+                if (micStream && !isListeningKick) { micStream.getTracks().forEach(t => t.stop()); audioCtx.close(); audioCtx = null; }
                 btn.classList.replace('bg-red-600', 'bg-blue-600');
                 btn.innerHTML = '<span>🎙️</span><span>AUTO</span>';
             } else {
                 try {
-                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    analyzer = audioCtx.createAnalyser(); analyzer.fftSize = 256;
-                    const source = audioCtx.createMediaStreamSource(micStream);
-                    source.connect(analyzer);
-                    
+                    await initAudio();
                     isListeningMic = true;
+                    if(isListeningKick) toggleKickListen(); // Turn off kick if Auto is on
+                    
                     btn.classList.replace('bg-blue-600', 'bg-red-600');
                     btn.innerHTML = '<span>🔴</span><span>LISTEN</span>';
                     
@@ -399,7 +454,7 @@
                     
                     micInterval = setInterval(() => {
                         analyzer.getByteFrequencyData(dataArray);
-                        let sum = 0; for(let i=0; i<10; i++) sum += dataArray[i]; // Focus on Bass
+                        let sum = 0; for(let i=0; i<10; i++) sum += dataArray[i]; 
                         let avg = sum / 10;
                         
                         if (avg > 200) { 
@@ -422,6 +477,50 @@
             }
         }
 
+        async function toggleKickListen() {
+            const btn = document.getElementById('btnKickListen');
+            if (isListeningKick) {
+                isListeningKick = false; clearInterval(kickInterval);
+                if (micStream && !isListeningMic) { micStream.getTracks().forEach(t => t.stop()); audioCtx.close(); audioCtx = null; }
+                btn.classList.replace('bg-red-600', 'bg-purple-600');
+                btn.innerHTML = '<span>🥁</span><span>KICK</span>';
+            } else {
+                try {
+                    await initAudio();
+                    isListeningKick = true;
+                    if(isListeningMic) toggleMicListen(); // Turn off Auto if Kick is on
+                    
+                    btn.classList.replace('bg-purple-600', 'bg-red-600');
+                    btn.innerHTML = '<span>🔴</span><span>KICK</span>';
+                    
+                    const bufferLength = analyzer.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    
+                    kickInterval = setInterval(async () => {
+                        analyzer.getByteFrequencyData(dataArray);
+                        let sum = 0; for(let i=0; i<5; i++) sum += dataArray[i]; // Deep Bass Focus
+                        let avg = sum / 5;
+                        
+                        if (avg > 220) { 
+                            let now = Date.now();
+                            if (now - lastKickTime > 250) {  // Cooldown ป้องกัน ESP32 ค้าง
+                                lastKickTime = now;
+                                if(characteristic && !isWritingBLE) {
+                                    try {
+                                        isWritingBLE = true;
+                                        // ยิงไฟ Strobe สีขาวใส่ Background ทันที
+                                        let cmd = "5(0099,a,wh,s0200)";
+                                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+                                        isWritingBLE = false;
+                                    } catch(e) { isWritingBLE = false; }
+                                }
+                            }
+                        }
+                    }, 30);
+                } catch(err) { alert('ไม่สามารถใช้ไมค์ได้ครับ: ' + err.message); }
+            }
+        }
+
         function toggleSnap() {
             isSnap = !isSnap;
             const btn = document.getElementById('snapBtn');
@@ -435,27 +534,18 @@
         }
 
         function updateGridBackground() {
-            let beatTime = 60 / globalBPM;
-            let gridPx = beatTime * pxPerSec;
-            document.getElementById('timelineContent').style.backgroundSize = `${gridPx}px 100%`;
+            let fixedBeatTime = 60 / 128; // ล็อคเส้นที่ 128 BPM
+            let beatPx = fixedBeatTime * pxPerSec;
+            let secPx = 1.0 * pxPerSec; // เส้นวินาที
+            
+            document.getElementById('timelineContent').style.backgroundImage = 
+                `linear-gradient(to right, rgba(255,165,0,0.4) 1px, transparent 1px), 
+                 linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px)`;
+            document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
         }
         // --------------------------------------
 
-        window.addEventListener('hashchange', function() {
-            const hash = window.location.hash;
-            if (hash === '') {
-                if (!document.getElementById('modal').classList.contains('hidden')) {
-                    if (hasUnsavedChanges) {
-                        window.location.hash = 'edit';
-                        document.getElementById('unsavedModal').classList.remove('hidden');
-                    } else { closePopupDirectly(); }
-                }
-            }
-        });
-
         function closePopupDirectly() {
-            document.getElementById('unsavedModal').classList.add('hidden');
-            
             isPlaying = false;
             cancelAnimationFrame(playInterval);
             const btn = document.getElementById('playBtn'); 
@@ -786,21 +876,18 @@
             if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:off")); }catch(e){} }
         }
 
-        function markUnsaved() { hasUnsavedChanges = true; }
+        function markUnsaved() { 
+            saveState(); // เก็บประวัติ History อัตโนมัติเมื่อแก้
+        }
 
         function openPopup(idx, layer) {
             window.location.hash = 'edit'; 
-            activeLayer = layer; selectedIdx = idx; clips = []; hasUnsavedChanges = false; activeColorIndex = -1;
+            activeLayer = layer; selectedIdx = idx; clips = []; activeColorIndex = -1;
             
             document.getElementById('modalTitle').innerText = (layer === 'BG') ? "EDIT BACKGROUND" : "EDIT FOREGROUND";
             document.getElementById('modalTitle').className = (layer === 'BG') ? "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-green-500 pointer-events-none" : "absolute left-1/2 transform -translate-x-1/2 text-xs font-black text-blue-500 pointer-events-none";
 
             document.getElementById('modal').classList.remove('hidden');
-            const vp = document.getElementById('timelineViewport');
-            const padding = vp.clientWidth / 2;
-            const content = document.getElementById('timelineContent');
-            content.style.marginLeft = padding + 'px';
-            content.style.borderRight = padding + 'px solid transparent';
 
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             let rawCode = patterns[idx].code || "";
@@ -820,27 +907,28 @@
             }
             initColors(); updateGridBackground(); renderClips();
             if(clips.length > 0) selectClip(clips[0].id);
+            
+            // --- AUTO FIT WHEN OPEN ---
+            updateLoopLine();
+            fitToScreen(); 
+            
             if (!isPlaying) togglePlay(); 
+            
+            stateHistory = []; stateIndex = -1; saveState(); // ตั้งค่าประวัติเริ่มต้น
         }
 
         function handleBack() {
-            if (hasUnsavedChanges) document.getElementById('unsavedModal').classList.remove('hidden');
-            else history.back();
-        }
-
-        function discardAndClose() {
-            hasUnsavedChanges = false;
-            if(window.location.hash === '#edit') history.back();
-            else closePopupDirectly();
+            saveAndSend(); // เซฟอัตโนมัติแล้วปิดทันที ไม่ต้องถาม
         }
 
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
             if(currentLoopLimit > 0) {
+                // คำนวณความกว้างให้พอดีจอเป๊ะๆ
                 let newPx = vp.clientWidth / currentLoopLimit; 
-                newPx = Math.max(20, Math.min(300, newPx));
                 document.getElementById('zoomSlider').value = newPx; 
                 updateZoom(newPx);
+                vp.scrollLeft = 0; // ล็อค 0.0s ไว้ชิดขอบซ้ายเสมอ
             }
         }
 
@@ -895,13 +983,12 @@
                 
                 area.appendChild(div);
                 
-                // --- MODIFIED WITH SNAP LOGIC ---
                 interact(div).draggable({
                     listeners: {
                         start(e) { c.tempY = c.track * 20; c.tempStart = c.start; },
                         move(e) {
                             c.tempStart += e.dx / pxPerSec;
-                            let beatTime = 60 / globalBPM;
+                            let beatTime = 60 / 128; // ล็อคแม่เหล็กที่ 128 BPM
                             c.start = isSnap ? Math.round(c.tempStart / beatTime) * beatTime : c.tempStart;
                             c.start = Math.max(0, c.start);
                             
@@ -919,7 +1006,7 @@
                     listeners: { 
                         start(e) { c.tempStart = c.start; },
                         move(e) { 
-                            let beatTime = 60 / globalBPM;
+                            let beatTime = 60 / 128;
                             if(e.edges.left) { 
                                 c.tempStart += e.dx / pxPerSec; 
                                 c.start = isSnap ? Math.round(c.tempStart / beatTime) * beatTime : c.tempStart;
@@ -1099,9 +1186,6 @@
         }
 
         async function saveAndSend() {
-            document.getElementById('unsavedModal').classList.add('hidden'); 
-            hasUnsavedChanges = false;
-            
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             
