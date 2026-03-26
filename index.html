@@ -184,17 +184,31 @@
         <div class="layer-block layer-bg mt-1">
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
             
-            <div class="flex space-x-2 mb-2 bg-gray-900/50 p-2 px-3 mx-1 rounded-xl flex-none mt-2">
-                <div class="flex-1 flex items-center space-x-2">
-                    <button onclick="resetSpeed('BG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">SPD</button>
-                    <input type="range" id="bgSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'BG')">
-                    <span id="bgSpeedText" class="text-orange-500 font-black text-[10px] w-6 shrink-0 text-right">1.0</span>
-                </div>
-                <div class="w-[1px] bg-gray-700"></div>
-                <div class="flex-1 flex items-center space-x-2">
-                    <button onclick="resetBright('BG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">BRT</button>
+            <div class="flex items-center space-x-1 mb-2 bg-gray-900/50 p-1.5 px-2 mx-1 rounded-xl flex-none mt-2 overflow-x-auto">
+                <div class="flex items-center space-x-1 flex-shrink-0 w-[55px]">
+                    <span class="text-[7px] text-gray-400 font-bold w-4 text-right">BRT</span>
                     <input type="range" id="bgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
-                    <span id="bgBrightText" class="text-yellow-500 font-black text-[10px] w-9 shrink-0 text-right">100%</span>
+                </div>
+                
+                <div class="w-[1px] h-6 bg-gray-700 mx-1 flex-shrink-0"></div>
+                
+                <div class="flex items-center space-x-1 flex-shrink-0 w-[60px]">
+                    <span class="text-[7px] text-gray-400 font-bold w-4 text-right">SCL</span>
+                    <input type="range" id="bgSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-2 bg-gray-700 rounded-lg appearance-none" onchange="applyLiveSpeedScale(this.value, 'BG')">
+                </div>
+                
+                <div class="w-[1px] h-6 bg-gray-700 mx-1 flex-shrink-0"></div>
+
+                <div class="flex items-center space-x-1 flex-shrink-0">
+                    <button onclick="setLiveRoomScale(1, 'BG')" class="bg-gray-800 text-green-400 px-1 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">R1</button>
+                    <button onclick="setLiveRoomScale(2, 'BG')" class="bg-gray-800 text-green-400 px-1 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">R2</button>
+                    <button onclick="setLiveRoomScale(4, 'BG')" class="bg-gray-800 text-green-400 px-1 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">R4</button>
+                    <button onclick="setLiveRoomScale(6, 'BG')" class="bg-gray-800 text-green-400 px-1 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">R6</button>
+                </div>
+
+                <div class="flex items-center space-x-1 flex-1 justify-end flex-shrink-0 ml-1">
+                    <span id="bgBpmDisplay" class="text-[10px] text-orange-400 font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
+                    <button id="bgTapBtn" onpointerdown="bgTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg text-[9px] font-black shadow-[0_0_8px_rgba(234,88,12,0.5)] active:scale-95 transition">TAP</button>
                 </div>
             </div>
 
@@ -272,7 +286,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onclick="editorTapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onclick="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -346,7 +360,11 @@
         
         let editorBPM = 128; 
         let editorTapTimes = []; 
-        let editorTapTimeout = null; 
+
+        // --- NEW: ตัวแปรคุม Live BG อิสระ ---
+        let bgLiveBPM = 128;
+        let bgLiveTapTimes = [];
+        let bgLiveTapTimeout = null;
 
         let tapTimes = [];
         let audioCtx = null; let micStream = null; let analyzer = null; 
@@ -433,10 +451,14 @@
             document.getElementById('globalBpmDisplay').innerHTML = `${globalBPM} <span class="text-[10px] text-gray-500 font-bold">BPM</span>`;
             
             let ratio = globalBPM / baseBPM;
-            let bgSlider = document.getElementById('bgSpeedSlider');
-            if(bgSlider) { bgSlider.value = ratio; updateSpeed(ratio, 'BG'); }
             let fgSlider = document.getElementById('fgSpeedSlider');
             if(fgSlider) { fgSlider.value = ratio; updateSpeed(ratio, 'FG'); }
+            
+            // Sync ไปหา Live BG ด้วยถ้าไม่ได้โดนล็อกจากการเล่นสด
+            bgLiveBPM = bpm;
+            document.getElementById('bgBpmDisplay').innerText = bgLiveBPM;
+            let bgSlider = document.getElementById('bgSpeedSlider');
+            if(bgSlider) { bgSlider.value = ratio; applyLiveSpeedScale(ratio, 'BG'); }
         }
 
         function tapTempo() {
@@ -452,6 +474,78 @@
             }
             if (isListeningMic) toggleMicListen(); 
         }
+
+        // --- NEW: ฟังก์ชันควบคุม Live Background โดยเฉพาะ ---
+        function bgTapTempo(e) {
+            if(e) e.preventDefault();
+            const now = Date.now();
+            bgLiveTapTimes.push(now);
+            if (bgLiveTapTimes.length > 5) bgLiveTapTimes.shift();
+            if (bgLiveTapTimes.length > 1) {
+                let diffs = [];
+                for (let i = 1; i < bgLiveTapTimes.length; i++) diffs.push(bgLiveTapTimes[i] - bgLiveTapTimes[i - 1]);
+                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
+                let bpm = Math.round(60000 / avgDiff);
+                if (bpm > 30 && bpm < 300) {
+                    bgLiveBPM = bpm;
+                    document.getElementById('bgBpmDisplay').innerText = bgLiveBPM;
+                    
+                    if (bgLiveTapTimeout) clearTimeout(bgLiveTapTimeout);
+                    bgLiveTapTimeout = setTimeout(() => {
+                        let ratio = bgLiveBPM / baseBPM;
+                        document.getElementById('bgSpeedSlider').value = ratio;
+                        applyLiveSpeedScale(ratio, 'BG');
+                    }, 1200); 
+                }
+            }
+            const btn = document.getElementById('bgTapBtn');
+            btn.style.transform = 'scale(0.95)';
+            btn.style.backgroundColor = 'white'; btn.style.color = '#ea580c';
+            setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+        }
+
+        async function applyLiveSpeedScale(val, layer) {
+            let ratio = parseFloat(val);
+            
+            // คำนวณหาค่าเวลาห้องเพลง (สมมติ 1 pattern = 4 beats)
+            let currentBPM = baseBPM * ratio;
+            let beatTime = 60 / currentBPM;
+            let newDuration = beatTime * 4; 
+            
+            // อัปเดตตัวเลข Slider
+            if(layer === 'BG') {
+                document.getElementById('bgSpeedText').innerText = ratio.toFixed(1);
+            }
+            
+            // ส่งคำสั่งไปยัง ESP32
+            if(characteristic && activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
+                try { 
+                    // ยิงคำสั่งเปลี่ยนสปีด
+                    await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + ratio.toFixed(1))); 
+                    
+                    // หน่วงนิดนึงแล้วยิงคำสั่งเปิดไฟซ้ำ เพื่อให้มัน Reset Playhead ที่ ESP32 ให้เริ่ม 0 ทันที
+                    setTimeout(async () => {
+                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + bgPatterns[activeIdxBG].code));
+                    }, 50);
+                } catch(e){} 
+            }
+        }
+
+        async function setLiveRoomScale(beats, layer) {
+            if(layer === 'BG' && activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
+                // คำนวณ Ratio ที่จะทำให้ Pattern จบในเวลาที่กำหนด
+                let targetDuration = (60 / bgLiveBPM) * beats;
+                let defaultDuration = (60 / baseBPM) * 4; // สมมติ 1 Pattern = 4 Beat
+                let ratio = defaultDuration / targetDuration;
+                
+                // ล็อคไม่ให้เกินลิมิต
+                ratio = Math.max(0.1, Math.min(8.0, ratio));
+                
+                document.getElementById('bgSpeedSlider').value = ratio;
+                applyLiveSpeedScale(ratio, 'BG');
+            }
+        }
+        // -----------------------------------------------------
 
         function snapLoopToGrid() {
             let maxT = 0;
@@ -489,7 +583,8 @@
             }
         }
 
-        function editorTapTempo() {
+        function editorTapTempo(e) {
+            if(e) e.preventDefault();
             const now = Date.now();
             editorTapTimes.push(now);
             if (editorTapTimes.length > 5) editorTapTimes.shift();
@@ -1177,22 +1272,12 @@
                 
                 area.appendChild(div);
                 
-                // --- ลอจิกแม่เหล็กดูดเส้น (Smart Snap) ที่เพิ่งซ่อม ---
                 interact(div).draggable({
                     listeners: {
                         start(e) { c.tempY = c.track * 20; c.tempStart = c.start; },
                         move(e) {
                             c.tempStart += e.dx / pxPerSec;
-                            
-                            let beatTime = 60 / editorBPM; 
-                            let closestBeat = Math.round(c.tempStart / beatTime) * beatTime;
-                            let threshold = 15 / pxPerSec; 
-                            
-                            if (Math.abs(c.tempStart - closestBeat) <= threshold) {
-                                c.start = closestBeat; 
-                            } else {
-                                c.start = c.tempStart; 
-                            }
+                            c.start = c.tempStart; 
                             c.start = Math.max(0, c.start);
                             
                             c.tempY += e.dy; c.track = Math.max(0, Math.min(7, Math.round(c.tempY / 20))); 
@@ -1209,19 +1294,13 @@
                     listeners: { 
                         start(e) { c.tempStart = c.start; },
                         move(e) { 
-                            let beatTime = 60 / editorBPM;
-                            let threshold = 15 / pxPerSec;
-                            
                             if(e.edges.left) { 
                                 c.tempStart += e.dx / pxPerSec; 
-                                let closestBeat = Math.round(c.tempStart / beatTime) * beatTime;
-                                c.start = Math.abs(c.tempStart - closestBeat) <= threshold ? closestBeat : c.tempStart;
+                                c.start = c.tempStart; 
                                 c.start = Math.max(0, c.start); 
                             }
                             let rawDur = e.rect.width / pxPerSec;
-                            let closestDur = Math.round(rawDur / beatTime) * beatTime;
-                            
-                            c.duration = Math.abs(rawDur - closestDur) <= threshold ? Math.max(beatTime/4, closestDur) : rawDur; 
+                            c.duration = rawDur; 
                             c.duration = Math.max(0.1, c.duration); 
                             
                             e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.width = (c.duration * pxPerSec) + 'px'; 
