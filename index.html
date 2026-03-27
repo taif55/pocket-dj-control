@@ -291,7 +291,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onclick="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -454,6 +454,8 @@
             let ratio = globalBPM / baseBPM;
             let fgSlider = document.getElementById('fgSpeedSlider');
             if(fgSlider) { fgSlider.value = ratio; updateSpeed(ratio, 'FG'); }
+            
+            document.getElementById('liveBpmDisplay').innerText = bpm;
         }
 
         function tapTempo() {
@@ -470,11 +472,15 @@
             if (isListeningMic) toggleMicListen(); 
         }
 
-        // === 🚀 NEW: รีโมทล่องหน ควบคุม Edit Engine ทันทีที่กดปุ่มหน้า Live ===
+        // ======================================================================
+        // 🚀 NEW: ฟังก์ชันรีโมทล่องหน - ป้องกันการเกิดบั๊ก Zero Division 100%
+        // ======================================================================
         function remoteEditAction(actionCallback) {
-            if (activeIdxBG === -1) return; // ถ้าไม่ได้เปิดไฟอยู่ ให้ข้ามไป
+            if (activeIdxBG === -1) return; 
             
-            // 1. ดึงข้อมูลจากก้อนไฟปัจจุบันเข้าสู่ระบบ Edit (แบบล่องหน)
+            let prevLayer = activeLayer;
+            let prevIdx = selectedIdx;
+
             activeLayer = 'BG';
             selectedIdx = activeIdxBG;
             clips = [];
@@ -495,29 +501,30 @@
                 });
             }
             
-            // 2. สั่งเครื่องยนต์ Edit ให้คำนวณเวลายืด/หด/Snap ตามคำสั่งปุ่ม
+            // เรียกใช้คำสั่งบีบ/ยืด
             actionCallback();
             
-            // 3. แพ็คโค้ดที่คำนวณเสร็จแล้ว อัปเดตกลับลง Background
             let newCode = generateCodeStr();
             bgPatterns[activeIdxBG].code = newCode;
             updatePadsVisuals('BG');
             
-            // 4. บันทึกโค้ดลง ESP32 และสั่งกระชากเริ่ม 0.0s ทันที
             if(characteristic) {
                 characteristic.writeValue(new TextEncoder().encode(`SB${activeIdxBG}:${newCode}`)).catch(e=>{});
-                // บังคับรีเซ็ตเพลย์เฮดให้ฮาร์ดแวร์
                 characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.00")).catch(e=>{});
                 setTimeout(() => {
                     characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + newCode)).catch(e=>{});
                 }, 40);
             }
+
+            activeLayer = prevLayer;
+            selectedIdx = prevIdx;
+            clips = []; 
         }
 
         function remoteTapTempo(e) {
             if(e) e.preventDefault();
             const now = Date.now();
-            editorTapTimes.push(now); // ใช้ Array เดียวกับ Edit เพื่อการคำนวณที่แม่นยำ
+            editorTapTimes.push(now); 
             if (editorTapTimes.length > 5) editorTapTimes.shift();
             if (editorTapTimes.length > 1) {
                 let diffs = [];
@@ -531,7 +538,6 @@
                     
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
-                        // หน่วงเวลา รอให้เคาะเสร็จก่อน แล้วค่อยสั่งรีโมทเข้าตารางกริดและเตะเพลย์เฮดกลับ 0
                         remoteEditAction(() => {
                             snapLoopToGrid();
                         });
@@ -564,9 +570,6 @@
                         c.start = c.start * actualRatio; 
                         c.duration = c.duration * actualRatio; 
                     });
-                    markUnsaved(); 
-                    renderClips(); 
-                    updateCodeMonitor();
                 }
             }
         }
@@ -597,14 +600,19 @@
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    document.getElementById('liveBpmDisplay').innerText = editorBPM; // อัปเดตหน้า Live ด้วย
+                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
                     
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
-                        updateGridBackground(); 
-                        snapLoopToGrid(); 
-                        fitToScreen(); 
-                        restartPlayhead(); 
+                        // ป้องกัน UI ค้างถ้ากดเล่นตอนหน้าต่าง Edit ถูกซ่อน
+                        if (!document.getElementById('modal').classList.contains('hidden')) {
+                            updateGridBackground(); 
+                            snapLoopToGrid(); 
+                            fitToScreen(); 
+                            restartPlayhead(); 
+                        } else {
+                            snapLoopToGrid();
+                        }
                     }, 1200); 
                 }
             }
@@ -631,9 +639,15 @@
                     c.duration = c.duration * scaleRatio; 
                 });
                 
-                markUnsaved(); renderClips(); updateCodeMonitor();
-                fitToScreen(); 
-                restartPlayhead(); 
+                markUnsaved(); 
+                
+                // คำนวณ UI เฉพาะตอนหน้า Edit เปิดอยู่เท่านั้น (ป้องกัน 0 Division)
+                if (!document.getElementById('modal').classList.contains('hidden')) {
+                    renderClips(); 
+                    updateCodeMonitor();
+                    fitToScreen(); 
+                    restartPlayhead(); 
+                }
             }
         }
 
@@ -744,8 +758,8 @@
 
         function updateGridBackground() {
             let fixedBeatTime = 60 / editorBPM; 
-            let beatPx = fixedBeatTime * pxPerSec;
-            let secPx = 1.0 * pxPerSec; 
+            let beatPx = Math.max(1, fixedBeatTime * pxPerSec); // กัน 0px
+            let secPx = Math.max(1, 1.0 * pxPerSec); // กัน 0px
             
             document.getElementById('timelineContent').style.backgroundImage = 
                 `linear-gradient(to right, rgba(255, 61, 0, 0.7) 2px, transparent 2px), 
@@ -1107,14 +1121,14 @@
         }
 
         async function playFX(idx, btnElement, layer) {
-            stopPlayback(); // ปิดระบบ Edit ทุกครั้งที่กดเลือกไฟเล่นสด
+            // --- 🛑 หยุดการทำงานในหน้า Edit เพื่อกันเบราว์เซอร์เอ๋อเวลาเล่นหน้า Live ---
+            if(isPlaying) stopPlayback(); 
             
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
             if (layer === 'BG') {
                 activeIdxBG = idx;
                 localStorage.setItem('lastActiveBG', idx); 
                 
-                // รีเซ็ตความเร็วกลับ 1.0 ทุกครั้งที่เปลี่ยนลายไฟใหม่
                 let liveSlider = document.getElementById('liveSpeedSlider');
                 if(liveSlider) liveSlider.value = 1.0;
                 
@@ -1208,14 +1222,20 @@
         }
 
         function handleBack() {
-            saveAndSend(); 
+            // เช็คและป้องกันประวัติหน้าจอ (History State)
+            if (window.location.hash === '#edit') {
+                history.back(); 
+            } else {
+                saveAndSend(); 
+            }
         }
 
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
-            if(currentLoopLimit > 0) {
+            // --- 🛑 ป้องกันเบราว์เซอร์ค้างตายเพราะเอา 0 ไปหาร! (Zero Division Protection) ---
+            if(currentLoopLimit > 0 && vp.clientWidth > 0) {
                 let newPx = vp.clientWidth / currentLoopLimit; 
-                updateZoom(newPx);
+                updateZoom(Math.max(20, newPx));
                 vp.scrollLeft = 0; 
             }
         }
@@ -1235,7 +1255,7 @@
         }
 
         function updateZoom(val) { 
-            pxPerSec = parseInt(val); 
+            pxPerSec = parseInt(val) || 20; // 🛑 กันเบราว์เซอร์เอ๋อถ้ามีค่าที่ไม่ใช่ตัวเลข (NaN)
             updateGridBackground(); 
             renderClips(); 
             if (!isPlaying) {
@@ -1272,14 +1292,16 @@
                 });
             }
             
-            let slider = document.getElementById('speedSlider');
-            if (slider) slider.value = 1.0;
-            let liveSlider = document.getElementById('liveSpeedSlider');
-            if (liveSlider) liveSlider.value = 1.0;
-
-            markUnsaved(); renderClips(); updateCodeMonitor();
-            fitToScreen(); 
-            restartPlayhead(); 
+            // อัปเดตกราฟิกก็ต่อเมื่อหน้าจอไม่ได้ถูกซ่อนอยู่เท่านั้น (กันค้าง)
+            if (!document.getElementById('modal').classList.contains('hidden')) {
+                let slider = document.getElementById('speedSlider');
+                if (slider) slider.value = 1.0;
+                markUnsaved(); renderClips(); updateCodeMonitor();
+                fitToScreen(); 
+                restartPlayhead(); 
+            } else {
+                markUnsaved(); // แอบเซฟเงียบๆ ถ้ารีโมททำงาน
+            }
         }
 
         function renderClips() {
@@ -1526,14 +1548,21 @@
         }
 
         async function saveAndSend() {
-            stopPlayback(); // ปิดเครื่องยนต์ก่อนเซฟ
+            stopPlayback(); // ดับเครื่องยนต์กราฟิกหน้าจอก่อนปิดหน้าต่าง
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
-            if(characteristic) await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`));
+            if(characteristic) {
+                try { await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`)); } catch(e){}
+            }
             
             document.getElementById('modal').classList.add('hidden');
+            
+            // --- 🛑 ล้างประวัติลูป (History Clear) เพื่อแก้บั๊กปุ่ม Back ค้าง ---
+            if (window.location.hash === '#edit') {
+                history.replaceState(null, null, window.location.pathname);
+            }
         }
         
         function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
@@ -1692,20 +1721,27 @@
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
         window.addEventListener("popstate", function (e) {
+            // เมื่อกด Back มือถือ จะทำการดักจับเพื่อปิดกล่อง Edit อย่างถูกต้อง
             if (!document.getElementById('modal').classList.contains('hidden')) {
                 saveAndSend(); 
-                history.pushState(null, null, window.location.pathname); 
             }
         });
 
         window.onload = () => {
             try {
+                // เซ็ต History หลอกๆ ไว้เพื่อให้ปุ่ม Back มือถือดักจับได้
                 history.pushState(null, null, window.location.pathname);
 
                 renderPads();
-                updateGridBackground(); 
                 
-                // ตั้งค่า Hold เพื่อใส่เลข BPM ใน Edit
+                let fixedBeatTime = 60 / editorBPM; 
+                let beatPx = Math.max(1, fixedBeatTime * pxPerSec); 
+                let secPx = Math.max(1, 1.0 * pxPerSec); 
+                document.getElementById('timelineContent').style.backgroundImage = 
+                    `linear-gradient(to right, rgba(255, 61, 0, 0.7) 2px, transparent 2px), 
+                     linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
+                document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
+                
                 interact('#editorBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
                     if (input !== null) {
@@ -1724,7 +1760,6 @@
                     }
                 });
                 
-                // ตั้งค่า Hold เพื่อใส่เลข BPM ใน Live BG (วิ่งเข้า Editor แบบล่องหน)
                 interact('#liveBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Live BG:", editorBPM);
                     if (input !== null) {
@@ -1734,7 +1769,6 @@
                             document.getElementById('editorBpmDisplay').innerText = editorBPM;
                             document.getElementById('liveBpmDisplay').innerText = editorBPM;
                             
-                            // รีโมทให้จัดกริดแบบล่องหน
                             remoteEditAction(() => {
                                 snapLoopToGrid();
                             });
