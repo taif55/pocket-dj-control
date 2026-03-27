@@ -290,7 +290,7 @@
             
             <div class="flex items-center space-x-1 flex-shrink-0">
                 <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onclick="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
             </div>
 
         </div>
@@ -365,11 +365,6 @@
         let editorBPM = 128; 
         let editorTapTimes = []; 
         let editorTapTimeout = null; 
-
-        let bgLiveBPM = 128;
-        let bgLiveTapTimes = [];
-        let bgLiveTapTimeout = null;
-        let liveBgSpeedMultiplier = 1.0;
 
         let tapTimes = [];
         let audioCtx = null; let micStream = null; let analyzer = null; 
@@ -459,8 +454,7 @@
             let fgSlider = document.getElementById('fgSpeedSlider');
             if(fgSlider) { fgSlider.value = ratio; updateSpeed(ratio, 'FG'); }
             
-            bgLiveBPM = bpm;
-            document.getElementById('bgBpmDisplay').innerText = bgLiveBPM;
+            document.getElementById('liveBpmDisplay').innerText = bpm;
         }
 
         function tapTempo() {
@@ -537,12 +531,20 @@
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     document.getElementById('liveBpmDisplay').innerText = editorBPM;
                     
+                    // --- ระบบล็อคจังหวะอัจฉริยะ (Beat Sync Quantize) ---
+                    let beatTimeMs = 60000 / bpm;
+                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
+                    if (beatsToWait < 2) beatsToWait = 2; 
+                    
+                    let targetTime = now + (beatTimeMs * beatsToWait);
+                    let delayToSync = targetTime - Date.now();
+
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
                         remoteEditAction(() => {
                             snapLoopToGrid();
                         });
-                    }, 1200); 
+                    }, delayToSync); 
                 }
             }
             const btn = document.getElementById('bgTapBtn');
@@ -600,7 +602,14 @@
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                    document.getElementById('liveBpmDisplay').innerText = editorBPM; 
+                    
+                    let beatTimeMs = 60000 / bpm;
+                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
+                    if (beatsToWait < 2) beatsToWait = 2; 
+                    
+                    let targetTime = now + (beatTimeMs * beatsToWait);
+                    let delayToSync = targetTime - Date.now();
                     
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
@@ -612,7 +621,7 @@
                         } else {
                             snapLoopToGrid();
                         }
-                    }, 1200); 
+                    }, delayToSync); 
                 }
             }
             const btn = document.getElementById('editorTapBtn');
