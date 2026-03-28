@@ -8,11 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        :root {
-            /* ค่าตั้งต้นสำหรับจังหวะกระพริบ (128 BPM = 0.468s) */
-            --beat-duration: 0.468s;
-        }
-
         body { 
             font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
             user-select: none; overflow: hidden; height: 100dvh; 
@@ -147,17 +142,6 @@
         .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
         
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
-
-        /* อนิเมชั่นกระพริบตามจังหวะ BPM */
-        @keyframes bpmSyncBlink {
-            0% { background-color: #fff !important; color: #000 !important; box-shadow: 0 0 15px #fff; transform: scale(1.1); border-color: #fff !important; z-index: 10; }
-            30% { transform: scale(1); }
-            100% { transform: scale(1); }
-        }
-        .sync-blink {
-            animation: bpmSyncBlink var(--beat-duration, 0.5s) infinite;
-            position: relative;
-        }
     </style>
 </head>
 <body>
@@ -203,13 +187,14 @@
             <div class="flex gap-1.5 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none mt-2 items-stretch">
                 <div class="flex flex-col flex-1 justify-between gap-1.5 min-w-0">
                     <div class="flex items-center justify-between w-full space-x-0.5">
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-green-700 text-white py-1 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-green-700 text-white py-1 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
-                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(0.125))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/8</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">2</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
+                        <button onclick="remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
                     </div>
                     <div class="flex items-center w-full gap-1">
                         <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap">STOP</button>
@@ -221,7 +206,7 @@
 
                         <div class="flex-1 flex items-center space-x-0.5 bg-black/50 px-1 py-1 rounded border border-gray-700 min-w-0">
                             <span class="text-[6px] font-bold text-gray-400">BRT</span>
-                            <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
+                            <input type="range" id="bgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-1 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
                         </div>
 
                         <span id="liveBpmDisplay" class="text-[10px] text-orange-400 font-black px-1.5 py-1 rounded border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center min-w-[24px]">128</span>
@@ -256,8 +241,8 @@
             <div class="flex space-x-2 mt-1 flex-none w-full">
                 <div class="flex-1 flex items-center space-x-2 bg-gray-900/50 px-3 py-2 rounded-lg border border-gray-800">
                     <span class="text-[9px] font-bold text-gray-400 w-6">BRT</span>
-                    <input type="range" id="fgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
-                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">30%</span>
+                    <input type="range" id="fgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
+                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">100%</span>
                 </div>
                 <button id="stopBtnFG" onclick="stopFG()" class="flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FG</button>
             </div>
@@ -300,13 +285,14 @@
             </div>
             
             <div class="flex items-center space-x-0.5 flex-1 justify-center px-1">
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(2)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(1)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
+                <button onclick="setRoomScale(0.125)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/8</button>
+                <button onclick="setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
+                <button onclick="setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
+                <button onclick="setRoomScale(1)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1</button>
+                <button onclick="setRoomScale(2)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">2</button>
+                <button onclick="setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
+                <button onclick="setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
+                <button onclick="setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
             </div>
             
             <div class="flex items-center space-x-1 flex-shrink-0">
@@ -397,29 +383,6 @@
         let stateIndex = -1;
         let isNavigatingHistory = false;
 
-        let lastBLEWriteTime = 0; 
-
-        // ฟังก์ชันสำหรับอัพเดทจังหวะกระพริบให้ตรงกับ BPM ปัจจุบัน
-        function updateBeatDuration() {
-            let dur = 60 / editorBPM;
-            document.documentElement.style.setProperty('--beat-duration', dur + 's');
-        }
-
-        // ฟังก์ชันตั้งค่าปุ่ม Room Scale ที่ถูกเลือกให้กระพริบ
-        function setActiveScaleBtn(btn) {
-            if (!btn) return;
-            let parent = btn.parentElement;
-            // ลบสถานะกระพริบออกจากปุ่มพี่น้องทั้งหมดในกลุ่มเดียวกัน
-            Array.from(parent.children).forEach(child => child.classList.remove('sync-blink'));
-            // ใส่สถานะกระพริบให้ปุ่มที่ถูกกด
-            btn.classList.add('sync-blink');
-        }
-
-        // ฟังก์ชันล้างสถานะกระพริบออกให้หมด (ใช้ตอนสลับไฟดวงใหม่)
-        function clearActiveScaleBtns() {
-            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
-        }
-
         function saveState() {
             if (isNavigatingHistory) return;
             stateHistory = stateHistory.slice(0, stateIndex + 1);
@@ -499,7 +462,6 @@
             if(fgSlider) { fgSlider.value = ratio; updateSpeed(ratio, 'FG'); }
             
             document.getElementById('liveBpmDisplay').innerText = bpm;
-            updateBeatDuration(); // อัพเดทความเร็วกระพริบ
         }
 
         function tapTempo() {
@@ -510,8 +472,7 @@
                 let diffs = [];
                 for (let i = 1; i < tapTimes.length; i++) diffs.push(tapTimes[i] - tapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let rawBpm = 60000 / avgDiff;
-                let bpm = Math.round(rawBpm * 2) / 2; // BPM Smart Snap
+                let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) setGlobalBPM(bpm);
             }
             if (isListeningMic) toggleMicListen(); 
@@ -571,15 +532,13 @@
                 let diffs = [];
                 for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let rawBpm = 60000 / avgDiff;
-                let bpm = Math.round(rawBpm * 2) / 2; // BPM Smart Snap
+                let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     document.getElementById('liveBpmDisplay').innerText = editorBPM;
                     
-                    updateBeatDuration(); // อัพเดทความเร็วกระพริบ
-                    
+                    // --- ระบบล็อคจังหวะอัจฉริยะ (Beat Sync Quantize) ---
                     let beatTimeMs = 60000 / bpm;
                     let beatsToWait = Math.ceil(1200 / beatTimeMs); 
                     if (beatsToWait < 2) beatsToWait = 2; 
@@ -589,12 +548,6 @@
 
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
-                        if(characteristic) {
-                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
-                            characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + (currentBrt * 0.8).toFixed(2))).catch(e=>{});
-                            setTimeout(() => { characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + currentBrt.toFixed(2))).catch(e=>{}); }, 150);
-                        }
-
                         remoteEditAction(() => {
                             snapLoopToGrid();
                         });
@@ -652,14 +605,11 @@
                 let diffs = [];
                 for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let rawBpm = 60000 / avgDiff;
-                let bpm = Math.round(rawBpm * 2) / 2; // BPM Smart Snap
+                let bpm = Math.round(60000 / avgDiff);
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     document.getElementById('liveBpmDisplay').innerText = editorBPM; 
-                    
-                    updateBeatDuration(); // อัพเดทความเร็วกระพริบ
                     
                     let beatTimeMs = 60000 / bpm;
                     let beatsToWait = Math.ceil(1200 / beatTimeMs); 
@@ -670,12 +620,6 @@
                     
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
-                        if(characteristic) {
-                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
-                            characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + (currentBrt * 0.8).toFixed(2))).catch(e=>{});
-                            setTimeout(() => { characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + currentBrt.toFixed(2))).catch(e=>{}); }, 150);
-                        }
-
                         if (!document.getElementById('modal').classList.contains('hidden')) {
                             updateGridBackground(); 
                             snapLoopToGrid(); 
@@ -759,13 +703,11 @@
                             if (now - lastBeatTime > 300) { 
                                 let diff = now - lastBeatTime; lastBeatTime = now;
                                 if (diff < 2000) { 
-                                    let rawBpm = 60000 / diff;
-                                    let bpm = Math.round(rawBpm * 2) / 2;
+                                    let bpm = Math.round(60000 / diff);
                                     if (bpm > 60 && bpm < 200) {
                                         micBpmArr.push(bpm);
                                         if (micBpmArr.length > 4) micBpmArr.shift();
-                                        let rawAvgBpm = micBpmArr.reduce((a,b)=>a+b)/micBpmArr.length;
-                                        let avgBpm = Math.round(rawAvgBpm * 2) / 2; // BPM Smart Snap
+                                        let avgBpm = Math.round(micBpmArr.reduce((a,b)=>a+b)/micBpmArr.length);
                                         setGlobalBPM(avgBpm);
                                     }
                                 }
@@ -934,7 +876,7 @@
         }
         function resetBright(layer) {
             let slider = document.getElementById(layer === 'BG' ? 'bgBrightSlider' : 'fgBrightSlider');
-            if(slider) { slider.value = 0.30; updateBright(0.30, layer); }
+            if(slider) { slider.value = 1.0; updateBright(1.0, layer); }
         }
 
         function loadPatternOrder() {
@@ -1175,12 +1117,14 @@
             const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
             if (stopBtn) {
                 if (layer === 'BG') {
+                    // Update classes for BG STOP button to match new compact layout
                     if (activeIdx !== -1) {
                         stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap";
                     } else {
                         stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap";
                     }
                 } else {
+                    // Keep FG STOP button unchanged
                     if (activeIdx !== -1) {
                         stopBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
                     } else {
@@ -1191,7 +1135,6 @@
         }
 
         async function playFX(idx, btnElement, layer) {
-            clearActiveScaleBtns(); // ล้างสถานะไฟกระพริบ Room Scale เมื่อเปลี่ยน Pad
             if(isPlaying) stopPlayback(); 
             
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
@@ -1227,7 +1170,6 @@
         }
 
         async function stopBG() {
-            clearActiveScaleBtns();
             activeIdxBG = -1; 
             localStorage.setItem('lastActiveBG', -1);
             updatePadsVisuals('BG');
@@ -1245,7 +1187,6 @@
         }
 
         function openPopup(idx, layer) {
-            clearActiveScaleBtns(); // ล้างสถานะกระพริบเมื่อเปิดหน้า Edit
             window.location.hash = 'edit'; 
             activeLayer = layer; selectedIdx = idx; clips = []; activeColorIndex = -1;
             
@@ -1605,9 +1546,7 @@
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0');
-                let b = parseInt(c.bright).toString().padStart(2,'0');
-                let d = Math.max(1, Math.min(99, Math.round(c.duration*10))).toString().padStart(2,'0'); // Duration Guard Fix
+                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00)`; 
             });
             return code;
@@ -1636,21 +1575,7 @@
             }
         }
         
-        function updateLoopLine() { 
-            let maxT = 0; 
-            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); 
-            
-            let beatTime = 60 / editorBPM;
-            // Sync Loop-Line Magnet
-            if (maxT > 0) {
-                currentLoopLimit = Math.ceil(maxT / beatTime) * beatTime;
-            } else {
-                currentLoopLimit = beatTime * 4; // Fallback 4 beats
-            }
-            
-            const ll = document.getElementById('loopLine'); 
-            if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
-        }
+        function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
         
         function addClipAtPlayhead() { 
             const id = Date.now(); 
@@ -1728,10 +1653,6 @@
 
         async function scrubLiveFrame() { 
             if(!characteristic || isPlaying || isWritingBLE) return; 
-            let nowTime = Date.now();
-            if (nowTime - lastBLEWriteTime < 100) return; // Safety throttler 100ms
-            lastBLEWriteTime = nowTime;
-
             let activeClips = clips.filter(c => playheadTime >= c.start && playheadTime <= c.start + c.duration);
             if (activeClips.length === 0) {
                 if (!lastSentOff) {
@@ -1792,8 +1713,6 @@
                      linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
                 document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
                 
-                updateBeatDuration(); // ตั้งค่าความเร็วกระพริบเริ่มต้นตอนโหลดหน้าเว็บ
-
                 interact('#editorBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
                     if (input !== null) {
@@ -1802,7 +1721,6 @@
                             editorBPM = bpm;
                             document.getElementById('editorBpmDisplay').innerText = editorBPM;
                             document.getElementById('liveBpmDisplay').innerText = editorBPM;
-                            updateBeatDuration(); // อัพเดทความเร็วกระพริบหลังรับค่า
                             updateGridBackground();
                             snapLoopToGrid(); 
                             fitToScreen(); 
@@ -1821,7 +1739,6 @@
                             editorBPM = bpm;
                             document.getElementById('editorBpmDisplay').innerText = editorBPM;
                             document.getElementById('liveBpmDisplay').innerText = editorBPM;
-                            updateBeatDuration(); // อัพเดทความเร็วกระพริบหลังรับค่า
                             remoteEditAction(() => { snapLoopToGrid(); });
                         } else {
                             alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
@@ -1833,3 +1750,5 @@
     </script>
 </body>
 </html>
+
+
