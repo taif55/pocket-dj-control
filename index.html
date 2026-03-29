@@ -1515,14 +1515,16 @@
                 if(c.mirror) {
                     currentLEDs.forEach(led => {
                         let num = parseInt(led.replace(/<|>/g, ''));
-                        let pair = 68 - num; 
+                        // 🚀 แก้ไข: เปลี่ยนจาก 68 เป็น 69
+                        let pair = 69 - num; 
                         if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
                     });
                 } else {
                     c.target = "";
                     currentLEDs.forEach(led => {
                         let num = parseInt(led.replace(/<|>/g, ''));
-                        if(num <= 33) { c.target += '<'+num+'>'; }
+                        // 🚀 แก้ไข: เปลี่ยนจาก 33 เป็น 34
+                        if(num <= 34) { c.target += '<'+num+'>'; }
                     });
                 }
                 markUnsaved(); updateSelectedClip();
@@ -1576,7 +1578,8 @@
                 d.className = `text-[8px] h-6 border rounded flex items-center justify-center cursor-pointer ${isMarked} ${isActive}`;
                 d.addEventListener('click', (e) => { 
                     let targetStr = '<' + i + '>';
-                    let pair = c.mirror ? (68 - i) : null;
+                    // 🚀 แก้ไข: เปลี่ยนจาก 68 เป็น 69
+                    let pair = c.mirror ? (69 - i) : null;
                     let pairStr = pair ? '<' + pair + '>' : '';
                     if(c.target.includes(targetStr)) { 
                         c.target = c.target.replace(targetStr,''); 
