@@ -1598,7 +1598,12 @@
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
+                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0');
+                let b = parseInt(c.bright).toString().padStart(2,'0');
+                
+                // 🚀 แก้ไข: บังคับให้ d (duration) มีค่าต่ำสุดคือ 1 (01) ห้ามเป็น 00 เด็ดขาด
+                let d = Math.max(1, Math.min(99, Math.round(c.duration*10))).toString().padStart(2,'0');
+                
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00)`; 
             });
             return code;
