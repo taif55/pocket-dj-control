@@ -1211,7 +1211,7 @@
             saveState(); 
         }
 
-        // 🚀 แก้ไข: เพิ่มการเรียก function เล็กๆ เพื่อ "สะกิด" ให้ playhead วาดกริดทันทีเมื่อเปิดหน้าต่างขึ้นมา
+        // 🚀 แก้ไข: เพิ่มการหน่วงเวลา 50ms เพื่อให้กราฟิกตื่นขึ้นมาดูดเส้นกริดทันทีเมื่อคลิกเข้าหน้า Edit
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1239,21 +1239,25 @@
                     }
                 });
             }
-            initColors(); updateGridBackground(); renderClips();
-            if(clips.length > 0) selectClip(clips[0].id);
             
-            updateLoopLine();
-            fitToScreen(); 
-            
-            // สะกิดเพลย์เฮดให้รีเฟรช 1 เฟรม เผื่อกราฟิกมันหลับตอนซ่อนหน้าต่างไป
-            if(!isPlaying) {
-                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                scrubLiveFrame(); 
-            }
-            
-            if (!isPlaying) togglePlay(); 
-            
-            stateHistory = []; stateIndex = -1; saveState(); 
+            setTimeout(() => {
+                initColors(); 
+                updateGridBackground(); 
+                renderClips();
+                if(clips.length > 0) selectClip(clips[0].id);
+                
+                updateLoopLine();
+                fitToScreen(); 
+                
+                if(!isPlaying) {
+                    document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+                    scrubLiveFrame(); 
+                }
+                
+                if (!isPlaying) togglePlay(); 
+                
+                stateHistory = []; stateIndex = -1; saveState(); 
+            }, 50);
             
             let initialPxPerSec = pxPerSec;
             interact('#timelineViewport').gesturable({
@@ -1363,8 +1367,8 @@
                 let actualRatio = (targetBeats * beatTime) / maxT;
                 
                 clips.forEach(c => { 
-                    c.start = Math.round(c.start * actualRatio * 10) / 10; 
-                    c.duration = Math.max(0.1, Math.round(c.duration * actualRatio * 10) / 10); 
+                    c.start = c.start * actualRatio; 
+                    c.duration = c.duration * actualRatio; 
                 });
             }
             
