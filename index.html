@@ -118,7 +118,15 @@
 
         .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
         .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        .pad-btn.playing { box-shadow: 0 0 20px #fff; border-color: #fff; background: #fff !important; color: black; }
+        
+        /* 🚀 UPDATE: เพิ่มการกะพริบตาม BPM ให้กับ Pad ที่ถูกเปิดเล่นอยู่ */
+        .pad-btn.playing { 
+            box-shadow: 0 0 20px #fff; 
+            border-color: #fff; 
+            background: #fff !important; 
+            color: black; 
+            animation: bpmSyncBlink var(--beat-duration, 0.5s) infinite;
+        }
 
         .pad-btn.has-code { border: 2px solid #555; background-color: #151515 !important; }
 
@@ -188,6 +196,24 @@
             </div>
         </div>
 
+        <div class="flex items-center justify-between bg-gray-900/50 p-2 mx-1 mt-1 rounded-xl border border-gray-800 flex-none shadow-lg">
+            <div class="flex space-x-1">
+                <button id="btnAutoTempo" onclick="toggleMicListen()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center">
+                    <span>🎙️</span><span>AUTO</span>
+                </button>
+                <button id="btnKickListen" onclick="toggleKickListen()" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center">
+                    <span>🥁</span><span>KICK</span>
+                </button>
+            </div>
+            <div class="flex flex-col items-center flex-1">
+                <span class="text-[7px] text-gray-500 font-bold uppercase tracking-widest mb-[2px]">Master Tempo</span>
+                <div class="text-green-400 font-black text-xl leading-none tracking-wider" id="globalBpmDisplay" style="text-shadow: 0 0 10px rgba(74,222,128,0.5);">128 <span class="text-[10px] text-gray-500 font-bold">BPM</span></div>
+            </div>
+            <button id="btnTapTempo" onclick="tapTempo()" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black flex items-center space-x-1 transition shadow-lg w-[60px] justify-center active:scale-90">
+                <span>👆</span><span>TAP</span>
+            </button>
+        </div>
+
         <div class="layer-block layer-bg mt-1">
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
             
@@ -201,22 +227,17 @@
                 <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">1/4</button>
             </div>
 
-            <div class="flex gap-1.5 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none items-center">
-                <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full">STOP</button>
-                
-                <div class="flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 shrink-0">
-                    <span class="text-[7px] text-gray-400 font-bold">SCL</span>
-                    <input type="range" id="liveSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500 h-1.5 bg-gray-700 rounded-lg appearance-none" onchange="remoteEditAction(() => applySpeedScale(this.value))">
-                </div>
+            <div class="flex gap-2 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none items-stretch h-14">
+                <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] px-3 rounded-lg shadow-lg transition flex items-center justify-center">STOP</button>
 
-                <div class="flex-1 flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 min-w-0">
-                    <span class="text-[7px] font-bold text-gray-400">BRT</span>
+                <div class="flex-1 flex items-center space-x-2 bg-black/50 px-2 rounded-lg border border-gray-700 min-w-0">
+                    <span class="text-[8px] font-bold text-gray-400">BRT</span>
                     <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
                 </div>
 
-                <span id="liveBpmDisplay" class="text-[12px] text-orange-400 font-black px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center">128</span>
+                <span id="liveBpmDisplay" class="flex items-center justify-center text-[16px] text-orange-400 font-black px-3 rounded-lg border border-gray-700 bg-gray-800 cursor-pointer shrink-0 min-w-[50px]">128</span>
                 
-                <button id="bgTapBtn" onpointerdown="remoteTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-[0_0_10px_rgba(234,88,12,0.4)] active:scale-95 transition flex items-center justify-center shrink-0">
+                <button id="bgTapBtn" onpointerdown="remoteTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-5 rounded-lg text-[14px] font-black shadow-[0_0_10px_rgba(234,88,12,0.4)] active:scale-95 transition flex items-center justify-center shrink-0">
                     TAP
                 </button>
             </div>
@@ -685,7 +706,7 @@
                 if (bpm > 30 && bpm <= 200) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                    document.getElementById('liveBpmDisplay').innerText = editorBPM; 
                     
                     updateBeatDuration(); 
                     
@@ -739,6 +760,111 @@
                     fitToScreen(); 
                     restartPlayhead(); 
                 }
+            }
+        }
+
+        async function initAudio() {
+            if (!audioCtx) {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyzer = audioCtx.createAnalyser(); analyzer.fftSize = 256;
+                const source = audioCtx.createMediaStreamSource(micStream);
+                source.connect(analyzer);
+            }
+        }
+
+        async function toggleMicListen() {
+            const btn = document.getElementById('btnAutoTempo');
+            if (isListeningMic) {
+                isListeningMic = false; clearInterval(micInterval);
+                if (micStream && !isListeningKick) { micStream.getTracks().forEach(t => t.stop()); audioCtx.close(); audioCtx = null; }
+                btn.classList.replace('bg-red-600', 'bg-blue-600');
+                btn.innerHTML = '<span>🎙️</span><span>AUTO</span>';
+            } else {
+                try {
+                    await initAudio();
+                    isListeningMic = true;
+                    if(isListeningKick) toggleKickListen(); 
+                    
+                    btn.classList.replace('bg-blue-600', 'bg-red-600');
+                    btn.innerHTML = '<span>🔴</span><span>LISTEN</span>';
+                    
+                    const bufferLength = analyzer.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    
+                    micInterval = setInterval(() => {
+                        analyzer.getByteFrequencyData(dataArray);
+                        let sum = 0; for(let i=0; i<10; i++) sum += dataArray[i]; 
+                        let avg = sum / 10;
+                        
+                        if (avg > 200) { 
+                            let now = Date.now();
+                            if (now - lastBeatTime > 300) { 
+                                let diff = now - lastBeatTime; lastBeatTime = now;
+                                if (diff < 2000) { 
+                                    let bpm = Math.round(60000 / diff);
+                                    if (bpm > 60 && bpm < 200) {
+                                        micBpmArr.push(bpm);
+                                        if (micBpmArr.length > 4) micBpmArr.shift();
+                                        let avgBpm = Math.round(micBpmArr.reduce((a,b)=>a+b)/micBpmArr.length);
+                                        // setGlobalBPM(avgBpm); -> Remove for cleaner view
+                                    }
+                                }
+                            }
+                        }
+                    }, 50);
+                } catch(err) { alert('ไม่สามารถใช้ไมค์ได้ครับ: ' + err.message); }
+            }
+        }
+
+        async function toggleKickListen() {
+            const btn = document.getElementById('btnKickListen');
+            if (isListeningKick) {
+                isListeningKick = false; clearInterval(kickInterval);
+                if (micStream && !isListeningMic) { micStream.getTracks().forEach(t => t.stop()); audioCtx.close(); audioCtx = null; }
+                btn.classList.replace('bg-red-600', 'bg-purple-600');
+                btn.innerHTML = '<span>🥁</span><span>KICK</span>';
+            } else {
+                try {
+                    await initAudio();
+                    isListeningKick = true;
+                    if(isListeningMic) toggleMicListen(); 
+                    
+                    btn.classList.replace('bg-purple-600', 'bg-red-600');
+                    btn.innerHTML = '<span>🔴</span><span>KICK</span>';
+                    
+                    const bufferLength = analyzer.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+                    
+                    kickInterval = setInterval(async () => {
+                        analyzer.getByteFrequencyData(dataArray);
+                        let sum = 0; for(let i=0; i<5; i++) sum += dataArray[i]; 
+                        let avg = sum / 5;
+                        
+                        if (avg > 220) { 
+                            let now = Date.now();
+                            if (now - lastKickTime > 250) { 
+                                lastKickTime = now;
+                                if(characteristic && !isWritingBLE) {
+                                    try {
+                                        isWritingBLE = true;
+                                        let currentCode = "";
+                                        if (activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
+                                            currentCode = bgPatterns[activeIdxBG].code;
+                                        }
+                                        
+                                        if (currentCode) {
+                                            await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + currentCode));
+                                        } else {
+                                            await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5(0099,a,wh,s0200)"));
+                                        }
+                                        isWritingBLE = false;
+                                    } catch(e) { isWritingBLE = false; }
+                                }
+                            }
+                        }
+                    }, 30);
+                } catch(err) { alert('ไม่สามารถใช้ไมค์ได้ครับ: ' + err.message); }
             }
         }
 
@@ -801,11 +927,31 @@
             updateLoopLine();
             fitToScreen();
             closeCodeModal();
-            handleBack(); // เซฟและกลับ
+            handleBack(); 
             alert("แปลงโค้ดกลับเป็นลายไฟสำเร็จ!");
         }
 
-        function updateSpeed(val, layer) {
+        function closePopupDirectly() {
+            isPlaying = false;
+            cancelAnimationFrame(playInterval);
+            const btn = document.getElementById('playBtn'); 
+            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+            
+            document.getElementById('modal').classList.add('hidden'); 
+            
+            if(selectedIdx !== -1) {
+                let gridId = activeLayer === 'BG' ? 'padGridBG' : 'padGridFG';
+                let grid = document.getElementById(gridId);
+                let btnElement = grid ? grid.children[selectedIdx] : null;
+                
+                setTimeout(() => {
+                    playFX(selectedIdx, btnElement, activeLayer);
+                    selectedIdx = -1; 
+                }, 150);
+            }
+        }
+
+        async function updateSpeed(val, layer) {
             if(layer === 'BG') {
                 throttledBleWrite('speedBG', "T" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
             } else {
@@ -825,7 +971,7 @@
         }
 
         function resetSpeed(layer) {
-            let slider = document.getElementById(layer === 'BG' ? 'liveSpeedSlider' : 'fgSpeedSlider');
+            let slider = document.getElementById('fgSpeedSlider');
             if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
         }
         function resetBright(layer) {
@@ -952,6 +1098,19 @@
                 await safeBleWrite("GET_ALL", 'withResponse');
             } catch (e) { alert("BT Error: " + e.message); }
         };
+        
+        function onDisconnected() { 
+            characteristic = null; 
+            isBleWriting = false; 
+            bleQueue = []; 
+            
+            const btn = document.getElementById('connectBtn'); 
+            btn.innerText = "CONNECT"; 
+            btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
+            updatePowerBar(0); 
+            document.getElementById('powerBarText').innerText = "OFF";
+            document.getElementById('powerLabel').innerText = "POWER"; 
+        }
 
         function renderLayerPads(layer) {
             const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
@@ -1063,9 +1222,9 @@
             if (stopBtn) {
                 if (layer === 'BG') {
                     if (activeIdx !== -1) {
-                        stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
+                        stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[9px] px-3 rounded-lg shadow-lg transition h-full whitespace-nowrap";
                     } else {
-                        stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
+                        stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 rounded-lg shadow-lg transition h-full whitespace-nowrap";
                     }
                 } else {
                     if (activeIdx !== -1) {
@@ -1079,7 +1238,6 @@
 
         function playFX(idx, btnElement, layer) {
             clearActiveScaleBtns(); 
-            // 🛑 หยุดการวิ่งของเพลย์เฮดในหน้า Edit ทันทีเมื่อมีการสั่งเล่นไฟจากหน้าหลัก
             if(isPlaying) {
                 isPlaying = false; 
                 cancelAnimationFrame(playInterval);
@@ -1091,9 +1249,6 @@
             if (layer === 'BG') {
                 activeIdxBG = idx;
                 localStorage.setItem('lastActiveBG', idx); 
-                
-                let liveSlider = document.getElementById('liveSpeedSlider');
-                if(liveSlider) liveSlider.value = 1.0;
                 
                 document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
                 if(btnElement) btnElement.classList.add('playing'); 
@@ -1183,55 +1338,20 @@
             });
         }
 
-        // ======================================================================
-        // 🚀 NEW: ฟังก์ชันออกจากหน้า Edit และ Save อย่างราบรื่น
-        // ======================================================================
         function handleBack() {
-            // 1. ดับเครื่องยนต์ UI หน้า Edit แบบเงียบๆ ห้ามส่งคำสั่ง off
-            isPlaying = false;
-            cancelAnimationFrame(playInterval);
-            const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
-            
-            // 2. ทำการ Save 
-            let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
-            patterns[selectedIdx].code = generateCodeStr();
-            let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
-            let playPrefix = (activeLayer === 'BG') ? '5' : 'FG:5';
-
-            if(characteristic) {
-                // เซฟลงชิป
-                safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
-                
-                // อัปเดตไฟที่เล่นอยู่ถ้าตรงกับช่องที่กำลัง Edit (เล่นต่อเนื่องแบบเนียนๆ)
-                let activeLiveIdx = (activeLayer === 'BG') ? activeIdxBG : activeIdxFG;
-                if (activeLiveIdx === selectedIdx) {
-                    safeBleWrite(playPrefix + patterns[selectedIdx].code);
+            if (activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
+                if(characteristic) {
+                    let code = bgPatterns[activeIdxBG].code;
+                    safeBleWrite("T1.00");
+                    safeBleWrite("5" + code);
                 }
             }
 
-            // 3. จัดการ UI ปิดหน้าต่างและอัปเดตขอบปุ่มในหน้าแรก
-            updatePadsVisuals(activeLayer);
-            document.getElementById('modal').classList.add('hidden');
             if (window.location.hash === '#edit') {
                 history.replaceState(null, null, window.location.pathname);
             }
-        }
-
-        function unsaveAndExit() {
-            // ดับเครื่องยนต์ UI หน้า Edit แบบเงียบๆ ห้ามส่งคำสั่ง off
-            isPlaying = false;
-            cancelAnimationFrame(playInterval);
-            const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
-            
-            // ปิดหน้าต่างทันที ไม่เซฟ
             document.getElementById('modal').classList.add('hidden');
-            if (window.location.hash === '#edit') {
-                history.replaceState(null, null, window.location.pathname);
-            }
         }
-        // ======================================================================
 
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
@@ -1297,8 +1417,6 @@
             if (!document.getElementById('modal').classList.contains('hidden')) {
                 let slider = document.getElementById('speedSlider');
                 if (slider) slider.value = 1.0;
-                let liveSlider = document.getElementById('liveSpeedSlider');
-                if (liveSlider) liveSlider.value = 1.0;
                 markUnsaved(); renderClips(); updateCodeMonitor();
                 fitToScreen(); 
                 restartPlayhead(); 
@@ -1528,10 +1646,35 @@
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
+                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0');
+                let b = parseInt(c.bright).toString().padStart(2,'0');
+                let d = Math.max(1, Math.min(99, Math.round(c.duration*10))).toString().padStart(2,'0'); 
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00)`; 
             });
             return code;
+        }
+
+        function saveAndStay() {
+            let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
+            patterns[selectedIdx].code = generateCodeStr();
+            let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
+            if(characteristic) {
+                safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
+            }
+        }
+
+        function saveAndSend() {
+            stopPlayback(); 
+            let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
+            patterns[selectedIdx].code = generateCodeStr();
+            let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
+            if(characteristic) {
+                safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
+            }
+            document.getElementById('modal').classList.add('hidden');
+            if (window.location.hash === '#edit') {
+                history.replaceState(null, null, window.location.pathname);
+            }
         }
         
         function updateLoopLine() { 
@@ -1549,9 +1692,6 @@
             if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
         }
         
-        // ======================================================================
-        // 🚀 NEW: ระบบ Add Clip อัจฉริยะ หาช่องว่างกว้างที่สุด ไม่เกิดทับซ้อนมั่วซั่ว
-        // ======================================================================
         function addClipAtPlayhead() { 
             const id = Date.now(); 
             let beatTime = 60 / editorBPM; 
@@ -1559,14 +1699,12 @@
             let bestGap = null;
             let maxGapWidth = -1;
 
-            // สแกนหาช่องว่างในแต่ละ Track (0-7)
             for (let t = 0; t <= 7; t++) {
                 let trackClips = clips.filter(c => c.track === t).sort((a, b) => a.start - b.start);
                 let currentPos = 0;
                 
                 trackClips.forEach(c => {
                     let gapWidth = c.start - currentPos;
-                    // ถ้าเจอช่องที่กว้างกว่าที่เคยหาเจอ และกว้างพอให้ยัด 1 Beat ได้
                     if (gapWidth >= beatTime && gapWidth > maxGapWidth) {
                         maxGapWidth = gapWidth;
                         bestGap = { track: t, start: currentPos };
@@ -1574,7 +1712,6 @@
                     currentPos = Math.max(currentPos, c.start + c.duration);
                 });
                 
-                // อย่าลืมเช็คพื้นที่ว่างตอนปลายแทร็ก ไปจนถึงสุดขอบ Loop (เส้นแดง)
                 let endGapWidth = currentLoopLimit - currentPos;
                 if (endGapWidth >= beatTime && endGapWidth > maxGapWidth) {
                     maxGapWidth = endGapWidth;
@@ -1586,13 +1723,11 @@
             let spawnTrack = 0;
 
             if (bestGap) {
-                // เย้ เจอที่ว่าง วางก้อนไฟตรงนั้นเลย
                 spawnStart = bestGap.start;
                 spawnTrack = bestGap.track;
             } else {
-                // หมดปัญญา พื้นที่เต็มหมดแล้วจริงๆ ยอมให้ทับซ้อนได้
                 spawnStart = 0; 
-                spawnTrack = Math.floor(Math.random() * 8); // สุ่ม Track ให้หน่อย จะได้ไม่กระจุกแค่ Track 0
+                spawnTrack = Math.floor(Math.random() * 8); 
             }
 
             clips.push({ 
@@ -1612,7 +1747,6 @@
             renderClips(); 
             selectClip(id); 
             
-            // 🚀 NEW: ใส่เอฟเฟกต์กะพริบ (Blink) ชี้เป้าให้ผู้ใช้เห็นว่าก้อนใหม่เกิดที่ไหน!
             setTimeout(() => {
                 let newEl = document.getElementById(`clip-${id}`);
                 if (newEl) {
@@ -1621,7 +1755,6 @@
                 }
             }, 50);
         }
-        // ======================================================================
 
         function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; markUnsaved(); renderClips(); } }
         
@@ -1780,5 +1913,3 @@
     </script>
 </body>
 </html>
-
-
