@@ -1,5 +1,3 @@
-280369 2254 
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -10,6 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
+        :root {
+            /* ค่าตั้งต้นสำหรับจังหวะกระพริบ (128 BPM = 0.468s) */
+            --beat-duration: 0.468s;
+        }
+
         body { 
             font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
             user-select: none; overflow: hidden; height: 100dvh; 
@@ -144,6 +147,17 @@
         .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
         
         .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
+
+        /* อนิเมชั่นกระพริบตามจังหวะ BPM */
+        @keyframes bpmSyncBlink {
+            0% { background-color: #fff !important; color: #000 !important; box-shadow: 0 0 15px #fff; transform: scale(1.1); border-color: #fff !important; z-index: 10; }
+            30% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+        .sync-blink {
+            animation: bpmSyncBlink var(--beat-duration, 0.5s) infinite;
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -189,14 +203,13 @@
             <div class="flex gap-1.5 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none mt-2 items-stretch">
                 <div class="flex flex-col flex-1 justify-between gap-1.5 min-w-0">
                     <div class="flex items-center justify-between w-full space-x-0.5">
-                        <button onclick="remoteEditAction(() => setRoomScale(0.125))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/8</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">2</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
-                        <button onclick="remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-green-700 text-white py-1 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-green-700 text-white py-1 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
+                        <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-1 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
                     </div>
                     <div class="flex items-center w-full gap-1">
                         <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap">STOP</button>
@@ -208,7 +221,7 @@
 
                         <div class="flex-1 flex items-center space-x-0.5 bg-black/50 px-1 py-1 rounded border border-gray-700 min-w-0">
                             <span class="text-[6px] font-bold text-gray-400">BRT</span>
-                            <input type="range" id="bgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-1 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
+                            <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
                         </div>
 
                         <span id="liveBpmDisplay" class="text-[10px] text-orange-400 font-black px-1.5 py-1 rounded border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center min-w-[24px]">128</span>
@@ -243,8 +256,8 @@
             <div class="flex space-x-2 mt-1 flex-none w-full">
                 <div class="flex-1 flex items-center space-x-2 bg-gray-900/50 px-3 py-2 rounded-lg border border-gray-800">
                     <span class="text-[9px] font-bold text-gray-400 w-6">BRT</span>
-                    <input type="range" id="fgBrightSlider" min="0" max="1" step="0.05" value="1.0" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
-                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">100%</span>
+                    <input type="range" id="fgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
+                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">30%</span>
                 </div>
                 <button id="stopBtnFG" onclick="stopFG()" class="flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FG</button>
             </div>
@@ -287,14 +300,13 @@
             </div>
             
             <div class="flex items-center space-x-0.5 flex-1 justify-center px-1">
-                <button onclick="setRoomScale(0.125)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/8</button>
-                <button onclick="setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
-                <button onclick="setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
-                <button onclick="setRoomScale(1)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1</button>
-                <button onclick="setRoomScale(2)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">2</button>
-                <button onclick="setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
-                <button onclick="setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
-                <button onclick="setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(2)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(1)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
             </div>
             
             <div class="flex items-center space-x-1 flex-shrink-0">
@@ -368,6 +380,96 @@
     </div>
 
     <script>
+        // ==========================================
+        //  Bluetooth Queue & Throttle System (Auto-Retry)
+        // ==========================================
+        let device, characteristic;
+        let bleQueue = [];
+        let isBleWriting = false;
+        let bleThrottleTimers = {};
+
+        async function processBleQueue() {
+            if (isBleWriting || bleQueue.length === 0 || !characteristic) return;
+            isBleWriting = true;
+            
+            while (bleQueue.length > 0) {
+                let item = bleQueue.shift();
+                let { cmd, type, retries, resolve, reject } = item;
+                
+                if (!characteristic || !device || !device.gatt.connected) {
+                    if(reject) reject(new Error("Disconnected"));
+                    bleQueue = []; 
+                    break;
+                }
+
+                try {
+                    const writePromise = type === 'withResponse' 
+                        ? characteristic.writeValue(new TextEncoder().encode(cmd))
+                        : characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+                    
+                    // ให้เวลาคำสั่งเซฟ (withResponse) ลากยาวได้ถึง 1.5 วินาที
+                    let timeoutMs = type === 'withResponse' ? 1500 : 1000;
+                    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("BLE Timeout")), timeoutMs));
+                    
+                    await Promise.race([writePromise, timeoutPromise]);
+                    if(resolve) resolve();
+                } catch (e) {
+                    console.warn("BLE Write Error:", cmd, e);
+                    
+                    // ถ้ายังเหลือโควต้าส่งซ้ำ ให้ลองใหม่
+                    if (retries > 0) {
+                        item.retries -= 1;
+                        bleQueue.unshift(item); // ดันกลับไปเข้าคิวคิวแรกสุด
+                        await new Promise(r => setTimeout(r, 100)); // หน่วงเวลาให้บอร์ดตั้งสตินิดนึงก่อนส่งซ้ำ
+                        continue; 
+                    } else {
+                        // ถ้าหมดโควต้าแล้ว และเป็นคำสั่งเซฟ/จัดการข้อมูล ให้แจ้งเตือน!
+                        if (cmd.startsWith("SB") || cmd.startsWith("SF") || cmd.startsWith("OBG") || cmd.startsWith("OFG")) {
+                            alert("⚠️ บลูทูธไม่ตอบสนอง บันทึกข้อมูลไม่สำเร็จ กรุณากด SAVE อีกครั้งครับ");
+                        }
+                        if(reject) reject(e);
+                    }
+                }
+                
+                await new Promise(r => setTimeout(r, 20)); 
+            }
+            
+            isBleWriting = false;
+        }
+
+        function safeBleWrite(cmd, type = 'withoutResponse', retries = -1) {
+            return new Promise((resolve, reject) => {
+                if (bleQueue.length > 30) bleQueue.shift(); 
+                
+                // กำหนดโควต้า: ถ้าเป็นคำสั่งที่ต้องการ Response (พวก Save ต่างๆ) ให้สิทธิ์ส่งซ้ำ 3 รอบ
+                let actualRetries = retries !== -1 ? retries : (type === 'withResponse' ? 3 : 0);
+                
+                bleQueue.push({ cmd, type, retries: actualRetries, resolve, reject });
+                processBleQueue();
+            });
+        }
+
+        function throttledBleWrite(key, cmd, type = 'withoutResponse', delay = 50) {
+            if (bleThrottleTimers[key]) clearTimeout(bleThrottleTimers[key]);
+            bleThrottleTimers[key] = setTimeout(() => {
+                safeBleWrite(cmd, type);
+            }, delay);
+        }
+
+        function onDisconnected() { 
+            characteristic = null; 
+            isBleWriting = false; 
+            bleQueue = []; 
+            
+            const btn = document.getElementById('connectBtn'); 
+            btn.innerText = "CONNECT"; 
+            btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
+            updatePowerBar(0); 
+            document.getElementById('powerBarText').innerText = "OFF";
+            document.getElementById('powerLabel').innerText = "POWER"; 
+        }
+        // ==========================================
+
         let globalBPM = 128;
         let baseBPM = 128; 
         
@@ -384,6 +486,22 @@
         let stateHistory = [];
         let stateIndex = -1;
         let isNavigatingHistory = false;
+
+        function updateBeatDuration() {
+            let dur = 60 / editorBPM;
+            document.documentElement.style.setProperty('--beat-duration', dur + 's');
+        }
+
+        function setActiveScaleBtn(btn) {
+            if (!btn) return;
+            let parent = btn.parentElement;
+            Array.from(parent.children).forEach(child => child.classList.remove('sync-blink'));
+            btn.classList.add('sync-blink');
+        }
+
+        function clearActiveScaleBtns() {
+            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
+        }
 
         function saveState() {
             if (isNavigatingHistory) return;
@@ -429,7 +547,6 @@
             }
         }
 
-        let device, characteristic;
         let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
         
@@ -450,7 +567,7 @@
 
         let currentPowerPercent = 0;
         let currentRawPower = 0;
-        let activeColorIndex = -1; let isWritingBLE = false;
+        let activeColorIndex = -1; 
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
@@ -464,6 +581,7 @@
             if(fgSlider) { fgSlider.value = ratio; updateSpeed(ratio, 'FG'); }
             
             document.getElementById('liveBpmDisplay').innerText = bpm;
+            updateBeatDuration(); 
         }
 
         function tapTempo() {
@@ -474,7 +592,8 @@
                 let diffs = [];
                 for (let i = 1; i < tapTimes.length; i++) diffs.push(tapTimes[i] - tapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let bpm = Math.round(60000 / avgDiff);
+                let rawBpm = 60000 / avgDiff;
+                let bpm = Math.round(rawBpm * 2) / 2; 
                 if (bpm > 30 && bpm < 300) setGlobalBPM(bpm);
             }
             if (isListeningMic) toggleMicListen(); 
@@ -513,11 +632,9 @@
             updatePadsVisuals('BG');
             
             if(characteristic) {
-                characteristic.writeValue(new TextEncoder().encode(`SB${activeIdxBG}:${newCode}`)).catch(e=>{});
-                characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.00")).catch(e=>{});
-                setTimeout(() => {
-                    characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + newCode)).catch(e=>{});
-                }, 40);
+                safeBleWrite(`SB${activeIdxBG}:${newCode}`, 'withResponse');
+                safeBleWrite("T1.00");
+                safeBleWrite("5" + newCode);
             }
 
             activeLayer = prevLayer;
@@ -534,13 +651,15 @@
                 let diffs = [];
                 for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let bpm = Math.round(60000 / avgDiff);
+                let rawBpm = 60000 / avgDiff;
+                let bpm = Math.round(rawBpm * 2) / 2; 
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     document.getElementById('liveBpmDisplay').innerText = editorBPM;
                     
-                    // --- ระบบล็อคจังหวะอัจฉริยะ (Beat Sync Quantize) ---
+                    updateBeatDuration(); 
+                    
                     let beatTimeMs = 60000 / bpm;
                     let beatsToWait = Math.ceil(1200 / beatTimeMs); 
                     if (beatsToWait < 2) beatsToWait = 2; 
@@ -550,6 +669,12 @@
 
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
+                        if(characteristic) {
+                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
+                            safeBleWrite("B:" + (currentBrt * 0.8).toFixed(2));
+                            setTimeout(() => { safeBleWrite("B:" + currentBrt.toFixed(2)); }, 150);
+                        }
+
                         remoteEditAction(() => {
                             snapLoopToGrid();
                         });
@@ -607,11 +732,14 @@
                 let diffs = [];
                 for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
                 let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let bpm = Math.round(60000 / avgDiff);
+                let rawBpm = 60000 / avgDiff;
+                let bpm = Math.round(rawBpm * 2) / 2; 
                 if (bpm > 30 && bpm < 300) {
                     editorBPM = bpm;
                     document.getElementById('editorBpmDisplay').innerText = editorBPM;
                     document.getElementById('liveBpmDisplay').innerText = editorBPM; 
+                    
+                    updateBeatDuration(); 
                     
                     let beatTimeMs = 60000 / bpm;
                     let beatsToWait = Math.ceil(1200 / beatTimeMs); 
@@ -622,6 +750,12 @@
                     
                     if (editorTapTimeout) clearTimeout(editorTapTimeout);
                     editorTapTimeout = setTimeout(() => {
+                        if(characteristic) {
+                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
+                            safeBleWrite("B:" + (currentBrt * 0.8).toFixed(2));
+                            setTimeout(() => { safeBleWrite("B:" + currentBrt.toFixed(2)); }, 150);
+                        }
+
                         if (!document.getElementById('modal').classList.contains('hidden')) {
                             updateGridBackground(); 
                             snapLoopToGrid(); 
@@ -705,11 +839,13 @@
                             if (now - lastBeatTime > 300) { 
                                 let diff = now - lastBeatTime; lastBeatTime = now;
                                 if (diff < 2000) { 
-                                    let bpm = Math.round(60000 / diff);
+                                    let rawBpm = 60000 / diff;
+                                    let bpm = Math.round(rawBpm * 2) / 2;
                                     if (bpm > 60 && bpm < 200) {
                                         micBpmArr.push(bpm);
                                         if (micBpmArr.length > 4) micBpmArr.shift();
-                                        let avgBpm = Math.round(micBpmArr.reduce((a,b)=>a+b)/micBpmArr.length);
+                                        let rawAvgBpm = micBpmArr.reduce((a,b)=>a+b)/micBpmArr.length;
+                                        let avgBpm = Math.round(rawAvgBpm * 2) / 2; 
                                         setGlobalBPM(avgBpm);
                                     }
                                 }
@@ -748,21 +884,16 @@
                             let now = Date.now();
                             if (now - lastKickTime > 250) { 
                                 lastKickTime = now;
-                                if(characteristic && !isWritingBLE) {
-                                    try {
-                                        isWritingBLE = true;
-                                        let currentCode = "";
-                                        if (activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
-                                            currentCode = bgPatterns[activeIdxBG].code;
-                                        }
-                                        
-                                        if (currentCode) {
-                                            await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + currentCode));
-                                        } else {
-                                            await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5(0099,a,wh,s0200)"));
-                                        }
-                                        isWritingBLE = false;
-                                    } catch(e) { isWritingBLE = false; }
+                                if(characteristic) {
+                                    let currentCode = "";
+                                    if (activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
+                                        currentCode = bgPatterns[activeIdxBG].code;
+                                    }
+                                    if (currentCode) {
+                                        safeBleWrite("5" + currentCode);
+                                    } else {
+                                        safeBleWrite("5(0099,a,wh,s0200)");
+                                    }
                                 }
                             }
                         }
@@ -854,21 +985,22 @@
             }
         }
 
-        async function updateSpeed(val, layer) {
+        function updateSpeed(val, layer) {
             if(layer === 'BG') {
-                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T" + parseFloat(val).toFixed(1))); }catch(e){} }
+                throttledBleWrite('speedBG', "T" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
             } else {
                 document.getElementById('fgSpeedText').innerText = parseFloat(val).toFixed(1);
-                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FGT" + parseFloat(val).toFixed(1))); }catch(e){} }
+                throttledBleWrite('speedFG', "FGT" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
             }
         }
-        async function updateBright(val, layer) {
+        
+        function updateBright(val, layer) {
             if(layer === 'BG') {
                 document.getElementById('bgBrightText').innerText = Math.round(val*100) + '%';
-                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("B:" + parseFloat(val).toFixed(2))); }catch(e){} }
+                throttledBleWrite('brightBG', "B:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
             } else {
                 document.getElementById('fgBrightText').innerText = Math.round(val*100) + '%';
-                if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FGB:" + parseFloat(val).toFixed(2))); }catch(e){} }
+                throttledBleWrite('brightFG', "FGB:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
             }
         }
 
@@ -878,7 +1010,7 @@
         }
         function resetBright(layer) {
             let slider = document.getElementById(layer === 'BG' ? 'bgBrightSlider' : 'fgBrightSlider');
-            if(slider) { slider.value = 1.0; updateBright(1.0, layer); }
+            if(slider) { slider.value = 0.30; updateBright(0.30, layer); }
         }
 
         function loadPatternOrder() {
@@ -916,7 +1048,7 @@
             
             if(characteristic) {
                 let prefix = (layer === 'BG') ? "OBG:" : "OFG:";
-                characteristic.writeValue(new TextEncoder().encode(prefix + orderStr)).catch(e=>{});
+                safeBleWrite(prefix + orderStr, 'withResponse');
             }
         }
 
@@ -997,18 +1129,10 @@
                         }
                     }
                 });
-                await characteristic.writeValue(new TextEncoder().encode("GET_ALL"));
+                
+                await safeBleWrite("GET_ALL", 'withResponse');
             } catch (e) { alert("BT Error: " + e.message); }
         };
-        
-        function onDisconnected() { 
-            characteristic = null; 
-            const btn = document.getElementById('connectBtn'); 
-            btn.innerText = "CONNECT"; btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
-            updatePowerBar(0); 
-            document.getElementById('powerBarText').innerText = "OFF";
-            document.getElementById('powerLabel').innerText = "POWER"; 
-        }
 
         function renderLayerPads(layer) {
             const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
@@ -1119,14 +1243,12 @@
             const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
             if (stopBtn) {
                 if (layer === 'BG') {
-                    // Update classes for BG STOP button to match new compact layout
                     if (activeIdx !== -1) {
                         stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap";
                     } else {
                         stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[8px] px-2 py-1.5 rounded shadow-lg transition whitespace-nowrap";
                     }
                 } else {
-                    // Keep FG STOP button unchanged
                     if (activeIdx !== -1) {
                         stopBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
                     } else {
@@ -1136,7 +1258,8 @@
             }
         }
 
-        async function playFX(idx, btnElement, layer) {
+        function playFX(idx, btnElement, layer) {
+            clearActiveScaleBtns(); 
             if(isPlaying) stopPlayback(); 
             
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
@@ -1152,12 +1275,9 @@
                 updatePadsVisuals('BG'); 
 
                 if(!characteristic || !patterns[idx].code) return;
-                try { 
-                    await characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.00")); 
-                    setTimeout(async () => {
-                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + patterns[idx].code)); 
-                    }, 40);
-                } catch(e){}
+                
+                safeBleWrite("T1.00");
+                safeBleWrite("5" + patterns[idx].code);
             } else {
                 activeIdxFG = idx;
                 localStorage.setItem('lastActiveFG', idx); 
@@ -1167,21 +1287,22 @@
                 updatePadsVisuals('FG'); 
 
                 if(!characteristic || !patterns[idx].code) return;
-                try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:5" + patterns[idx].code)); } catch(e){}
+                safeBleWrite("FG:5" + patterns[idx].code);
             }
         }
 
-        async function stopBG() {
+        function stopBG() {
+            clearActiveScaleBtns();
             activeIdxBG = -1; 
             localStorage.setItem('lastActiveBG', -1);
             updatePadsVisuals('BG');
-            if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("off")); }catch(e){} }
+            if(characteristic) safeBleWrite("off");
         }
-        async function stopFG() {
+        function stopFG() {
             activeIdxFG = -1; 
             localStorage.setItem('lastActiveFG', -1);
             updatePadsVisuals('FG');
-            if(characteristic) { try{ await characteristic.writeValueWithoutResponse(new TextEncoder().encode("FG:off")); }catch(e){} }
+            if(characteristic) safeBleWrite("FG:off");
         }
 
         function markUnsaved() { 
@@ -1189,6 +1310,7 @@
         }
 
         function openPopup(idx, layer) {
+            clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
             activeLayer = layer; selectedIdx = idx; clips = []; activeColorIndex = -1;
             
@@ -1240,10 +1362,8 @@
             if (activeIdxBG !== -1 && bgPatterns[activeIdxBG].code) {
                 if(characteristic) {
                     let code = bgPatterns[activeIdxBG].code;
-                    characteristic.writeValueWithoutResponse(new TextEncoder().encode("T1.00")).catch(e=>{});
-                    setTimeout(() => {
-                        characteristic.writeValueWithoutResponse(new TextEncoder().encode("5" + code)).catch(e=>{});
-                    }, 50);
+                    safeBleWrite("T1.00");
+                    safeBleWrite("5" + code);
                 }
             }
 
@@ -1548,28 +1668,30 @@
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0'), b = parseInt(c.bright).toString().padStart(2,'0'), d = Math.min(99, Math.round(c.duration*10)).toString().padStart(2,'0');
+                let s = Math.min(99, Math.round(c.start*10)).toString().padStart(2,'0');
+                let b = parseInt(c.bright).toString().padStart(2,'0');
+                let d = Math.max(1, Math.min(99, Math.round(c.duration*10))).toString().padStart(2,'0'); 
                 code += `${m}(${s}${b},${c.target || 'a'},${c.color},${c.fx}${d}00)`; 
             });
             return code;
         }
 
-        async function saveAndStay() {
+        function saveAndStay() {
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
             if(characteristic) {
-                try { await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`)); } catch(e){}
+                safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
             }
         }
 
-        async function saveAndSend() {
+        function saveAndSend() {
             stopPlayback(); 
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
             if(characteristic) {
-                try { await characteristic.writeValue(new TextEncoder().encode(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`)); } catch(e){}
+                safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
             }
             document.getElementById('modal').classList.add('hidden');
             if (window.location.hash === '#edit') {
@@ -1577,7 +1699,20 @@
             }
         }
         
-        function updateLoopLine() { let maxT = 0; clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); currentLoopLimit = maxT > 0 ? maxT : 1.0; const ll = document.getElementById('loopLine'); if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } }
+        function updateLoopLine() { 
+            let maxT = 0; 
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); 
+            
+            let beatTime = 60 / editorBPM;
+            if (maxT > 0) {
+                currentLoopLimit = Math.ceil(maxT / beatTime) * beatTime;
+            } else {
+                currentLoopLimit = beatTime * 4; 
+            }
+            
+            const ll = document.getElementById('loopLine'); 
+            if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
+        }
         
         function addClipAtPlayhead() { 
             const id = Date.now(); 
@@ -1644,26 +1779,23 @@
 
         function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "CODE..."; }
         
-        async function sendFullCodeToBT() { 
+        function sendFullCodeToBT() { 
             if(!characteristic) return; 
             let codeStr = generateCodeStr();
             let cmd = (activeLayer === 'BG') ? "5" + codeStr : "FG:5" + codeStr;
-            try { await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); } catch(e){} 
+            safeBleWrite(cmd);
         }
         
         let lastSentOff = false;
 
-        async function scrubLiveFrame() { 
-            if(!characteristic || isPlaying || isWritingBLE) return; 
+        function scrubLiveFrame() { 
+            if(!characteristic || isPlaying) return; 
+            
             let activeClips = clips.filter(c => playheadTime >= c.start && playheadTime <= c.start + c.duration);
             if (activeClips.length === 0) {
                 if (!lastSentOff) {
-                    try { 
-                        isWritingBLE = true;
-                        let cmd = (activeLayer === 'BG') ? "off" : "FG:off";
-                        await characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd)); 
-                        isWritingBLE = false; lastSentOff = true;
-                    } catch(e){ isWritingBLE = false; }
+                    throttledBleWrite('scrub', (activeLayer === 'BG') ? "off" : "FG:off", 'withoutResponse', 40);
+                    lastSentOff = true;
                 }
                 return;
             }
@@ -1689,11 +1821,7 @@
                 let showColor = colorCodes[idx] || colorCodes[0];
                 code += `${m}(00${bStr},${c.target || 'a'},${showColor},o9900)`; 
             });
-            try { 
-                isWritingBLE = true;
-                await characteristic.writeValueWithoutResponse(new TextEncoder().encode(code)); 
-                isWritingBLE = false;
-            } catch(e){ isWritingBLE = false; } 
+            throttledBleWrite('scrub', code, 'withoutResponse', 40);
         }
 
         let wakeLock = null;
@@ -1715,6 +1843,8 @@
                      linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
                 document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
                 
+                updateBeatDuration(); 
+
                 interact('#editorBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
                     if (input !== null) {
@@ -1723,6 +1853,7 @@
                             editorBPM = bpm;
                             document.getElementById('editorBpmDisplay').innerText = editorBPM;
                             document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                            updateBeatDuration(); 
                             updateGridBackground();
                             snapLoopToGrid(); 
                             fitToScreen(); 
@@ -1741,6 +1872,7 @@
                             editorBPM = bpm;
                             document.getElementById('editorBpmDisplay').innerText = editorBPM;
                             document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                            updateBeatDuration(); 
                             remoteEditAction(() => { snapLoopToGrid(); });
                         } else {
                             alert("กรุณาใส่ตัวเลขระหว่าง 30 - 300");
@@ -1752,5 +1884,3 @@
     </script>
 </body>
 </html>
-
-
