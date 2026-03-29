@@ -592,7 +592,6 @@
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
-        // 🚀 แก้ไข: บังคับให้ duration ที่ถูกโหลดมา มีค่าอย่างน้อย 0.1 วินาที
         function remoteEditAction(actionCallback) {
             if (activeIdxBG === -1) return; 
             
@@ -685,7 +684,7 @@
             }
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ไม่ต่ำกว่า 0.1 เวลาจับ Snap
+        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม เพื่อให้ก้อนไฟพอดีกรอบ
         function snapLoopToGrid() {
             let maxT = 0;
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
@@ -699,8 +698,8 @@
                 
                 if (actualRatio !== 1.0) {
                     clips.forEach(c => { 
-                        c.start = Math.round(c.start * actualRatio * 10) / 10; 
-                        c.duration = Math.max(0.1, Math.round(c.duration * actualRatio * 10) / 10); 
+                        c.start = c.start * actualRatio; 
+                        c.duration = c.duration * actualRatio; 
                     });
                 }
             }
@@ -766,7 +765,7 @@
             }
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ไม่ต่ำกว่า 0.1 และปัดเศษให้สวยงามเวลาย่อขยายสเกล
+        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม
         function setRoomScale(beats) {
             let maxT = 0; 
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
@@ -777,8 +776,8 @@
                 let scaleRatio = targetTime / maxT;
                 
                 clips.forEach(c => { 
-                    c.start = Math.round(c.start * scaleRatio * 10) / 10; 
-                    c.duration = Math.max(0.1, Math.round(c.duration * scaleRatio * 10) / 10); 
+                    c.start = c.start * scaleRatio; 
+                    c.duration = c.duration * scaleRatio; 
                 });
                 
                 markUnsaved(); 
@@ -820,7 +819,6 @@
             alert("คัดลอกโค้ดแล้ว!");
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ที่ถูกโหลดจากการ Paste โค้ด ไม่ต่ำกว่า 0.1
         function applyPastedCode() {
             const rawCode = document.getElementById('codeTextArea').value.trim();
             if (!rawCode) { closeCodeModal(); return; }
@@ -1215,7 +1213,6 @@
             saveState(); 
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ที่ถูกโหลดมา มีค่าอย่างน้อย 0.1 วินาที ใน Popup
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1341,7 +1338,7 @@
             }
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ไม่ต่ำกว่า 0.1 และปัดเศษให้สวยงามเวลาย่อขยายสเกล SPD Slider
+        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
             if (scaleRatio === 1.0) return; 
@@ -1362,8 +1359,8 @@
                 let actualRatio = (targetBeats * beatTime) / maxT;
                 
                 clips.forEach(c => { 
-                    c.start = Math.round(c.start * actualRatio * 10) / 10; 
-                    c.duration = Math.max(0.1, Math.round(c.duration * actualRatio * 10) / 10); 
+                    c.start = c.start * actualRatio; 
+                    c.duration = c.duration * actualRatio; 
                 });
             }
             
@@ -1597,7 +1594,6 @@
             }
         }
 
-        // 🚀 แก้ไข: บังคับให้ duration ห้ามเป็น 00 โดยใช้ Math.max(1, ...)
         function generateCodeStr() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
@@ -1612,13 +1608,15 @@
             return code;
         }
         
+        // 🚀 แก้ไข: ใส่สูตรลบความคลาดเคลื่อนจุดทศนิยมทิ้ง ก่อนสั่งสร้างห้อง
         function updateLoopLine() { 
             let maxT = 0; 
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); 
             
             let beatTime = 60 / editorBPM;
             if (maxT > 0) {
-                currentLoopLimit = Math.ceil(maxT / beatTime) * beatTime;
+                currentLoopLimit = Math.ceil((maxT - 0.005) / beatTime) * beatTime;
+                if (currentLoopLimit <= 0) currentLoopLimit = beatTime;
             } else {
                 currentLoopLimit = beatTime * 4; 
             }
