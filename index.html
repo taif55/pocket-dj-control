@@ -684,7 +684,6 @@
             }
         }
 
-        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม เพื่อให้ก้อนไฟพอดีกรอบ
         function snapLoopToGrid() {
             let maxT = 0;
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
@@ -765,7 +764,6 @@
             }
         }
 
-        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม
         function setRoomScale(beats) {
             let maxT = 0; 
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
@@ -1213,6 +1211,7 @@
             saveState(); 
         }
 
+        // 🚀 แก้ไข: เพิ่มการเรียก function เล็กๆ เพื่อ "สะกิด" ให้ playhead วาดกริดทันทีเมื่อเปิดหน้าต่างขึ้นมา
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1245,6 +1244,12 @@
             
             updateLoopLine();
             fitToScreen(); 
+            
+            // สะกิดเพลย์เฮดให้รีเฟรช 1 เฟรม เผื่อกราฟิกมันหลับตอนซ่อนหน้าต่างไป
+            if(!isPlaying) {
+                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+                scrubLiveFrame(); 
+            }
             
             if (!isPlaying) togglePlay(); 
             
@@ -1338,7 +1343,6 @@
             }
         }
 
-        // 🚀 แก้ไข: ปลดล็อคการปัดทศนิยม
         function applySpeedScale(val) {
             let scaleRatio = parseFloat(val);
             if (scaleRatio === 1.0) return; 
@@ -1359,8 +1363,8 @@
                 let actualRatio = (targetBeats * beatTime) / maxT;
                 
                 clips.forEach(c => { 
-                    c.start = c.start * actualRatio; 
-                    c.duration = c.duration * actualRatio; 
+                    c.start = Math.round(c.start * actualRatio * 10) / 10; 
+                    c.duration = Math.max(0.1, Math.round(c.duration * actualRatio * 10) / 10); 
                 });
             }
             
@@ -1608,7 +1612,6 @@
             return code;
         }
         
-        // 🚀 แก้ไข: ใส่สูตรลบความคลาดเคลื่อนจุดทศนิยมทิ้ง ก่อนสั่งสร้างห้อง
         function updateLoopLine() { 
             let maxT = 0; 
             clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; }); 
