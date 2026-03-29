@@ -187,6 +187,11 @@
                 <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
             </div>
         </div>
+        
+        <div id="voltageWarning" class="hidden bg-red-700 text-white text-[10px] font-black px-3 py-1.5 rounded-lg border border-red-500 shadow-[0_0_15px_#ef4444] flex justify-between items-center animate-pulse flex-none mx-1 mb-1">
+            <span>⚠️ คำเตือน: กระแสไฟต่ำกว่าปกติ (LOW VOLTAGE)</span>
+            <span id="voltageText">RAW: ----</span>
+        </div>
 
         <div class="layer-block layer-bg mt-1">
             <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
@@ -376,6 +381,35 @@
         let isBleWriting = false;
         let bleThrottleTimers = {};
 
+        // 🚀 NEW: ตัวแปรสำหรับการแจ้งเตือนไฟตก (Hysteresis & Audio)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let lastLowVoltAlertTime = 0; 
+        let isLowVoltageAlertLocked = false; 
+
+        function playAlertBeep() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            let osc1 = audioCtx.createOscillator();
+            let gain1 = audioCtx.createGain();
+            osc1.type = 'square'; 
+            osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            gain1.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.start(); osc1.stop(audioCtx.currentTime + 0.2);
+
+            setTimeout(() => {
+                let osc2 = audioCtx.createOscillator();
+                let gain2 = audioCtx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.start(); osc2.stop(audioCtx.currentTime + 0.2);
+            }, 250);
+        }
+
         async function processBleQueue() {
             if (isBleWriting || bleQueue.length === 0 || !characteristic) return;
             isBleWriting = true;
@@ -469,9 +503,20 @@
 
         function setActiveScaleBtn(btn) {
             if (!btn) return;
-            let parent = btn.parentElement;
-            Array.from(parent.children).forEach(child => child.classList.remove('sync-blink'));
-            btn.classList.add('sync-blink');
+            let scaleText = btn.innerText.trim();
+            
+            const activeClasses = ['bg-green-700', 'text-white', 'border-green-500', 'font-black', 'active:bg-green-600', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]', 'sync-blink'];
+            const inactiveClasses = ['bg-gray-800', 'text-green-400', 'border-gray-600', 'font-bold', 'active:bg-gray-700'];
+
+            document.querySelectorAll('button[onclick*="setActiveScaleBtn"]').forEach(el => {
+                if (el.innerText.trim() === scaleText) {
+                    el.classList.remove(...inactiveClasses);
+                    el.classList.add(...activeClasses);
+                } else {
+                    el.classList.remove(...activeClasses);
+                    el.classList.add(...inactiveClasses);
+                }
+            });
         }
 
         function clearActiveScaleBtns() {
@@ -926,6 +971,32 @@
                         let percent = parseInt(parts[0]);
                         let raw = parts.length > 1 ? parseInt(parts[1]) : 0;
                         updatePowerBar(percent, raw);
+
+                        // 🚀 NEW: ระบบป้ายเตือนไฟตกแบบ Hysteresis
+                        const warningBox = document.getElementById('voltageWarning');
+                        const warningText = document.getElementById('voltageText');
+                        
+                        if (warningBox && warningText && raw > 0) {
+                            if (!isLowVoltageAlertLocked && raw <= 3400) {
+                                isLowVoltageAlertLocked = true;
+                            } else if (isLowVoltageAlertLocked && raw >= 3800) {
+                                isLowVoltageAlertLocked = false;
+                            }
+
+                            if (isLowVoltageAlertLocked) {
+                                warningBox.classList.remove('hidden'); 
+                                warningText.innerText = `RAW: ${raw} (LOW POWER)`;
+                                
+                                let nowMs = Date.now();
+                                if (nowMs - lastLowVoltAlertTime > 5000) {
+                                    lastLowVoltAlertTime = nowMs;
+                                    playAlertBeep(); 
+                                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]); 
+                                }
+                            } else {
+                                warningBox.classList.add('hidden'); 
+                            }
+                        }
                     }
                     else if (val.startsWith("DB")) {
                         let p = val.substring(2).split(":");
@@ -1055,7 +1126,7 @@
                 if(p.code) { btn.classList.add('has-code'); btn.style.backgroundColor = ""; } 
                 else { btn.classList.remove('has-code'); const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
                 
-                // แก้ไข: ใส่คลาสกระพริบ sync-blink ถ้าปุ่มกำลังเล่นอยู่
+                // ใส่คลาสกระพริบ sync-blink ถ้าปุ่มกำลังเล่นอยู่
                 if (index === activeIdx) {
                     btn.classList.add('playing', 'sync-blink');
                 } else {
@@ -1082,13 +1153,11 @@
         }
 
         function playFX(idx, btnElement, layer) {
-            // แก้ไข: เคลียร์ไฟกระพริบเดิมและสั่งปุ่ม Room (Scale) ของ Layer นั้นๆ ให้กระพริบเตือนการเปลี่ยน
             clearActiveScaleBtns();
             const parentBlock = layer === 'BG' ? document.querySelector('.layer-bg') : document.querySelector('.layer-fg');
             const activeScale = parentBlock.querySelector('button.bg-green-700');
-            if (activeScale) activeScale.classList.add('sync-blink');
+            if (activeScale) setActiveScaleBtn(activeScale); 
 
-            // 🛑 หยุดการวิ่งของเพลย์เฮดในหน้า Edit ทันทีเมื่อมีการสั่งเล่นไฟจากหน้าหลัก
             if(isPlaying) {
                 isPlaying = false; 
                 cancelAnimationFrame(playInterval);
@@ -1192,34 +1261,26 @@
             });
         }
 
-        // ======================================================================
-        // 🚀 NEW: ฟังก์ชันออกจากหน้า Edit และ Save อย่างราบรื่น
-        // ======================================================================
         function handleBack() {
-            // 1. ดับเครื่องยนต์ UI หน้า Edit แบบเงียบๆ ห้ามส่งคำสั่ง off
             isPlaying = false;
             cancelAnimationFrame(playInterval);
             const btn = document.getElementById('playBtn'); 
             if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
             
-            // 2. ทำการ Save 
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
             let playPrefix = (activeLayer === 'BG') ? '5' : 'FG:5';
 
             if(characteristic) {
-                // เซฟลงชิป
                 safeBleWrite(`${prefix}${selectedIdx}:${patterns[selectedIdx].code}`, 'withResponse');
                 
-                // อัปเดตไฟที่เล่นอยู่ถ้าตรงกับช่องที่กำลัง Edit (เล่นต่อเนื่องแบบเนียนๆ)
                 let activeLiveIdx = (activeLayer === 'BG') ? activeIdxBG : activeIdxFG;
                 if (activeLiveIdx === selectedIdx) {
                     safeBleWrite(playPrefix + patterns[selectedIdx].code);
                 }
             }
 
-            // 3. จัดการ UI ปิดหน้าต่างและอัปเดตขอบปุ่มในหน้าแรก
             updatePadsVisuals(activeLayer);
             document.getElementById('modal').classList.add('hidden');
             if (window.location.hash === '#edit') {
@@ -1228,19 +1289,16 @@
         }
 
         function unsaveAndExit() {
-            // ดับเครื่องยนต์ UI หน้า Edit แบบเงียบๆ ห้ามส่งคำสั่ง off
             isPlaying = false;
             cancelAnimationFrame(playInterval);
             const btn = document.getElementById('playBtn'); 
             if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
             
-            // ปิดหน้าต่างทันที ไม่เซฟ
             document.getElementById('modal').classList.add('hidden');
             if (window.location.hash === '#edit') {
                 history.replaceState(null, null, window.location.pathname);
             }
         }
-        // ======================================================================
 
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
@@ -1558,9 +1616,6 @@
             if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
         }
         
-        // ======================================================================
-        // 🚀 NEW: ระบบ Add Clip อัจฉริยะ หาช่องว่างกว้างที่สุด ไม่เกิดทับซ้อนมั่วซั่ว
-        // ======================================================================
         function addClipAtPlayhead() { 
             const id = Date.now(); 
             let beatTime = 60 / editorBPM; 
@@ -1568,14 +1623,12 @@
             let bestGap = null;
             let maxGapWidth = -1;
 
-            // สแกนหาช่องว่างในแต่ละ Track (0-7)
             for (let t = 0; t <= 7; t++) {
                 let trackClips = clips.filter(c => c.track === t).sort((a, b) => a.start - b.start);
                 let currentPos = 0;
                 
                 trackClips.forEach(c => {
                     let gapWidth = c.start - currentPos;
-                    // ถ้าเจอช่องที่กว้างกว่าที่เคยหาเจอ และกว้างพอให้ยัด 1 Beat ได้
                     if (gapWidth >= beatTime && gapWidth > maxGapWidth) {
                         maxGapWidth = gapWidth;
                         bestGap = { track: t, start: currentPos };
@@ -1583,7 +1636,6 @@
                     currentPos = Math.max(currentPos, c.start + c.duration);
                 });
                 
-                // อย่าลืมเช็คพื้นที่ว่างตอนปลายแทร็ก ไปจนถึงสุดขอบ Loop (เส้นแดง)
                 let endGapWidth = currentLoopLimit - currentPos;
                 if (endGapWidth >= beatTime && endGapWidth > maxGapWidth) {
                     maxGapWidth = endGapWidth;
@@ -1595,13 +1647,11 @@
             let spawnTrack = 0;
 
             if (bestGap) {
-                // เย้ เจอที่ว่าง วางก้อนไฟตรงนั้นเลย
                 spawnStart = bestGap.start;
                 spawnTrack = bestGap.track;
             } else {
-                // หมดปัญญา พื้นที่เต็มหมดแล้วจริงๆ ยอมให้ทับซ้อนได้
                 spawnStart = 0; 
-                spawnTrack = Math.floor(Math.random() * 8); // สุ่ม Track ให้หน่อย จะได้ไม่กระจุกแค่ Track 0
+                spawnTrack = Math.floor(Math.random() * 8); 
             }
 
             clips.push({ 
@@ -1621,7 +1671,6 @@
             renderClips(); 
             selectClip(id); 
             
-            // 🚀 NEW: ใส่เอฟเฟกต์กะพริบ (Blink) ชี้เป้าให้ผู้ใช้เห็นว่าก้อนใหม่เกิดที่ไหน!
             setTimeout(() => {
                 let newEl = document.getElementById(`clip-${id}`);
                 if (newEl) {
@@ -1630,7 +1679,6 @@
                 }
             }, 50);
         }
-        // ======================================================================
 
         function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; markUnsaved(); renderClips(); } }
         
