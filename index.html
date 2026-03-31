@@ -374,42 +374,53 @@
 
     <script>
         // ==========================================
-        //  Bluetooth Queue & Throttle System (Auto-Retry)
+        // ⚙️ 1. GLOBAL VARIABLES (ตัวแปรหลักทั้งหมด)
         // ==========================================
         let device, characteristic;
         let bleQueue = [];
         let isBleWriting = false;
         let bleThrottleTimers = {};
 
-        // 🚀 NEW: ตัวแปรสำหรับการแจ้งเตือนไฟตก (Hysteresis & Audio)
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let lastLowVoltAlertTime = 0; 
         let isLowVoltageAlertLocked = false; 
 
-        function playAlertBeep() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            let osc1 = audioCtx.createOscillator();
-            let gain1 = audioCtx.createGain();
-            osc1.type = 'square'; 
-            osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
-            gain1.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc1.connect(gain1); gain1.connect(audioCtx.destination);
-            osc1.start(); osc1.stop(audioCtx.currentTime + 0.2);
+        let editorBPM = 128; 
+        let editorTapTimes = []; 
+        let editorTapTimeout = null; 
 
-            setTimeout(() => {
-                let osc2 = audioCtx.createOscillator();
-                let gain2 = audioCtx.createGain();
-                osc2.type = 'square';
-                osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
-                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
-                osc2.start(); osc2.stop(audioCtx.currentTime + 0.2);
-            }, 250);
-        }
+        let stateHistory = [];
+        let stateIndex = -1;
+        let isNavigatingHistory = false;
 
+        let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        
+        let clips = []; 
+        let activeLayer = 'BG'; 
+        let activeIdxBG = -1;
+        let activeIdxFG = -1;
+        
+        let selectedClipId = null; let selectedIdx = -1;
+        let playheadTime = 0; let isPlaying = false;
+        let playInterval, startAnimateTime;
+        let currentLoopLimit = 1.0; let pxPerSec = 100;
+        let isFollowingPlayhead = false;
+        
+        let sortableBG = null;
+        let sortableFG = null;
+        let isDraggingPad = false;
+
+        let activeColorIndex = -1; 
+        let lastSentOff = false;
+        let wakeLock = null;
+
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
+        const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
+
+        // ==========================================
+        // 🔵 2. BLUETOOTH & DEVICE LOGIC
+        // ==========================================
         async function processBleQueue() {
             if (isBleWriting || bleQueue.length === 0 || !characteristic) return;
             isBleWriting = true;
@@ -474,6 +485,13 @@
             }, delay);
         }
 
+        function sendFullCodeToBT() { 
+            if(!characteristic) return; 
+            let codeStr = generateCodeStr();
+            let cmd = (activeLayer === 'BG') ? "5" + codeStr : "FG:5" + codeStr;
+            safeBleWrite(cmd);
+        }
+
         function onDisconnected() { 
             characteristic = null; 
             isBleWriting = false; 
@@ -486,485 +504,29 @@
             document.getElementById('powerBarText').innerText = "OFF";
             document.getElementById('powerLabel').innerText = "POWER"; 
         }
-        // ==========================================
-        
-        let editorBPM = 128; 
-        let editorTapTimes = []; 
-        let editorTapTimeout = null; 
 
-        let stateHistory = [];
-        let stateIndex = -1;
-        let isNavigatingHistory = false;
-
-        function updateBeatDuration() {
-            let dur = 60 / editorBPM;
-            document.documentElement.style.setProperty('--beat-duration', dur + 's');
-        }
-
-        function setActiveScaleBtn(btn) {
-            if (!btn) return;
-            let scaleText = btn.innerText.trim();
+        function playAlertBeep() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            const activeClasses = ['bg-green-700', 'text-white', 'border-green-500', 'font-black', 'active:bg-green-600', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]', 'sync-blink'];
-            const inactiveClasses = ['bg-gray-800', 'text-green-400', 'border-gray-600', 'font-bold', 'active:bg-gray-700'];
+            let osc1 = audioCtx.createOscillator();
+            let gain1 = audioCtx.createGain();
+            osc1.type = 'square'; 
+            osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            gain1.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.start(); osc1.stop(audioCtx.currentTime + 0.2);
 
-            document.querySelectorAll('button[onclick*="setActiveScaleBtn"]').forEach(el => {
-                if (el.innerText.trim() === scaleText) {
-                    el.classList.remove(...inactiveClasses);
-                    el.classList.add(...activeClasses);
-                } else {
-                    el.classList.remove(...activeClasses);
-                    el.classList.add(...inactiveClasses);
-                }
-            });
-        }
-
-        function clearActiveScaleBtns() {
-            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
-        }
-
-        function saveState() {
-            if (isNavigatingHistory) return;
-            stateHistory = stateHistory.slice(0, stateIndex + 1);
-            stateHistory.push(JSON.stringify(clips));
-            stateIndex = stateHistory.length - 1;
-        }
-
-        function undoState() {
-            if (stateIndex > 0) {
-                stateIndex--;
-                isNavigatingHistory = true;
-                clips = JSON.parse(stateHistory[stateIndex]);
-                renderClips();
-                updateSelectedClipUI();
-                isNavigatingHistory = false;
-            }
-        }
-
-        function redoState() {
-            if (stateIndex < stateHistory.length - 1) {
-                stateIndex++;
-                isNavigatingHistory = true;
-                clips = JSON.parse(stateHistory[stateIndex]);
-                renderClips();
-                updateSelectedClipUI();
-                isNavigatingHistory = false;
-            }
-        }
-
-        function updateSelectedClipUI() {
-            if(selectedClipId) {
-                const c = clips.find(x => x.id === selectedClipId);
-                if(c) {
-                    document.getElementById('cBright').value = c.bright; 
-                    document.getElementById('cFX').value = c.fx;
-                    updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
-                } else {
-                    selectedClipId = null; 
-                    document.getElementById('editorPanel').style.opacity = "0.3";
-                    document.getElementById('editorPanel').style.pointerEvents = "none";
-                }
-            }
-        }
-
-        let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
-        
-        let clips = []; 
-        let activeLayer = 'BG'; 
-        let activeIdxBG = -1;
-        let activeIdxFG = -1;
-        
-        let selectedClipId = null; let selectedIdx = -1;
-        let playheadTime = 0; let isPlaying = false;
-        let playInterval, startAnimateTime;
-        let currentLoopLimit = 1.0; let pxPerSec = 100;
-        let isFollowingPlayhead = false;
-        
-        let sortableBG = null;
-        let sortableFG = null;
-        let isDraggingPad = false;
-
-        let activeColorIndex = -1; 
-
-        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
-        const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
-
-        function remoteEditAction(actionCallback) {
-            if (activeIdxBG === -1) return; 
-            
-            let prevLayer = activeLayer;
-            let prevIdx = selectedIdx;
-
-            activeLayer = 'BG';
-            selectedIdx = activeIdxBG;
-            clips = [];
-            
-            let rawCode = bgPatterns[activeIdxBG].code || "";
-            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 4) {
-                        let s_val, b_val;
-                        if (content[0].length === 5) {
-                            s_val = parseInt(content[0].substring(0,3))/100;
-                            b_val = parseInt(content[0].substring(3,5));
-                        } else {
-                            s_val = parseInt(content[0].substring(0,2))/10;
-                            b_val = parseInt(content[0].substring(2,4));
-                        }
-                        
-                        let d_val;
-                        if (content[3].length >= 6) {
-                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
-                        } else {
-                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
-                        }
-
-                        clips.push({ 
-                            id: Date.now() + i, 
-                            start: s_val, 
-                            bright: b_val, 
-                            target: content[1], 
-                            color: content[2], 
-                            fx: content[3].charAt(0), 
-                            duration: d_val, 
-                            loop: 1, mirror: m, track: i % 8 
-                        });
-                    }
-                });
-            }
-            
-            actionCallback();
-            
-            let newCode = generateCodeStr();
-            bgPatterns[activeIdxBG].code = newCode;
-            updatePadsVisuals('BG');
-            
-            if(characteristic) {
-                safeBleWrite(`SB${activeIdxBG}:${newCode}`, 'withResponse');
-                safeBleWrite("T1.00");
-                safeBleWrite("5" + newCode);
-            }
-
-            activeLayer = prevLayer;
-            selectedIdx = prevIdx;
-            clips = []; 
-        }
-
-        function remoteTapTempo(e) {
-            if(e) e.preventDefault();
-            const now = Date.now();
-            editorTapTimes.push(now); 
-            if (editorTapTimes.length > 5) editorTapTimes.shift();
-            if (editorTapTimes.length > 1) {
-                let diffs = [];
-                for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
-                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let rawBpm = 60000 / avgDiff;
-                let bpm = Math.round(rawBpm * 2) / 2; 
-                if (bpm > 30 && bpm <= 200) {
-                    editorBPM = bpm;
-                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
-                    
-                    updateBeatDuration(); 
-                    
-                    let beatTimeMs = 60000 / bpm;
-                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
-                    if (beatsToWait < 2) beatsToWait = 2; 
-                    
-                    let targetTime = now + (beatTimeMs * beatsToWait);
-                    let delayToSync = targetTime - Date.now();
-
-                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
-                    editorTapTimeout = setTimeout(() => {
-                        if(characteristic) {
-                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
-                            safeBleWrite("B:" + (currentBrt * 0.8).toFixed(2));
-                            setTimeout(() => { safeBleWrite("B:" + currentBrt.toFixed(2)); }, 150);
-                        }
-
-                        remoteEditAction(() => {
-                            snapLoopToGrid();
-                        });
-                    }, delayToSync); 
-                }
-            }
-            const btn = document.getElementById('bgTapBtn');
-            if (btn) {
-                btn.style.transform = 'scale(0.90)';
-                btn.style.backgroundColor = 'white';
-                btn.style.color = '#ea580c';
-                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
-            }
-        }
-
-        function snapLoopToGrid() {
-            let maxT = 0;
-            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
-            
-            if (maxT > 0) {
-                let beatTime = 60 / editorBPM;
-                let nearestBeat = Math.round(maxT / beatTime) * beatTime;
-                if (nearestBeat <= 0) nearestBeat = beatTime; 
-                
-                let actualRatio = nearestBeat / maxT;
-                
-                if (actualRatio !== 1.0) {
-                    clips.forEach(c => { 
-                        c.start = c.start * actualRatio; 
-                        c.duration = c.duration * actualRatio; 
-                    });
-                }
-            }
-        }
-
-        function restartPlayhead() {
-            if(isPlaying) {
-                playheadTime = 0;
-                startAnimateTime = performance.now();
-                sendFullCodeToBT(); 
-            } else {
-                playheadTime = 0;
-                document.getElementById('playhead').style.left = '0px';
-                const vp = document.getElementById('timelineViewport');
-                vp.scrollLeft = 0;
-            }
-        }
-
-        function editorTapTempo(e) {
-            if(e) e.preventDefault();
-            const now = Date.now();
-            editorTapTimes.push(now);
-            if (editorTapTimes.length > 5) editorTapTimes.shift();
-            if (editorTapTimes.length > 1) {
-                let diffs = [];
-                for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
-                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
-                let rawBpm = 60000 / avgDiff;
-                let bpm = Math.round(rawBpm * 2) / 2; 
-                if (bpm > 30 && bpm <= 200) {
-                    editorBPM = bpm;
-                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
-                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
-                    
-                    updateBeatDuration(); 
-                    
-                    let beatTimeMs = 60000 / bpm;
-                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
-                    if (beatsToWait < 2) beatsToWait = 2; 
-                    
-                    let targetTime = now + (beatTimeMs * beatsToWait);
-                    let delayToSync = targetTime - Date.now();
-                    
-                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
-                    editorTapTimeout = setTimeout(() => {
-                        if (!document.getElementById('modal').classList.contains('hidden')) {
-                            updateGridBackground(); 
-                            snapLoopToGrid(); 
-                            fitToScreen(); 
-                            restartPlayhead(); 
-                        } else {
-                            snapLoopToGrid();
-                        }
-                    }, delayToSync); 
-                }
-            }
-            const btn = document.getElementById('editorTapBtn');
-            if (btn) {
-                btn.style.transform = 'scale(0.95)';
-                btn.style.backgroundColor = 'white';
-                btn.style.color = '#ea580c';
-                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
-            }
-        }
-
-        function setRoomScale(beats) {
-            let maxT = 0; 
-            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
-            
-            if (maxT > 0) {
-                let beatTime = 60 / editorBPM;
-                let targetTime = beatTime * beats; 
-                let scaleRatio = targetTime / maxT;
-                
-                clips.forEach(c => { 
-                    c.start = c.start * scaleRatio; 
-                    c.duration = c.duration * scaleRatio; 
-                });
-                
-                markUnsaved(); 
-                if (!document.getElementById('modal').classList.contains('hidden')) {
-                    renderClips(); 
-                    updateCodeMonitor();
-                    fitToScreen(); 
-                    restartPlayhead(); 
-                }
-            }
-        }
-
-        function updateGridBackground() {
-            let fixedBeatTime = 60 / editorBPM; 
-            let beatPx = Math.max(1, fixedBeatTime * pxPerSec); 
-            let secPx = Math.max(1, 1.0 * pxPerSec); 
-            
-            document.getElementById('timelineContent').style.backgroundImage = 
-                `linear-gradient(to right, rgba(255, 61, 0, 0.7) 2px, transparent 2px), 
-                 linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
-            document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
-        }
-
-        function openCodeModal() {
-            const modal = document.getElementById('codeModal');
-            const textArea = document.getElementById('codeTextArea');
-            textArea.value = generateCodeStr(); 
-            modal.classList.remove('hidden');
-        }
-
-        function closeCodeModal() {
-            document.getElementById('codeModal').classList.add('hidden');
-        }
-
-        function copyCode() {
-            const textArea = document.getElementById('codeTextArea');
-            textArea.select();
-            document.execCommand('copy');
-            alert("คัดลอกโค้ดแล้ว!");
-        }
-
-        function applyPastedCode() {
-            const rawCode = document.getElementById('codeTextArea').value.trim();
-            if (!rawCode) { closeCodeModal(); return; }
-            
-            clips = [];
-            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-            if (brackets) {
-                brackets.forEach((bracket, i) => {
-                    let m = bracket.startsWith('m');
-                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                    if(content.length >= 4) {
-                        let s_val, b_val;
-                        if (content[0].length === 5) {
-                            s_val = parseInt(content[0].substring(0,3))/100;
-                            b_val = parseInt(content[0].substring(3,5));
-                        } else {
-                            s_val = parseInt(content[0].substring(0,2))/10;
-                            b_val = parseInt(content[0].substring(2,4));
-                        }
-                        
-                        let d_val;
-                        if (content[3].length >= 6) {
-                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
-                        } else {
-                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
-                        }
-
-                        clips.push({ 
-                            id: Date.now() + i, 
-                            start: s_val, 
-                            bright: b_val, 
-                            target: content[1], 
-                            color: content[2], 
-                            fx: content[3].charAt(0), 
-                            duration: d_val, 
-                            loop: 1, mirror: m, track: i % 8 
-                        });
-                    }
-                });
-            }
-            
-            stateHistory = []; stateIndex = -1; saveState();
-            renderClips();
-            updateLoopLine();
-            fitToScreen();
-            closeCodeModal();
-            handleBack(); 
-            alert("แปลงโค้ดกลับเป็นลายไฟสำเร็จ!");
-        }
-
-        function updateSpeed(val, layer) {
-            if(layer === 'BG') {
-                throttledBleWrite('speedBG', "T" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
-            } else {
-                document.getElementById('fgSpeedText').innerText = parseFloat(val).toFixed(1);
-                throttledBleWrite('speedFG', "FGT" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
-            }
-        }
-        
-        function updateBright(val, layer) {
-            if(layer === 'BG') {
-                document.getElementById('bgBrightText').innerText = Math.round(val*100) + '%';
-                throttledBleWrite('brightBG', "B:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
-            } else {
-                document.getElementById('fgBrightText').innerText = Math.round(val*100) + '%';
-                throttledBleWrite('brightFG', "FGB:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
-            }
-        }
-
-        function resetSpeed(layer) {
-            let slider = document.getElementById(layer === 'BG' ? 'liveSpeedSlider' : 'fgSpeedSlider');
-            if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
-        }
-
-        function loadPatternOrder() {
-            let savedOrderBG = localStorage.getItem('padOrderBG');
-            if (savedOrderBG) {
-                let orderArr = savedOrderBG.split(',').map(Number);
-                if (orderArr.length === 60) {
-                    let newPatterns = [];
-                    orderArr.forEach(id => {
-                        let p = bgPatterns.find(x => x.id === id);
-                        if(p) newPatterns.push(p);
-                    });
-                    bgPatterns = newPatterns;
-                }
-            }
-
-            let savedOrderFG = localStorage.getItem('padOrderFG');
-            if (savedOrderFG) {
-                let orderArr = savedOrderFG.split(',').map(Number);
-                if (orderArr.length === 60) {
-                    let newPatterns = [];
-                    orderArr.forEach(id => {
-                        let p = fgPatterns.find(x => x.id === id);
-                        if(p) newPatterns.push(p);
-                    });
-                    fgPatterns = newPatterns;
-                }
-            }
-        }
-
-        function savePatternOrder(layer) {
-            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            let orderStr = patterns.map(p => p.id).join(',');
-            localStorage.setItem(layer === 'BG' ? 'padOrderBG' : 'padOrderFG', orderStr);
-            
-            if(characteristic) {
-                let prefix = (layer === 'BG') ? "OBG:" : "OFG:";
-                safeBleWrite(prefix + orderStr, 'withResponse');
-            }
-        }
-
-        function updatePowerBar(percent, raw = 0) {
-            const fill = document.getElementById('powerBarFill');
-            const text = document.getElementById('powerBarText');
-            const label = document.getElementById('powerLabel');
-            
-            if(fill && text) {
-                fill.style.width = percent + '%';
-                text.innerText = percent + '%';
-                
-                if (label) {
-                    label.innerText = raw > 0 ? 'RAW: ' + raw : 'POWER';
-                }
-
-                if(percent >= 80) fill.style.backgroundColor = '#22c55e'; 
-                else if(percent >= 40) fill.style.backgroundColor = '#f59e0b'; 
-                else fill.style.backgroundColor = '#ef4444'; 
-            }
+            setTimeout(() => {
+                let osc2 = audioCtx.createOscillator();
+                let gain2 = audioCtx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.start(); osc2.stop(audioCtx.currentTime + 0.2);
+            }, 250);
         }
 
         document.getElementById('connectBtn').onclick = async () => {
@@ -1051,6 +613,307 @@
                 await safeBleWrite("GET_ALL", 'withResponse');
             } catch (e) { alert("BT Error: " + e.message); }
         };
+
+        // ==========================================
+        // 🎛️ 3. MAIN CONTROLS & PATTERN LOGIC
+        // ==========================================
+        function playFX(idx, btnElement, layer) {
+            clearActiveScaleBtns();
+            const parentBlock = layer === 'BG' ? document.querySelector('.layer-bg') : document.querySelector('.layer-fg');
+            const activeScale = parentBlock.querySelector('button.bg-green-700');
+            if (activeScale) setActiveScaleBtn(activeScale); 
+
+            if(isPlaying) {
+                isPlaying = false; 
+                cancelAnimationFrame(playInterval);
+                const btn = document.getElementById('playBtn'); 
+                if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+            }
+            
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            if (layer === 'BG') {
+                activeIdxBG = idx;
+                localStorage.setItem('lastActiveBG', idx); 
+                
+                let liveSlider = document.getElementById('liveSpeedSlider');
+                if(liveSlider) liveSlider.value = 1.0;
+                
+                document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
+                if(btnElement) btnElement.classList.add('playing'); 
+                updatePadsVisuals('BG'); 
+
+                if(!characteristic || !patterns[idx].code) return;
+                
+                safeBleWrite("T1.00");
+                safeBleWrite("5" + patterns[idx].code);
+            } else {
+                activeIdxFG = idx;
+                localStorage.setItem('lastActiveFG', idx); 
+                
+                document.querySelectorAll('#padGridFG .pad-btn').forEach(b => b.classList.remove('playing'));
+                if(btnElement) btnElement.classList.add('playing'); 
+                updatePadsVisuals('FG'); 
+
+                if(!characteristic || !patterns[idx].code) return;
+                safeBleWrite("FG:5" + patterns[idx].code);
+            }
+        }
+
+        function stopBG() {
+            clearActiveScaleBtns();
+            activeIdxBG = -1; 
+            localStorage.setItem('lastActiveBG', -1);
+            updatePadsVisuals('BG');
+            if(characteristic) safeBleWrite("off");
+        }
+        function stopFG() {
+            activeIdxFG = -1; 
+            localStorage.setItem('lastActiveFG', -1);
+            updatePadsVisuals('FG');
+            if(characteristic) safeBleWrite("FG:off");
+        }
+
+        function updateSpeed(val, layer) {
+            if(layer === 'BG') {
+                throttledBleWrite('speedBG', "T" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
+            } else {
+                document.getElementById('fgSpeedText').innerText = parseFloat(val).toFixed(1);
+                throttledBleWrite('speedFG', "FGT" + parseFloat(val).toFixed(1), 'withoutResponse', 50);
+            }
+        }
+        
+        function updateBright(val, layer) {
+            if(layer === 'BG') {
+                document.getElementById('bgBrightText').innerText = Math.round(val*100) + '%';
+                throttledBleWrite('brightBG', "B:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
+            } else {
+                document.getElementById('fgBrightText').innerText = Math.round(val*100) + '%';
+                throttledBleWrite('brightFG', "FGB:" + parseFloat(val).toFixed(2), 'withoutResponse', 50);
+            }
+        }
+
+        function resetSpeed(layer) {
+            let slider = document.getElementById(layer === 'BG' ? 'liveSpeedSlider' : 'fgSpeedSlider');
+            if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
+        }
+
+        function loadPatternOrder() {
+            let savedOrderBG = localStorage.getItem('padOrderBG');
+            if (savedOrderBG) {
+                let orderArr = savedOrderBG.split(',').map(Number);
+                if (orderArr.length === 60) {
+                    let newPatterns = [];
+                    orderArr.forEach(id => {
+                        let p = bgPatterns.find(x => x.id === id);
+                        if(p) newPatterns.push(p);
+                    });
+                    bgPatterns = newPatterns;
+                }
+            }
+
+            let savedOrderFG = localStorage.getItem('padOrderFG');
+            if (savedOrderFG) {
+                let orderArr = savedOrderFG.split(',').map(Number);
+                if (orderArr.length === 60) {
+                    let newPatterns = [];
+                    orderArr.forEach(id => {
+                        let p = fgPatterns.find(x => x.id === id);
+                        if(p) newPatterns.push(p);
+                    });
+                    fgPatterns = newPatterns;
+                }
+            }
+        }
+
+        function savePatternOrder(layer) {
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            let orderStr = patterns.map(p => p.id).join(',');
+            localStorage.setItem(layer === 'BG' ? 'padOrderBG' : 'padOrderFG', orderStr);
+            
+            if(characteristic) {
+                let prefix = (layer === 'BG') ? "OBG:" : "OFG:";
+                safeBleWrite(prefix + orderStr, 'withResponse');
+            }
+        }
+
+        function remoteEditAction(actionCallback) {
+            if (activeIdxBG === -1) return; 
+            
+            let prevLayer = activeLayer;
+            let prevIdx = selectedIdx;
+
+            activeLayer = 'BG';
+            selectedIdx = activeIdxBG;
+            clips = [];
+            
+            let rawCode = bgPatterns[activeIdxBG].code || "";
+            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
+            if (brackets) {
+                brackets.forEach((bracket, i) => {
+                    let m = bracket.startsWith('m');
+                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
+                    if(content.length >= 4) {
+                        let s_val, b_val;
+                        if (content[0].length === 5) {
+                            s_val = parseInt(content[0].substring(0,3))/100;
+                            b_val = parseInt(content[0].substring(3,5));
+                        } else {
+                            s_val = parseInt(content[0].substring(0,2))/10;
+                            b_val = parseInt(content[0].substring(2,4));
+                        }
+                        
+                        let d_val;
+                        if (content[3].length >= 6) {
+                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
+                        } else {
+                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
+                        }
+
+                        clips.push({ 
+                            id: Date.now() + i, start: s_val, bright: b_val, 
+                            target: content[1], color: content[2], fx: content[3].charAt(0), 
+                            duration: d_val, loop: 1, mirror: m, track: i % 8 
+                        });
+                    }
+                });
+            }
+            
+            actionCallback();
+            
+            let newCode = generateCodeStr();
+            bgPatterns[activeIdxBG].code = newCode;
+            updatePadsVisuals('BG');
+            
+            if(characteristic) {
+                safeBleWrite(`SB${activeIdxBG}:${newCode}`, 'withResponse');
+                safeBleWrite("T1.00");
+                safeBleWrite("5" + newCode);
+            }
+
+            activeLayer = prevLayer;
+            selectedIdx = prevIdx;
+            clips = []; 
+        }
+
+        function remoteTapTempo(e) {
+            if(e) e.preventDefault();
+            const now = Date.now();
+            editorTapTimes.push(now); 
+            if (editorTapTimes.length > 5) editorTapTimes.shift();
+            if (editorTapTimes.length > 1) {
+                let diffs = [];
+                for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
+                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
+                let rawBpm = 60000 / avgDiff;
+                let bpm = Math.round(rawBpm * 2) / 2; 
+                if (bpm > 30 && bpm <= 200) {
+                    editorBPM = bpm;
+                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
+                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                    
+                    updateBeatDuration(); 
+                    
+                    let beatTimeMs = 60000 / bpm;
+                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
+                    if (beatsToWait < 2) beatsToWait = 2; 
+                    
+                    let targetTime = now + (beatTimeMs * beatsToWait);
+                    let delayToSync = targetTime - Date.now();
+
+                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
+                    editorTapTimeout = setTimeout(() => {
+                        if(characteristic) {
+                            let currentBrt = parseFloat(document.getElementById('bgBrightSlider').value);
+                            safeBleWrite("B:" + (currentBrt * 0.8).toFixed(2));
+                            setTimeout(() => { safeBleWrite("B:" + currentBrt.toFixed(2)); }, 150);
+                        }
+
+                        remoteEditAction(() => {
+                            snapLoopToGrid();
+                        });
+                    }, delayToSync); 
+                }
+            }
+            const btn = document.getElementById('bgTapBtn');
+            if (btn) {
+                btn.style.transform = 'scale(0.90)';
+                btn.style.backgroundColor = 'white';
+                btn.style.color = '#ea580c';
+                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+            }
+        }
+
+        // ==========================================
+        // 🎨 4. UI & RENDERING LOGIC
+        // ==========================================
+        function updatePowerBar(percent, raw = 0) {
+            const fill = document.getElementById('powerBarFill');
+            const text = document.getElementById('powerBarText');
+            const label = document.getElementById('powerLabel');
+            
+            if(fill && text) {
+                fill.style.width = percent + '%';
+                text.innerText = percent + '%';
+                
+                if (label) {
+                    label.innerText = raw > 0 ? 'RAW: ' + raw : 'POWER';
+                }
+
+                if(percent >= 80) fill.style.backgroundColor = '#22c55e'; 
+                else if(percent >= 40) fill.style.backgroundColor = '#f59e0b'; 
+                else fill.style.backgroundColor = '#ef4444'; 
+            }
+        }
+
+        function updateGridBackground() {
+            let fixedBeatTime = 60 / editorBPM; 
+            let beatPx = Math.max(1, fixedBeatTime * pxPerSec); 
+            let secPx = Math.max(1, 1.0 * pxPerSec); 
+            
+            document.getElementById('timelineContent').style.backgroundImage = 
+                `linear-gradient(to right, rgba(255, 61, 0, 0.7) 2px, transparent 2px), 
+                 linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px)`;
+            document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
+        }
+
+        function updatePadsVisuals(layer) {
+            const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+
+            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
+            let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
+            const btns = grid.children;
+            patterns.forEach((p, index) => {
+                const btn = btns[index];
+                if (!btn) return;
+                if(p.code) { btn.classList.add('has-code'); btn.style.backgroundColor = ""; } 
+                else { btn.classList.remove('has-code'); const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
+                
+                if (index === activeIdx) {
+                    btn.classList.add('playing', 'sync-blink');
+                } else {
+                    btn.classList.remove('playing', 'sync-blink');
+                }
+            });
+
+            const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
+            if (stopBtn) {
+                if (layer === 'BG') {
+                    if (activeIdx !== -1) {
+                        stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
+                    } else {
+                        stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
+                    }
+                } else {
+                    if (activeIdx !== -1) {
+                        stopBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
+                    } else {
+                        stopBtn.className = "flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
+                    }
+                }
+            }
+        }
 
         function renderLayerPads(layer) {
             const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
@@ -1140,105 +1003,112 @@
             } catch (err) {}
         }
 
-        function updatePadsVisuals(layer) {
-            const gridId = layer === 'BG' ? 'padGridBG' : 'padGridFG';
-            const grid = document.getElementById(gridId);
-            if (!grid) return;
+        function initColors() {
+            const p = document.getElementById('colorPalette'); p.innerHTML = '';
+            Object.keys(colorMap).forEach(k => {
+                const d = document.createElement('div'); d.className = 'w-6 h-6 rounded border border-gray-700 flex-shrink-0 cursor-pointer shadow active:scale-95'; d.style.backgroundColor = colorMap[k];
+                d.onclick = () => setActiveColor(k);
+                p.appendChild(d);
+            });
+        }
 
-            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            let activeIdx = (layer === 'BG') ? activeIdxBG : activeIdxFG;
-            const btns = grid.children;
-            patterns.forEach((p, index) => {
-                const btn = btns[index];
-                if (!btn) return;
-                if(p.code) { btn.classList.add('has-code'); btn.style.backgroundColor = ""; } 
-                else { btn.classList.remove('has-code'); const hue = (p.id * 6) % 360; btn.style.backgroundColor = `hsl(${hue}, 30%, 15%)`; }
-                
-                if (index === activeIdx) {
-                    btn.classList.add('playing', 'sync-blink');
+        function renderColorBuilderSlots() {
+            const c = clips.find(x => x.id === selectedClipId);
+            const slots = document.getElementById('colorSlots'); slots.innerHTML = '';
+            if(!c) return;
+
+            let colors = c.color.split('2');
+            if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
+
+            colors.forEach((col, idx) => {
+                let box = document.createElement('div');
+                const isSelected = (idx === activeColorIndex);
+                box.className = `w-6 h-6 rounded border-2 shadow-lg flex-shrink-0 transition-transform cursor-pointer ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
+                box.style.backgroundColor = colorMap[col] || '#333';
+                box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
+                slots.appendChild(box);
+            });
+        }
+
+        function addColorSlot() {
+            const c = clips.find(x => x.id === selectedClipId);
+            if(c) {
+                let parts = c.color.split('2'); parts.push(parts[parts.length-1]); 
+                c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
+                markUnsaved(); updateSelectedClip();
+            }
+        }
+
+        function delColorSlot() {
+            const c = clips.find(x => x.id === selectedClipId);
+            if(c) {
+                let parts = c.color.split('2');
+                if(parts.length > 1) { 
+                    parts.pop(); c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
+                    markUnsaved(); updateSelectedClip();
+                }
+            }
+        }
+
+        function setActiveColor(k) {
+            const c = clips.find(x => x.id === selectedClipId);
+            if(c) {
+                let parts = c.color.split('2');
+                if (activeColorIndex >= 0 && activeColorIndex < parts.length) { parts[activeColorIndex] = k; } 
+                else { parts[parts.length - 1] = k; }
+                c.color = parts.join('2');
+                markUnsaved(); updateSelectedClip();
+            }
+        }
+
+        function updateMirrorUI(isMirror) {
+            const btn = document.getElementById('cMirrorBtn');
+            if(isMirror) { btn.className = "w-4 h-4 rounded-full border-2 border-green-500 bg-green-500 shadow-[0_0_8px_#00e676]"; } 
+            else { btn.className = "w-4 h-4 rounded-full border-2 border-gray-600 bg-transparent"; }
+        }
+
+        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "CODE..."; }
+
+        function clearActiveScaleBtns() {
+            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
+        }
+
+        function setActiveScaleBtn(btn) {
+            if (!btn) return;
+            let scaleText = btn.innerText.trim();
+            
+            const activeClasses = ['bg-green-700', 'text-white', 'border-green-500', 'font-black', 'active:bg-green-600', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]', 'sync-blink'];
+            const inactiveClasses = ['bg-gray-800', 'text-green-400', 'border-gray-600', 'font-bold', 'active:bg-gray-700'];
+
+            document.querySelectorAll('button[onclick*="setActiveScaleBtn"]').forEach(el => {
+                if (el.innerText.trim() === scaleText) {
+                    el.classList.remove(...inactiveClasses);
+                    el.classList.add(...activeClasses);
                 } else {
-                    btn.classList.remove('playing', 'sync-blink');
+                    el.classList.remove(...activeClasses);
+                    el.classList.add(...inactiveClasses);
                 }
             });
+        }
 
-            const stopBtn = document.getElementById(layer === 'BG' ? 'stopBtnBG' : 'stopBtnFG');
-            if (stopBtn) {
-                if (layer === 'BG') {
-                    if (activeIdx !== -1) {
-                        stopBtn.className = "bg-green-600 hover:bg-green-500 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
-                    } else {
-                        stopBtn.className = "bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full whitespace-nowrap";
-                    }
+        function updateSelectedClipUI() {
+            if(selectedClipId) {
+                const c = clips.find(x => x.id === selectedClipId);
+                if(c) {
+                    document.getElementById('cBright').value = c.bright; 
+                    document.getElementById('cFX').value = c.fx;
+                    updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
                 } else {
-                    if (activeIdx !== -1) {
-                        stopBtn.className = "flex-1 bg-green-600 hover:bg-green-500 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
-                    } else {
-                        stopBtn.className = "flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition";
-                    }
+                    selectedClipId = null; 
+                    document.getElementById('editorPanel').style.opacity = "0.3";
+                    document.getElementById('editorPanel').style.pointerEvents = "none";
                 }
             }
         }
 
-        function playFX(idx, btnElement, layer) {
-            clearActiveScaleBtns();
-            const parentBlock = layer === 'BG' ? document.querySelector('.layer-bg') : document.querySelector('.layer-fg');
-            const activeScale = parentBlock.querySelector('button.bg-green-700');
-            if (activeScale) setActiveScaleBtn(activeScale); 
-
-            if(isPlaying) {
-                isPlaying = false; 
-                cancelAnimationFrame(playInterval);
-                const btn = document.getElementById('playBtn'); 
-                if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
-            }
-            
-            let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            if (layer === 'BG') {
-                activeIdxBG = idx;
-                localStorage.setItem('lastActiveBG', idx); 
-                
-                let liveSlider = document.getElementById('liveSpeedSlider');
-                if(liveSlider) liveSlider.value = 1.0;
-                
-                document.querySelectorAll('#padGridBG .pad-btn').forEach(b => b.classList.remove('playing'));
-                if(btnElement) btnElement.classList.add('playing'); 
-                updatePadsVisuals('BG'); 
-
-                if(!characteristic || !patterns[idx].code) return;
-                
-                safeBleWrite("T1.00");
-                safeBleWrite("5" + patterns[idx].code);
-            } else {
-                activeIdxFG = idx;
-                localStorage.setItem('lastActiveFG', idx); 
-                
-                document.querySelectorAll('#padGridFG .pad-btn').forEach(b => b.classList.remove('playing'));
-                if(btnElement) btnElement.classList.add('playing'); 
-                updatePadsVisuals('FG'); 
-
-                if(!characteristic || !patterns[idx].code) return;
-                safeBleWrite("FG:5" + patterns[idx].code);
-            }
-        }
-
-        function stopBG() {
-            clearActiveScaleBtns();
-            activeIdxBG = -1; 
-            localStorage.setItem('lastActiveBG', -1);
-            updatePadsVisuals('BG');
-            if(characteristic) safeBleWrite("off");
-        }
-        function stopFG() {
-            activeIdxFG = -1; 
-            localStorage.setItem('lastActiveFG', -1);
-            updatePadsVisuals('FG');
-            if(characteristic) safeBleWrite("FG:off");
-        }
-
-        function markUnsaved() { 
-            saveState(); 
-        }
-
+        // ==========================================
+        // ✂️ 5. EDITOR & TIMELINE LOGIC
+        // ==========================================
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1274,14 +1144,9 @@
                         }
 
                         clips.push({ 
-                            id: Date.now() + i, 
-                            start: s_val, 
-                            bright: b_val, 
-                            target: content[1], 
-                            color: content[2], 
-                            fx: content[3].charAt(0), 
-                            duration: d_val, 
-                            loop: 1, mirror: m, track: i % 8 
+                            id: Date.now() + i, start: s_val, bright: b_val, 
+                            target: content[1], color: content[2], fx: content[3].charAt(0), 
+                            duration: d_val, loop: 1, mirror: m, track: i % 8 
                         });
                     }
                 });
@@ -1497,90 +1362,6 @@
             updateLoopLine(); updateCodeMonitor();
         }
 
-        function addColorSlot() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2'); parts.push(parts[parts.length-1]); 
-                c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-        function delColorSlot() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                if(parts.length > 1) { 
-                    parts.pop(); c.color = parts.join('2'); activeColorIndex = parts.length - 1; 
-                    markUnsaved(); updateSelectedClip();
-                }
-            }
-        }
-        function setActiveColor(k) {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                let parts = c.color.split('2');
-                if (activeColorIndex >= 0 && activeColorIndex < parts.length) { parts[activeColorIndex] = k; } 
-                else { parts[parts.length - 1] = k; }
-                c.color = parts.join('2');
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-
-        function renderColorBuilderSlots() {
-            const c = clips.find(x => x.id === selectedClipId);
-            const slots = document.getElementById('colorSlots'); slots.innerHTML = '';
-            if(!c) return;
-
-            let colors = c.color.split('2');
-            if (activeColorIndex >= colors.length || activeColorIndex < 0) activeColorIndex = colors.length - 1;
-
-            colors.forEach((col, idx) => {
-                let box = document.createElement('div');
-                const isSelected = (idx === activeColorIndex);
-                box.className = `w-6 h-6 rounded border-2 shadow-lg flex-shrink-0 transition-transform cursor-pointer ${isSelected ? 'border-white scale-110' : 'border-gray-700'}`;
-                box.style.backgroundColor = colorMap[col] || '#333';
-                box.onclick = () => { activeColorIndex = idx; renderColorBuilderSlots(); };
-                slots.appendChild(box);
-            });
-        }
-
-        function initColors() {
-            const p = document.getElementById('colorPalette'); p.innerHTML = '';
-            Object.keys(colorMap).forEach(k => {
-                const d = document.createElement('div'); d.className = 'w-6 h-6 rounded border border-gray-700 flex-shrink-0 cursor-pointer shadow active:scale-95'; d.style.backgroundColor = colorMap[k];
-                d.onclick = () => setActiveColor(k);
-                p.appendChild(d);
-            });
-        }
-
-        function toggleMirror() {
-            const c = clips.find(x => x.id === selectedClipId);
-            if(c) {
-                c.mirror = !c.mirror;
-                let currentLEDs = c.target.match(/<(\d+)>/g) || [];
-                if(c.mirror) {
-                    currentLEDs.forEach(led => {
-                        let num = parseInt(led.replace(/<|>/g, ''));
-                        let pair = 69 - num; 
-                        if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
-                    });
-                } else {
-                    c.target = "";
-                    currentLEDs.forEach(led => {
-                        let num = parseInt(led.replace(/<|>/g, ''));
-                        if(num <= 34) { c.target += '<'+num+'>'; }
-                    });
-                }
-                markUnsaved(); updateSelectedClip();
-            }
-        }
-
-        function updateMirrorUI(isMirror) {
-            const btn = document.getElementById('cMirrorBtn');
-            if(isMirror) { btn.className = "w-4 h-4 rounded-full border-2 border-green-500 bg-green-500 shadow-[0_0_8px_#00e676]"; } 
-            else { btn.className = "w-4 h-4 rounded-full border-2 border-gray-600 bg-transparent"; }
-        }
-
         function selectClip(id) {
             selectedClipId = id; const c = clips.find(x => x.id === id);
             document.getElementById('editorPanel').style.opacity = "1"; document.getElementById('editorPanel').style.pointerEvents = "auto";
@@ -1706,16 +1487,7 @@
             }
 
             clips.push({ 
-                id, 
-                start: spawnStart, 
-                duration: beatTime, 
-                target: "", 
-                color: "bl", 
-                fx: "o", 
-                bright: 10, 
-                loop: 1, 
-                mirror: false, 
-                track: spawnTrack 
+                id, start: spawnStart, duration: beatTime, target: "", color: "bl", fx: "o", bright: 10, loop: 1, mirror: false, track: spawnTrack 
             }); 
             
             markUnsaved(); 
@@ -1733,15 +1505,203 @@
 
         function deleteSelectedClip() { if(selectedClipId) { clips = clips.filter(c => c.id !== selectedClipId); selectedClipId = null; markUnsaved(); renderClips(); } }
         
-        document.getElementById('timelineViewport').addEventListener('scroll', function() {
-            if (!isPlaying && this.dataset.ignoreScroll !== "true") {
-                playheadTime = Math.max(0, this.scrollLeft / pxPerSec);
-                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
-                scrubLiveFrame();
+        function editorTapTempo(e) {
+            if(e) e.preventDefault();
+            const now = Date.now();
+            editorTapTimes.push(now);
+            if (editorTapTimes.length > 5) editorTapTimes.shift();
+            if (editorTapTimes.length > 1) {
+                let diffs = [];
+                for (let i = 1; i < editorTapTimes.length; i++) diffs.push(editorTapTimes[i] - editorTapTimes[i - 1]);
+                let avgDiff = diffs.reduce((a, b) => a + b) / diffs.length;
+                let rawBpm = 60000 / avgDiff;
+                let bpm = Math.round(rawBpm * 2) / 2; 
+                if (bpm > 30 && bpm <= 200) {
+                    editorBPM = bpm;
+                    document.getElementById('editorBpmDisplay').innerText = editorBPM;
+                    document.getElementById('liveBpmDisplay').innerText = editorBPM;
+                    
+                    updateBeatDuration(); 
+                    
+                    let beatTimeMs = 60000 / bpm;
+                    let beatsToWait = Math.ceil(1200 / beatTimeMs); 
+                    if (beatsToWait < 2) beatsToWait = 2; 
+                    
+                    let targetTime = now + (beatTimeMs * beatsToWait);
+                    let delayToSync = targetTime - Date.now();
+                    
+                    if (editorTapTimeout) clearTimeout(editorTapTimeout);
+                    editorTapTimeout = setTimeout(() => {
+                        if (!document.getElementById('modal').classList.contains('hidden')) {
+                            updateGridBackground(); 
+                            snapLoopToGrid(); 
+                            fitToScreen(); 
+                            restartPlayhead(); 
+                        } else {
+                            snapLoopToGrid();
+                        }
+                    }, delayToSync); 
+                }
             }
-        });
+            const btn = document.getElementById('editorTapBtn');
+            if (btn) {
+                btn.style.transform = 'scale(0.95)';
+                btn.style.backgroundColor = 'white';
+                btn.style.color = '#ea580c';
+                setTimeout(() => { btn.style.transform = 'none'; btn.style.backgroundColor = '#ea580c'; btn.style.color = 'white'; }, 100);
+            }
+        }
 
+        function setRoomScale(beats) {
+            let maxT = 0; 
+            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            
+            if (maxT > 0) {
+                let beatTime = 60 / editorBPM;
+                let targetTime = beatTime * beats; 
+                let scaleRatio = targetTime / maxT;
+                
+                clips.forEach(c => { 
+                    c.start = c.start * scaleRatio; 
+                    c.duration = c.duration * scaleRatio; 
+                });
+                
+                markUnsaved(); 
+                if (!document.getElementById('modal').classList.contains('hidden')) {
+                    renderClips(); 
+                    updateCodeMonitor();
+                    fitToScreen(); 
+                    restartPlayhead(); 
+                }
+            }
+        }
+
+        function toggleMirror() {
+            const c = clips.find(x => x.id === selectedClipId);
+            if(c) {
+                c.mirror = !c.mirror;
+                let currentLEDs = c.target.match(/<(\d+)>/g) || [];
+                if(c.mirror) {
+                    currentLEDs.forEach(led => {
+                        let num = parseInt(led.replace(/<|>/g, ''));
+                        let pair = 69 - num; 
+                        if(pair > 0 && pair <= 300 && !c.target.includes('<'+pair+'>')) { c.target += '<'+pair+'>'; }
+                    });
+                } else {
+                    c.target = "";
+                    currentLEDs.forEach(led => {
+                        let num = parseInt(led.replace(/<|>/g, ''));
+                        if(num <= 34) { c.target += '<'+num+'>'; }
+                    });
+                }
+                markUnsaved(); updateSelectedClip();
+            }
+        }
+
+        function openCodeModal() {
+            const modal = document.getElementById('codeModal');
+            const textArea = document.getElementById('codeTextArea');
+            textArea.value = generateCodeStr(); 
+            modal.classList.remove('hidden');
+        }
+
+        function closeCodeModal() {
+            document.getElementById('codeModal').classList.add('hidden');
+        }
+
+        function copyCode() {
+            const textArea = document.getElementById('codeTextArea');
+            textArea.select();
+            document.execCommand('copy');
+            alert("คัดลอกโค้ดแล้ว!");
+        }
+
+        function applyPastedCode() {
+            const rawCode = document.getElementById('codeTextArea').value.trim();
+            if (!rawCode) { closeCodeModal(); return; }
+            
+            clips = [];
+            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
+            if (brackets) {
+                brackets.forEach((bracket, i) => {
+                    let m = bracket.startsWith('m');
+                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
+                    if(content.length >= 4) {
+                        let s_val, b_val;
+                        if (content[0].length === 5) {
+                            s_val = parseInt(content[0].substring(0,3))/100;
+                            b_val = parseInt(content[0].substring(3,5));
+                        } else {
+                            s_val = parseInt(content[0].substring(0,2))/10;
+                            b_val = parseInt(content[0].substring(2,4));
+                        }
+                        
+                        let d_val;
+                        if (content[3].length >= 6) {
+                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
+                        } else {
+                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
+                        }
+
+                        clips.push({ 
+                            id: Date.now() + i, 
+                            start: s_val, 
+                            bright: b_val, 
+                            target: content[1], 
+                            color: content[2], 
+                            fx: content[3].charAt(0), 
+                            duration: d_val, 
+                            loop: 1, mirror: m, track: i % 8 
+                        });
+                    }
+                });
+            }
+            
+            stateHistory = []; stateIndex = -1; saveState();
+            renderClips();
+            updateLoopLine();
+            fitToScreen();
+            closeCodeModal();
+            handleBack(); 
+            alert("แปลงโค้ดกลับเป็นลายไฟสำเร็จ!");
+        }
+
+        function saveState() {
+            if (isNavigatingHistory) return;
+            stateHistory = stateHistory.slice(0, stateIndex + 1);
+            stateHistory.push(JSON.stringify(clips));
+            stateIndex = stateHistory.length - 1;
+        }
+
+        function undoState() {
+            if (stateIndex > 0) {
+                stateIndex--;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
+
+        function redoState() {
+            if (stateIndex < stateHistory.length - 1) {
+                stateIndex++;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
+
+        function markUnsaved() { 
+            saveState(); 
+        }
+
+        // ==========================================
+        // ⏯️ 6. PLAYBACK & SCRUBBING LOGIC
+        // ==========================================
         function togglePlay() { 
             const btn = document.getElementById('playBtn'); 
             if (!isPlaying) { 
@@ -1781,16 +1741,18 @@
             playInterval = requestAnimationFrame(animatePlayhead); 
         }
 
-        function updateCodeMonitor() { document.getElementById('liveCode').innerText = generateCodeStr() || "CODE..."; }
-        
-        function sendFullCodeToBT() { 
-            if(!characteristic) return; 
-            let codeStr = generateCodeStr();
-            let cmd = (activeLayer === 'BG') ? "5" + codeStr : "FG:5" + codeStr;
-            safeBleWrite(cmd);
+        function restartPlayhead() {
+            if(isPlaying) {
+                playheadTime = 0;
+                startAnimateTime = performance.now();
+                sendFullCodeToBT(); 
+            } else {
+                playheadTime = 0;
+                document.getElementById('playhead').style.left = '0px';
+                const vp = document.getElementById('timelineViewport');
+                vp.scrollLeft = 0;
+            }
         }
-        
-        let lastSentOff = false;
 
         function scrubLiveFrame() { 
             if(!characteristic || isPlaying) return; 
@@ -1828,12 +1790,23 @@
             throttledBleWrite('scrub', code, 'withoutResponse', 40);
         }
 
-        let wakeLock = null;
+        // ==========================================
+        // 🚀 7. INITIALIZATION (รันตอนเปิดเว็บ)
+        // ==========================================
         async function requestWakeLock() { try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) {} }
         document.addEventListener('pointerdown', () => { if (!wakeLock) requestWakeLock(); }, { once: true });
         document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock(); });
 
         window.addEventListener("popstate", function (e) { if (!document.getElementById('modal').classList.contains('hidden')) { handleBack(); } });
+
+        document.getElementById('timelineViewport').addEventListener('scroll', function() {
+            if (!isPlaying && this.dataset.ignoreScroll !== "true") {
+                playheadTime = Math.max(0, this.scrollLeft / pxPerSec);
+                document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+                document.getElementById('timeText').innerText = `PLAYHEAD: ${playheadTime.toFixed(1)}s / END: ${currentLoopLimit.toFixed(1)}s`;
+                scrubLiveFrame();
+            }
+        });
 
         window.onload = () => {
             try {
