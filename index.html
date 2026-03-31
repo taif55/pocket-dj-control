@@ -765,26 +765,19 @@
         }
 
         function setRoomScale(beats) {
-            let maxT = 0; 
-            clips.forEach(c => { let end = c.start + c.duration; if (end > maxT) maxT = end; });
+            let beatTime = 60 / editorBPM;
+            currentLoopLimit = beatTime * beats;
             
-            if (maxT > 0) {
-                let beatTime = 60 / editorBPM;
-                let targetTime = beatTime * beats; 
-                let scaleRatio = targetTime / maxT;
-                
-                clips.forEach(c => { 
-                    c.start = c.start * scaleRatio; 
-                    c.duration = c.duration * scaleRatio; 
-                });
-                
-                markUnsaved(); 
-                if (!document.getElementById('modal').classList.contains('hidden')) {
-                    renderClips(); 
-                    updateCodeMonitor();
-                    fitToScreen(); 
-                    restartPlayhead(); 
-                }
+            const ll = document.getElementById('loopLine');
+            if (ll) { 
+                ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; 
+                ll.style.display = clips.length > 0 ? 'block' : 'none'; 
+            }
+            
+            markUnsaved(); 
+            if (!document.getElementById('modal').classList.contains('hidden')) {
+                fitToScreen(); 
+                restartPlayhead(); 
             }
         }
 
