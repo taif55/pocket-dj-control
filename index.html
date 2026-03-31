@@ -263,7 +263,7 @@
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
             <div class="flex space-x-1">
                 <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">STOP</button>
-                <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
+                <button onclick="addClipAtBestGap()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
                 <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-2 py-2 rounded-lg text-[10px] font-black">DEL</button>
             </div>
             <div class="flex space-x-1">
@@ -585,8 +585,6 @@
         let sortableFG = null;
         let isDraggingPad = false;
 
-        let currentPowerPercent = 0;
-        let currentRawPower = 0;
         let activeColorIndex = -1; 
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
@@ -609,7 +607,6 @@
                     let m = bracket.startsWith('m');
                     let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
                     if(content.length >= 4) {
-                        // รองรับทั้งการแกะโค้ดแบบเก่า (4 หลัก) และแบบใหม่ (5 หลัก)
                         let s_val, b_val;
                         if (content[0].length === 5) {
                             s_val = parseInt(content[0].substring(0,3))/100;
@@ -849,14 +846,30 @@
                     let m = bracket.startsWith('m');
                     let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
                     if(content.length >= 4) {
+                        let s_val, b_val;
+                        if (content[0].length === 5) {
+                            s_val = parseInt(content[0].substring(0,3))/100;
+                            b_val = parseInt(content[0].substring(3,5));
+                        } else {
+                            s_val = parseInt(content[0].substring(0,2))/10;
+                            b_val = parseInt(content[0].substring(2,4));
+                        }
+                        
+                        let d_val;
+                        if (content[3].length >= 6) {
+                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
+                        } else {
+                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
+                        }
+
                         clips.push({ 
                             id: Date.now() + i, 
-                            start: parseInt(content[0].substring(0,2))/10, 
-                            bright: parseInt(content[0].substring(2,4)), 
+                            start: s_val, 
+                            bright: b_val, 
                             target: content[1], 
                             color: content[2], 
                             fx: content[3].charAt(0), 
-                            duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
+                            duration: d_val, 
                             loop: 1, mirror: m, track: i % 8 
                         });
                     }
@@ -868,7 +881,7 @@
             updateLoopLine();
             fitToScreen();
             closeCodeModal();
-            handleBack(); // เซฟและกลับ
+            handleBack(); 
             alert("แปลงโค้ดกลับเป็นลายไฟสำเร็จ!");
         }
 
@@ -894,10 +907,6 @@
         function resetSpeed(layer) {
             let slider = document.getElementById(layer === 'BG' ? 'liveSpeedSlider' : 'fgSpeedSlider');
             if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
-        }
-        function resetBright(layer) {
-            let slider = document.getElementById(layer === 'BG' ? 'bgBrightSlider' : 'fgBrightSlider');
-            if(slider) { slider.value = 0.30; updateBright(0.30, layer); }
         }
 
         function loadPatternOrder() {
@@ -940,8 +949,6 @@
         }
 
         function updatePowerBar(percent, raw = 0) {
-            currentPowerPercent = percent;
-            currentRawPower = raw;
             const fill = document.getElementById('powerBarFill');
             const text = document.getElementById('powerBarText');
             const label = document.getElementById('powerLabel');
@@ -1232,7 +1239,6 @@
             saveState(); 
         }
 
-        // 🚀 แก้ไข: เพิ่มการหน่วงเวลา 50ms เพื่อให้กราฟิกตื่นขึ้นมาดูดเส้นกริดทันทีเมื่อคลิกเข้าหน้า Edit
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1251,10 +1257,30 @@
                     let m = bracket.startsWith('m');
                     let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
                     if(content.length >= 4) {
+                        let s_val, b_val;
+                        if (content[0].length === 5) {
+                            s_val = parseInt(content[0].substring(0,3))/100;
+                            b_val = parseInt(content[0].substring(3,5));
+                        } else {
+                            s_val = parseInt(content[0].substring(0,2))/10;
+                            b_val = parseInt(content[0].substring(2,4));
+                        }
+                        
+                        let d_val;
+                        if (content[3].length >= 6) {
+                            d_val = Math.max(0.01, parseInt(content[3].substring(1,4))/100);
+                        } else {
+                            d_val = Math.max(0.1, parseInt(content[3].substring(1,3))/10);
+                        }
+
                         clips.push({ 
-                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
-                            target: content[1], color: content[2], fx: content[3].charAt(0), 
-                            duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
+                            id: Date.now() + i, 
+                            start: s_val, 
+                            bright: b_val, 
+                            target: content[1], 
+                            color: content[2], 
+                            fx: content[3].charAt(0), 
+                            duration: d_val, 
                             loop: 1, mirror: m, track: i % 8 
                         });
                     }
@@ -1279,18 +1305,6 @@
                 
                 stateHistory = []; stateIndex = -1; saveState(); 
             }, 50);
-            
-            let initialPxPerSec = pxPerSec;
-            interact('#timelineViewport').gesturable({
-                listeners: {
-                    start(event) { initialPxPerSec = pxPerSec; },
-                    move(event) {
-                        let newPx = initialPxPerSec * event.scale;
-                        newPx = Math.max(20, Math.min(300, newPx));
-                        updateZoom(newPx);
-                    }
-                }
-            });
         }
 
         function handleBack() {
@@ -1462,7 +1476,7 @@
                             let rawDur = e.rect.width / pxPerSec;
                             let closestDur = Math.round(rawDur / beatTime) * beatTime;
                             c.duration = Math.abs(rawDur - closestDur) <= threshold ? Math.max(beatTime/4, closestDur) : rawDur; 
-                            c.duration = Math.max(0.1, c.duration); 
+                            c.duration = Math.max(0.01, c.duration); 
                             e.target.style.left = (c.start * pxPerSec) + 'px'; e.target.style.width = (c.duration * pxPerSec) + 'px'; 
                             if(!isPlaying) scrubLiveFrame(); 
                         },
@@ -1623,11 +1637,10 @@
             }
         }
 
-       function generateCodeStr() {
+        function generateCodeStr() {
             let code = "";
             clips.sort((a,b)=>a.start-b.start).forEach(c => {
                 let m = c.mirror ? 'm' : '';
-                // ขยายเป็น 3 หลัก (คูณ 100) เพื่อความละเอียด 0.01 วินาที
                 let s = Math.min(999, Math.round(c.start*100)).toString().padStart(3,'0');
                 let b = parseInt(c.bright).toString().padStart(2,'0');
                 
@@ -1654,7 +1667,7 @@
             if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
         }
         
-        function addClipAtPlayhead() { 
+        function addClipAtBestGap() { 
             const id = Date.now(); 
             let beatTime = 60 / editorBPM; 
             
@@ -1810,7 +1823,6 @@
                 let idx = Math.floor(p / step);
                 if (idx >= colorCodes.length) idx = colorCodes.length - 1;
                 let showColor = colorCodes[idx] || colorCodes[0];
-                // เปลี่ยน 00 เป็น 000 และ o9900 เป็น o99900 เพื่อรองรับโครงสร้างใหม่
                 code += `${m}(000${bStr},${c.target || 'a'},${showColor},o99900)`; 
             });
             throttledBleWrite('scrub', code, 'withoutResponse', 40);
@@ -1836,6 +1848,18 @@
                 document.getElementById('timelineContent').style.backgroundSize = `${beatPx}px 100%, ${secPx}px 100%`;
                 
                 updateBeatDuration(); 
+
+                let initialPxPerSec = pxPerSec;
+                interact('#timelineViewport').gesturable({
+                    listeners: {
+                        start(event) { initialPxPerSec = pxPerSec; },
+                        move(event) {
+                            let newPx = initialPxPerSec * event.scale;
+                            newPx = Math.max(20, Math.min(300, newPx));
+                            updateZoom(newPx);
+                        }
+                    }
+                });
 
                 interact('#editorBpmDisplay').on('hold', function (event) {
                     let input = prompt("ตั้งค่า Tempo (BPM) ใหม่สำหรับหน้า Edit:", editorBPM);
@@ -1876,5 +1900,3 @@
     </script>
 </body>
 </html>
-
-
