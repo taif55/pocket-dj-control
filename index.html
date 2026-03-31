@@ -1,592 +1,595 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pocket DJ Studio - 2 Layers Edition</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <style>
-        :root {
-            /* ค่าตั้งต้นสำหรับจังหวะกระพริบ (128 BPM = 0.468s) */
-            --beat-duration: 0.468s;
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pocket DJ Studio - 2 Layers Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        :root {
+            /* ค่าตั้งต้นสำหรับจังหวะกระพริบ (128 BPM = 0.468s) */
+            --beat-duration: 0.468s;
+        }
 
-        body { 
-            font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
-            user-select: none; overflow: hidden; height: 100dvh; 
-            display: flex; flex-direction: column; touch-action: none; 
-            margin: 0; padding: 0;
-        }
+        body { 
+            font-family: 'Segoe UI', sans-serif; background: #050505; color: white; 
+            user-select: none; overflow: hidden; height: 100dvh; 
+            display: flex; flex-direction: column; touch-action: none; 
+            margin: 0; padding: 0;
+        }
 
-        #mainView {
-            display: flex;
-            flex-direction: column;
-            height: calc(100dvh - 5px); 
-            overflow: hidden; 
-            padding: 5px 5px 5px 5px; 
-            box-sizing: border-box;
-            gap: 5px;
-        }
+        #mainView {
+            display: flex;
+            flex-direction: column;
+            height: calc(100dvh - 5px); 
+            overflow: hidden; 
+            padding: 5px 5px 5px 5px; 
+            box-sizing: border-box;
+            gap: 5px;
+        }
 
-        .header-section {
-            flex: 0 0 8%; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(17, 24, 39, 0.5);
-            padding: 0 15px;
-            border-radius: 15px;
-            border: 1px solid #1f2937;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-        }
+        .header-section {
+            flex: 0 0 8%; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(17, 24, 39, 0.5);
+            padding: 0 15px;
+            border-radius: 15px;
+            border: 1px solid #1f2937;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
 
-        .power-bar-container {
-            width: 60px;
-            height: 12px;
-            background-color: #333;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid #555;
-            position: relative;
-        }
-        .power-bar-fill {
-            height: 100%;
-            width: 0%; 
-            background-color: #22c55e; 
-            transition: width 0.3s ease, background-color 0.3s ease;
-        }
-        .power-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            font-size: 8px;
-            font-weight: 900;
-            line-height: 12px;
-            color: white;
-            text-shadow: 1px 1px 2px black;
-        }
+        .power-bar-container {
+            width: 60px;
+            height: 12px;
+            background-color: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #555;
+            position: relative;
+        }
+        .power-bar-fill {
+            height: 100%;
+            width: 0%; 
+            background-color: #22c55e; 
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        .power-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 8px;
+            font-weight: 900;
+            line-height: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
 
-        .layer-block {
-            display: flex;
-            flex-direction: column;
-            border-radius: 20px;
-            padding: 10px;
-            position: relative;
-            background-color: rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        .layer-bg { 
-            flex: 0 0 45%; 
-            border: 2px solid #22c55e; 
-            background-color: rgba(20, 83, 45, 0.2); 
-        }
-        
-        .layer-fg { 
-            flex: 0 0 35%; 
-            border: 2px solid #3b82f6; 
-            background-color: rgba(30, 58, 138, 0.2); 
-        }
+        .layer-block {
+            display: flex;
+            flex-direction: column;
+            border-radius: 20px;
+            padding: 10px;
+            position: relative;
+            background-color: rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .layer-bg { 
+            flex: 0 0 45%; 
+            border: 2px solid #22c55e; 
+            background-color: rgba(20, 83, 45, 0.2); 
+        }
+        
+        .layer-fg { 
+            flex: 0 0 35%; 
+            border: 2px solid #3b82f6; 
+            background-color: rgba(30, 58, 138, 0.2); 
+        }
 
-        .layer-title {
-            position: absolute;
-            top: -10px;
-            left: 15px;
-            background-color: #050505;
-            padding: 0 10px;
-            font-weight: 900;
-            font-size: 10px;
-            letter-spacing: 1px;
-        }
+        .layer-title {
+            position: absolute;
+            top: -10px;
+            left: 15px;
+            background-color: #050505;
+            padding: 0 10px;
+            font-weight: 900;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
 
-        .pad-container { 
-            flex: 1; 
-            width: 100%; 
-            overflow-y: scroll; 
-            padding: 5px; 
-            touch-action: pan-y; 
-            margin-bottom: 5px;
-        }
-        
-        .pad-container::-webkit-scrollbar { display: block; width: 26px; }
-        .pad-container::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
-        .pad-container::-webkit-scrollbar-thumb { background: #444; border-radius: 8px; border: 4px solid #0a0a0a; }
+        .pad-container { 
+            flex: 1; 
+            width: 100%; 
+            overflow-y: scroll; 
+            padding: 5px; 
+            touch-action: pan-y; 
+            margin-bottom: 5px;
+        }
+        
+        .pad-container::-webkit-scrollbar { display: block; width: 26px; }
+        .pad-container::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
+        .pad-container::-webkit-scrollbar-thumb { background: #444; border-radius: 8px; border: 4px solid #0a0a0a; }
 
-        .grid-style { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .grid-style { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 
-        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
-        .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
-        .pad-btn.playing { box-shadow: 0 0 20px #fff; border-color: #fff; background: #fff !important; color: black; }
+        .pad-btn { background: #151515; border: 1px solid #333; aspect-ratio: 1/1; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: transform 0.05s, box-shadow 0.1s; }
+        .pad-btn:active { transform: scale(0.92); box-shadow: inset 0 0 15px rgba(255,255,255,0.2); }
+        .pad-btn.playing { box-shadow: 0 0 20px #fff; border-color: #fff; background: #fff !important; color: black; }
 
-        .pad-btn.has-code { border: 2px solid #555; background-color: #151515 !important; }
+        .pad-btn.has-code { border: 2px solid #555; background-color: #151515 !important; }
 
-        .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #fff !important; pointer-events: none; }
-        .sortable-ghost { opacity: 0.1; background: #fff !important; }
+        .sortable-drag { opacity: 1 !important; transform: scale(1.1) !important; z-index: 9999 !important; box-shadow: 0 10px 30px #000 !important; border: 2px solid #fff !important; pointer-events: none; }
+        .sortable-ghost { opacity: 0.1; background: #fff !important; }
 
-        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x pinch-zoom; }
-        #timelineContent { position: relative; height: 100%; width: 2000px; transform-origin: left top; }
-        
-        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
-        #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
-        
-        .light-clip { position: absolute; height: 16px; color: black; border-radius: 4px; font-size: 8px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.4); cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .light-clip:active { cursor: grabbing; }
-        .light-clip.selected { border: 2px solid white; box-shadow: 0 0 10px #00e676; z-index: 40; }
-        
-        .color-scroll::-webkit-scrollbar { height: 4px; }
-        .color-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
+        #timelineViewport { background: #0a0a0a; border-bottom: 1px solid #222; position: relative; height: 180px; overflow-x: auto; overflow-y: hidden; scroll-behavior: auto; touch-action: pan-x pinch-zoom; }
+        #timelineContent { position: relative; height: 100%; width: 2000px; transform-origin: left top; }
+        
+        #playhead { position: absolute; top: 0; width: 2px; height: 100%; background: #ff3d00; z-index: 50; pointer-events: none; box-shadow: 0 0 8px #ff3d00; }
+        #loopLine { position: absolute; top: 0; width: 2px; height: 100%; background: #00e676; z-index: 45; pointer-events: none; box-shadow: 0 0 10px #00e676; opacity: 0.8; }
+        
+        .light-clip { position: absolute; height: 16px; color: black; border-radius: 4px; font-size: 8px; font-weight: 900; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: none; border: 1px solid rgba(255,255,255,0.4); cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .light-clip:active { cursor: grabbing; }
+        .light-clip.selected { border: 2px solid white; box-shadow: 0 0 10px #00e676; z-index: 40; }
+        
+        .color-scroll::-webkit-scrollbar { height: 4px; }
+        .color-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
 
-        #ledGrid { touch-action: pan-y; padding-right: 5px; overflow-y: auto; }
-        #ledGrid::-webkit-scrollbar { display: block; width: 14px; }
-        #ledGrid::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
-        #ledGrid::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 3px solid #0a0a0a; }
+        #ledGrid { touch-action: pan-y; padding-right: 5px; overflow-y: auto; }
+        #ledGrid::-webkit-scrollbar { display: block; width: 14px; }
+        #ledGrid::-webkit-scrollbar-track { background: #0a0a0a; border-radius: 8px; }
+        #ledGrid::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 3px solid #0a0a0a; }
 
-        .led-mark { border: 1px solid #444 !important; background: #151515; }
-        .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
-        
-        .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
+        .led-mark { border: 1px solid #444 !important; background: #151515; }
+        .led-active { background: #00e676 !important; color: #000 !important; border-color: #fff !important; box-shadow: 0 0 8px #00e676; }
+        
+        .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); }
 
-        /* อนิเมชั่นกระพริบตามจังหวะ BPM */
-        @keyframes bpmSyncBlink {
-            0% { background-color: #fff !important; color: #000 !important; box-shadow: 0 0 15px #fff; transform: scale(1.1); border-color: #fff !important; z-index: 10; }
-            30% { transform: scale(1); }
-            100% { transform: scale(1); }
-        }
-        .sync-blink {
-            animation: bpmSyncBlink var(--beat-duration, 0.5s) infinite;
-            position: relative;
-        }
+        /* อนิเมชั่นกระพริบตามจังหวะ BPM */
+        @keyframes bpmSyncBlink {
+            0% { background-color: #fff !important; color: #000 !important; box-shadow: 0 0 15px #fff; transform: scale(1.1); border-color: #fff !important; z-index: 10; }
+            30% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+        .sync-blink {
+            animation: bpmSyncBlink var(--beat-duration, 0.5s) infinite;
+            position: relative;
+        }
 
-        /* NEW: อนิเมชั่นกระพริบชี้เป้าเวลาก้อนไฟเกิดใหม่ (Add Clip) */
-        @keyframes newClipFlash {
-            0%, 100% { box-shadow: 0 0 0px #00e676; border-color: rgba(255,255,255,0.4); }
-            50% { box-shadow: 0 0 25px #00e676 !important; border-color: #00e676 !important; background-color: #fff !important; color: black !important; z-index: 60; transform: scale(1.15); }
-        }
-        .new-clip-blink {
-            animation: newClipFlash 0.4s ease-in-out 3 !important;
-        }
-    </style>
+        /* NEW: อนิเมชั่นกระพริบชี้เป้าเวลาก้อนไฟเกิดใหม่ (Add Clip) */
+        @keyframes newClipFlash {
+            0%, 100% { box-shadow: 0 0 0px #00e676; border-color: rgba(255,255,255,0.4); }
+            50% { box-shadow: 0 0 25px #00e676 !important; border-color: #00e676 !important; background-color: #fff !important; color: black !important; z-index: 60; transform: scale(1.15); }
+        }
+        .new-clip-blink {
+            animation: newClipFlash 0.4s ease-in-out 3 !important;
+        }
+    </style>
 </head>
 <body>
 
-    <div id="mainView">
-        
-        <div class="header-section mt-1 mb-1">
-            <h1 class="text-sm font-black text-white italic uppercase tracking-wider">Pocket DJ <span class="text-orange-500">Ultimate</span></h1>
-            
-            <div class="flex items-center space-x-3">
-                <div class="flex flex-col items-center">
-                    <span id="powerLabel" class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
-                    <div class="power-bar-container">
-                        <div id="powerBarFill" class="power-bar-fill"></div>
-                        <div id="powerBarText" class="power-text">OFF</div>
-                    </div>
-                </div>
-                <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
-            </div>
-        </div>
-        
-        <div id="voltageWarning" class="hidden bg-red-700 text-white text-[10px] font-black px-3 py-1.5 rounded-lg border border-red-500 shadow-[0_0_15px_#ef4444] flex justify-between items-center animate-pulse flex-none mx-1 mb-1">
-            <span>⚠️ คำเตือน: กระแสไฟต่ำกว่าปกติ (LOW VOLTAGE)</span>
-            <span id="voltageText">RAW: ----</span>
-        </div>
+    <div id="mainView">
+        
+        <div class="header-section mt-1 mb-1">
+            <h1 class="text-sm font-black text-white italic uppercase tracking-wider">Pocket DJ <span class="text-orange-500">Ultimate</span></h1>
+            
+            <div class="flex items-center space-x-3">
+                <div class="flex flex-col items-center">
+                    <span id="powerLabel" class="text-[7px] text-gray-400 font-bold mb-[1px]">POWER</span>
+                    <div class="power-bar-container">
+                        <div id="powerBarFill" class="power-bar-fill"></div>
+                        <div id="powerBarText" class="power-text">OFF</div>
+                    </div>
+                </div>
+                <button id="connectBtn" class="bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition">CONNECT</button>
+            </div>
+        </div>
+        
+        <div id="voltageWarning" class="hidden bg-red-700 text-white text-[10px] font-black px-3 py-1.5 rounded-lg border border-red-500 shadow-[0_0_15px_#ef4444] flex justify-between items-center animate-pulse flex-none mx-1 mb-1">
+            <span>⚠️ คำเตือน: กระแสไฟต่ำกว่าปกติ (LOW VOLTAGE)</span>
+            <span id="voltageText">RAW: ----</span>
+        </div>
 
-        <div class="layer-block layer-bg mt-1">
-            <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
-            
-            <div class="flex items-center justify-between w-full space-x-1 px-1 mt-3 mb-1">
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">8</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">6</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">4</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-green-700 text-white py-2 rounded-lg border border-green-500 text-[11px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-green-700 text-white py-2 rounded-lg border border-green-500 text-[11px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">1/2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">1/4</button>
-            </div>
+        <div class="layer-block layer-bg mt-1">
+            <h2 class="layer-title text-green-500">BACKGROUND LAYER</h2>
+            
+            <div class="flex items-center justify-between w-full space-x-1 px-1 mt-3 mb-1">
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(8))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">8</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(6))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">6</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(4))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">4</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(2))" class="flex-1 bg-green-700 text-white py-2 rounded-lg border border-green-500 text-[11px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(1))" class="flex-1 bg-green-700 text-white py-2 rounded-lg border border-green-500 text-[11px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.5))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">1/2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); remoteEditAction(() => setRoomScale(0.25))" class="flex-1 bg-gray-800 text-green-400 py-2 rounded-lg border border-gray-600 text-[11px] font-bold active:bg-gray-700 transition">1/4</button>
+            </div>
 
-            <div class="flex gap-1.5 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none items-center">
-                <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full">STOP</button>
-                
-                <div class="flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 shrink-0">
-                    <span class="text-[7px] text-gray-400 font-bold">SCL</span>
-                    <input type="range" id="liveSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500 h-1.5 bg-gray-700 rounded-lg appearance-none" onchange="remoteEditAction(() => applySpeedScale(this.value))">
-                </div>
+            <div class="flex gap-1.5 mb-1 bg-gray-900/50 p-1.5 mx-1 rounded-xl flex-none items-center">
+                <button id="stopBtnBG" onclick="stopBG()" class="bg-red-900/80 hover:bg-red-600 text-white font-black text-[9px] px-3 py-2 rounded-lg shadow-lg transition h-full">STOP</button>
+                
+                <div class="flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 shrink-0">
+                    <span class="text-[7px] text-gray-400 font-bold">SCL</span>
+                    <input type="range" id="liveSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500 h-1.5 bg-gray-700 rounded-lg appearance-none" onchange="remoteEditAction(() => applySpeedScale(this.value))">
+                </div>
 
-                <div class="flex-1 flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 min-w-0">
-                    <span class="text-[7px] font-bold text-gray-400">BRT</span>
-                    <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
-                </div>
+                <div class="flex-1 flex items-center space-x-1 bg-black/50 px-2 py-1.5 rounded-lg border border-gray-700 min-w-0">
+                    <span class="text-[7px] font-bold text-gray-400">BRT</span>
+                    <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
+                </div>
 
-                <span id="liveBpmDisplay" class="text-[12px] text-orange-400 font-black px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center">128</span>
-                
-                <button id="bgTapBtn" onpointerdown="remoteTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-[0_0_10px_rgba(234,88,12,0.4)] active:scale-95 transition flex items-center justify-center shrink-0">
-                    TAP
-                </button>
-            </div>
+                <span id="liveBpmDisplay" class="text-[12px] text-orange-400 font-black px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center">128</span>
+                
+                <button id="bgTapBtn" onpointerdown="remoteTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-black shadow-[0_0_10px_rgba(234,88,12,0.4)] active:scale-95 transition flex items-center justify-center shrink-0">
+                    TAP
+                </button>
+            </div>
 
-            <div class="pad-container mt-1">
-                <div id="padGridBG" class="grid-style"></div>
-            </div>
-        </div>
+            <div class="pad-container mt-1">
+                <div id="padGridBG" class="grid-style"></div>
+            </div>
+        </div>
 
-        <div class="layer-block layer-fg">
-            <h2 class="layer-title text-blue-500">FOREGROUND LAYER</h2>
-            
-            <div class="flex space-x-2 mb-1 bg-gray-900/50 p-1.5 px-3 mx-1 rounded-xl flex-none mt-1">
-                <div class="flex-1 flex items-center space-x-2 w-full">
-                    <button onclick="resetSpeed('FG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">SPD</button>
-                    <input type="range" id="fgSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'FG')">
-                    <span id="fgSpeedText" class="text-orange-500 font-black text-[10px] w-8 text-right">1.0</span>
-                </div>
-            </div>
+        <div class="layer-block layer-fg">
+            <h2 class="layer-title text-blue-500">FOREGROUND LAYER</h2>
+            
+            <div class="flex space-x-2 mb-1 bg-gray-900/50 p-1.5 px-3 mx-1 rounded-xl flex-none mt-1">
+                <div class="flex-1 flex items-center space-x-2 w-full">
+                    <button onclick="resetSpeed('FG')" class="text-[9px] font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded shadow active:bg-gray-600">SPD</button>
+                    <input type="range" id="fgSpeedSlider" min="0" max="8" step="0.1" value="1.0" class="flex-1 accent-orange-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateSpeed(this.value, 'FG')">
+                    <span id="fgSpeedText" class="text-orange-500 font-black text-[10px] w-8 text-right">1.0</span>
+                </div>
+            </div>
 
-            <div class="pad-container">
-                <div id="padGridFG" class="grid-style"></div>
-            </div>
-            
-            <div class="flex space-x-2 mt-1 flex-none w-full">
-                <div class="flex-1 flex items-center space-x-2 bg-gray-900/50 px-3 py-2 rounded-lg border border-gray-800">
-                    <span class="text-[9px] font-bold text-gray-400 w-6">BRT</span>
-                    <input type="range" id="fgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
-                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">30%</span>
-                </div>
-                <button id="stopBtnFG" onclick="stopFG()" class="flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FG</button>
-            </div>
-        </div>
+            <div class="pad-container">
+                <div id="padGridFG" class="grid-style"></div>
+            </div>
+            
+            <div class="flex space-x-2 mt-1 flex-none w-full">
+                <div class="flex-1 flex items-center space-x-2 bg-gray-900/50 px-3 py-2 rounded-lg border border-gray-800">
+                    <span class="text-[9px] font-bold text-gray-400 w-6">BRT</span>
+                    <input type="range" id="fgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-2 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'FG')">
+                    <span id="fgBrightText" class="text-yellow-500 font-black text-[10px] w-8 text-right">30%</span>
+                </div>
+                <button id="stopBtnFG" onclick="stopFG()" class="flex-1 bg-red-900/80 hover:bg-red-600 text-white font-black text-[10px] py-2 rounded-lg shadow-lg transition">STOP FG</button>
+            </div>
+        </div>
 
-    </div>
+    </div>
 
-    <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
-        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
-            <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
-            <div class="flex space-x-1">
-                <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">STOP</button>
-                <button onclick="addClipAtBestGap()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
-                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-2 py-2 rounded-lg text-[10px] font-black">DEL</button>
-            </div>
-            <div class="flex space-x-1">
-                <button onclick="undoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↩️</button>
-                <button onclick="redoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↪️</button>
-                <button onclick="unsaveAndExit()" class="bg-white text-black font-black px-3 py-2 rounded-lg text-[10px] uppercase active:bg-gray-300 shadow">UNSAVE</button>
-            </div>
-        </div>
-        
-        <div id="timelineViewport" class="flex-none">
-            <div id="timelineContent">
-                <div id="playhead"></div>
-                <div id="loopLine"></div>
-                <div id="trackArea" class="relative h-full py-2"></div>
-            </div>
-        </div>
-        <div class="flex justify-between bg-black text-[9px] text-gray-500 font-mono px-2 py-1 border-b border-gray-800 flex-none">
-            <span id="timeText">PLAYHEAD: 0.0s</span>
-            <span>* ถ่างนิ้วเพื่อซูมเข้า/ออกบนตาราง</span>
-        </div>
+    <div id="modal" class="fixed inset-0 hidden z-40 flex flex-col bg-[#050505] pb-[40px]">
+        <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
+            <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
+            <div class="flex space-x-1">
+                <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">STOP</button>
+                <button onclick="addClipAtPlayhead()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
+                <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-2 py-2 rounded-lg text-[10px] font-black">DEL</button>
+            </div>
+            <div class="flex space-x-1">
+                <button onclick="undoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↩️</button>
+                <button onclick="redoState()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-2 rounded-lg text-[10px] shadow">↪️</button>
+                <button onclick="unsaveAndExit()" class="bg-white text-black font-black px-3 py-2 rounded-lg text-[10px] uppercase active:bg-gray-300 shadow">UNSAVE</button>
+            </div>
+        </div>
+        
+        <div id="timelineViewport" class="flex-none">
+            <div id="timelineContent">
+                <div id="playhead"></div>
+                <div id="loopLine"></div>
+                <div id="trackArea" class="relative h-full py-2"></div>
+            </div>
+        </div>
+        <div class="flex justify-between bg-black text-[9px] text-gray-500 font-mono px-2 py-1 border-b border-gray-800 flex-none">
+            <span id="timeText">PLAYHEAD: 0.0s</span>
+            <span>* ถ่างนิ้วเพื่อซูมเข้า/ออกบนตาราง</span>
+        </div>
 
-        <div class="bg-gray-900 border-b border-gray-800 p-2 flex items-center justify-between flex-none overflow-hidden w-full box-border">
-            
-            <div class="flex items-center space-x-1 flex-shrink-0">
-                <button onclick="fitToScreen()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-1.5 py-1.5 rounded-lg text-[9px] font-black shadow-lg">FIT</button>
-                <button id="followBtn" onclick="toggleFollow()" class="bg-gray-700 text-white px-1.5 py-1.5 rounded-lg text-[9px] font-bold">FOL</button>
-            </div>
-            
-            <div class="flex items-center space-x-0.5 flex-1 justify-center px-1">
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(2)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(1)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
-                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
-            </div>
-            
-            <div class="flex items-center space-x-1 flex-shrink-0">
-                <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
-                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
-            </div>
+        <div class="bg-gray-900 border-b border-gray-800 p-2 flex items-center justify-between flex-none overflow-hidden w-full box-border">
+            
+            <div class="flex items-center space-x-1 flex-shrink-0">
+                <button onclick="fitToScreen()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-1.5 py-1.5 rounded-lg text-[9px] font-black shadow-lg">FIT</button>
+                <button id="followBtn" onclick="toggleFollow()" class="bg-gray-700 text-white px-1.5 py-1.5 rounded-lg text-[9px] font-bold">FOL</button>
+            </div>
+            
+            <div class="flex items-center space-x-0.5 flex-1 justify-center px-1">
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(8)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">8</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(6)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">6</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(4)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">4</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(2)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(1)" class="flex-1 max-w-[28px] bg-green-700 text-white py-1.5 rounded border border-green-500 text-[8px] font-black active:bg-green-600 transition shadow-[0_0_8px_rgba(34,197,94,0.6)]">1</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.5)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/2</button>
+                <button onclick="setActiveScaleBtn(event.currentTarget); setRoomScale(0.25)" class="flex-1 max-w-[28px] bg-gray-800 text-green-400 py-1.5 rounded border border-gray-600 text-[8px] font-bold active:bg-gray-700 transition">1/4</button>
+            </div>
+            
+            <div class="flex items-center space-x-1 flex-shrink-0">
+                <span id="editorBpmDisplay" class="text-lg text-white font-black px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 cursor-pointer active:bg-gray-700 transition">128</span>
+                <button id="editorTapBtn" onpointerdown="editorTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-2 py-1.5 rounded-lg text-[9px] font-black shadow-[0_0_10px_rgba(234,88,12,0.5)] active:scale-95 transition duration-75">TAP</button>
+            </div>
 
-        </div>
-        
-        <div id="editorPanel" class="flex-1 flex flex-col p-2 space-y-2 opacity-30 pointer-events-none overflow-hidden">
-            
-            <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex justify-between items-center flex-none w-full box-border">
-                
-                <div class="flex space-x-1 flex-shrink-0 mr-1">
-                    <button onclick="addColorSlot()" class="bg-blue-600 text-white font-bold text-[9px] px-2 py-1 rounded shadow">+ ADD</button>
-                    <button onclick="delColorSlot()" class="bg-red-900 text-white font-bold text-[9px] px-2 py-1 rounded shadow">- DEL</button>
-                </div>
-                
-                <div id="colorSlots" class="flex items-center space-x-1 flex-1 overflow-x-auto color-scroll pb-1 min-w-0"></div>
-                
-                <div class="flex items-center space-x-1 flex-shrink-0 w-[55px] bg-black/50 p-1 rounded border border-gray-700 ml-1">
-                    <span class="text-[6px] text-gray-400 font-bold">SCL</span>
-                    <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500" onchange="applySpeedScale(this.value)">
-                </div>
+        </div>
+        
+        <div id="editorPanel" class="flex-1 flex flex-col p-2 space-y-2 opacity-30 pointer-events-none overflow-hidden">
+            
+            <div class="bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex justify-between items-center flex-none w-full box-border">
+                
+                <div class="flex space-x-1 flex-shrink-0 mr-1">
+                    <button onclick="addColorSlot()" class="bg-blue-600 text-white font-bold text-[9px] px-2 py-1 rounded shadow">+ ADD</button>
+                    <button onclick="delColorSlot()" class="bg-red-900 text-white font-bold text-[9px] px-2 py-1 rounded shadow">- DEL</button>
+                </div>
+                
+                <div id="colorSlots" class="flex items-center space-x-1 flex-1 overflow-x-auto color-scroll pb-1 min-w-0"></div>
+                
+                <div class="flex items-center space-x-1 flex-shrink-0 w-[55px] bg-black/50 p-1 rounded border border-gray-700 ml-1">
+                    <span class="text-[6px] text-gray-400 font-bold">SCL</span>
+                    <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="w-[30px] accent-orange-500" onchange="applySpeedScale(this.value)">
+                </div>
 
-            </div>
-            
-            <div id="colorPalette" class="color-scroll flex flex-nowrap overflow-x-auto gap-2 pb-1 px-1 flex-none"></div>
+            </div>
+            
+            <div id="colorPalette" class="color-scroll flex flex-nowrap overflow-x-auto gap-2 pb-1 px-1 flex-none"></div>
 
-            <div class="grid grid-cols-3 gap-2 flex-none">
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
-                    <span class="text-[8px] text-gray-500 font-bold uppercase">Bright</span>
-                    <input type="number" id="cBright" value="10" class="bg-transparent text-right font-black text-sm w-10 outline-none" oninput="updateSelectedClip()">
-                </div>
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2 cursor-pointer" onclick="toggleMirror()">
-                    <span class="text-[8px] text-gray-500 font-bold uppercase">Mirror</span>
-                    <div id="cMirrorBtn" class="w-4 h-4 rounded-full border-2 border-gray-600 transition-colors"></div>
-                </div>
-                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
-                    <span class="text-[8px] text-gray-500 font-bold uppercase">FX</span>
-                    <select id="cFX" class="bg-transparent text-[9px] font-black text-green-400 uppercase outline-none text-right flex-1 ml-1" onchange="updateSelectedClip()">
-                        <option value="o">STATIC</option><option value="u">FADE UP</option><option value="f">FADE OUT</option><option value="s">STROBE</option><option value="b">BLINK</option>
-                        <option value="w">WAVE</option><option value="r">RANDOM</option><option value="p">PULSE</option><option value="d">DROP</option><option value="z">ZIGZAG</option><option value="h">H-STROBE</option>
-                    </select>
-                </div>
-            </div>
+            <div class="grid grid-cols-3 gap-2 flex-none">
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">Bright</span>
+                    <input type="number" id="cBright" value="10" class="bg-transparent text-right font-black text-sm w-10 outline-none" oninput="updateSelectedClip()">
+                </div>
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2 cursor-pointer" onclick="toggleMirror()">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">Mirror</span>
+                    <div id="cMirrorBtn" class="w-4 h-4 rounded-full border-2 border-gray-600 transition-colors"></div>
+                </div>
+                <div class="bg-gray-900/40 p-1 rounded-xl border border-gray-800 flex items-center justify-between px-2">
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">FX</span>
+                    <select id="cFX" class="bg-transparent text-[9px] font-black text-green-400 uppercase outline-none text-right flex-1 ml-1" onchange="updateSelectedClip()">
+                        <option value="o">STATIC</option><option value="u">FADE UP</option><option value="f">FADE OUT</option><option value="s">STROBE</option><option value="b">BLINK</option>
+                        <option value="w">WAVE</option><option value="r">RANDOM</option><option value="p">PULSE</option><option value="d">DROP</option><option value="z">ZIGZAG</option><option value="h">H-STROBE</option>
+                    </select>
+                </div>
+            </div>
 
-            <div class="flex-1 bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex flex-col min-h-0">
-                <div id="ledGrid" class="flex-1 grid grid-cols-10 gap-1 bg-black p-1 rounded-lg border border-gray-900 content-start"></div>
-            </div>
-        </div>
+            <div class="flex-1 bg-gray-900/40 p-2 rounded-xl border border-gray-800 flex flex-col min-h-0">
+                <div id="ledGrid" class="flex-1 grid grid-cols-10 gap-1 bg-black p-1 rounded-lg border border-gray-900 content-start"></div>
+            </div>
+        </div>
 
-        <div class="fixed bottom-0 w-full bg-gray-950 border-t-2 border-green-500 p-3 flex justify-between items-center z-50 shadow-[0_-5px_20px_rgba(0,255,0,0.1)] cursor-pointer active:bg-gray-900" onclick="openCodeModal()">
-            <div class="flex items-center space-x-2 w-full">
-                <span class="text-[10px] text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">CODE</span>
-                <div id="liveCode" class="text-[12px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 font-bold tracking-widest pointer-events-none drop-shadow-[0_0_5px_#00e676]">...</div>
-            </div>
-        </div>
-    </div>
+        <div class="fixed bottom-0 w-full bg-gray-950 border-t-2 border-green-500 p-3 flex justify-between items-center z-50 shadow-[0_-5px_20px_rgba(0,255,0,0.1)] cursor-pointer active:bg-gray-900" onclick="openCodeModal()">
+            <div class="flex items-center space-x-2 w-full">
+                <span class="text-[10px] text-green-400 font-bold bg-green-900/50 px-2 py-1 rounded">CODE</span>
+                <div id="liveCode" class="text-[12px] font-mono text-green-400 overflow-hidden whitespace-nowrap text-ellipsis flex-1 font-bold tracking-widest pointer-events-none drop-shadow-[0_0_5px_#00e676]">...</div>
+            </div>
+        </div>
+    </div>
 
-    <div id="codeModal" class="fixed inset-0 hidden z-[60] modal-overlay flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-green-500 rounded-2xl p-4 w-full max-w-sm shadow-[0_0_30px_rgba(0,255,0,0.2)] flex flex-col">
-            <h3 class="text-green-400 font-bold text-sm mb-2 text-center uppercase tracking-widest">RAW CODE DATA</h3>
-            <textarea id="codeTextArea" class="w-full h-32 bg-black border border-gray-700 rounded-xl p-3 text-green-400 font-mono text-xs focus:border-green-500 focus:outline-none resize-none shadow-inner" placeholder="Paste โค้ดที่นี่ เพื่อแปลงกลับเป็นก้อนไฟ..."></textarea>
-            <div class="flex space-x-2 mt-4">
-                <button onclick="closeCodeModal()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ยกเลิก</button>
-                <button onclick="copyCode()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition shadow-lg">COPY</button>
-                <button onclick="applyPastedCode()" class="bg-green-600 hover:bg-green-500 text-black px-4 py-2 rounded-xl text-xs font-black flex-1 shadow-[0_0_10px_#00e676] transition">PASTE & APPLY</button>
-            </div>
-        </div>
-    </div>
+    <div id="codeModal" class="fixed inset-0 hidden z-[60] modal-overlay flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-green-500 rounded-2xl p-4 w-full max-w-sm shadow-[0_0_30px_rgba(0,255,0,0.2)] flex flex-col">
+            <h3 class="text-green-400 font-bold text-sm mb-2 text-center uppercase tracking-widest">RAW CODE DATA</h3>
+            <textarea id="codeTextArea" class="w-full h-32 bg-black border border-gray-700 rounded-xl p-3 text-green-400 font-mono text-xs focus:border-green-500 focus:outline-none resize-none shadow-inner" placeholder="Paste โค้ดที่นี่ เพื่อแปลงกลับเป็นก้อนไฟ..."></textarea>
+            <div class="flex space-x-2 mt-4">
+                <button onclick="closeCodeModal()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition">ยกเลิก</button>
+                <button onclick="copyCode()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex-1 transition shadow-lg">COPY</button>
+                <button onclick="applyPastedCode()" class="bg-green-600 hover:bg-green-500 text-black px-4 py-2 rounded-xl text-xs font-black flex-1 shadow-[0_0_10px_#00e676] transition">PASTE & APPLY</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        // ==========================================
-        //  Bluetooth Queue & Throttle System (Auto-Retry)
-        // ==========================================
-        let device, characteristic;
-        let bleQueue = [];
-        let isBleWriting = false;
-        let bleThrottleTimers = {};
+    <script>
+        // ==========================================
+        //  Bluetooth Queue & Throttle System (Auto-Retry)
+        // ==========================================
+        let device, characteristic;
+        let bleQueue = [];
+        let isBleWriting = false;
+        let bleThrottleTimers = {};
 
-        // 🚀 NEW: ตัวแปรสำหรับการแจ้งเตือนไฟตก (Hysteresis & Audio)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let lastLowVoltAlertTime = 0; 
-        let isLowVoltageAlertLocked = false; 
+        // 🚀 NEW: ตัวแปรสำหรับการแจ้งเตือนไฟตก (Hysteresis & Audio)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let lastLowVoltAlertTime = 0; 
+        let isLowVoltageAlertLocked = false; 
 
-        function playAlertBeep() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            let osc1 = audioCtx.createOscillator();
-            let gain1 = audioCtx.createGain();
-            osc1.type = 'square'; 
-            osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
-            gain1.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc1.connect(gain1); gain1.connect(audioCtx.destination);
-            osc1.start(); osc1.stop(audioCtx.currentTime + 0.2);
+        function playAlertBeep() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            let osc1 = audioCtx.createOscillator();
+            let gain1 = audioCtx.createGain();
+            osc1.type = 'square'; 
+            osc1.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            gain1.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc1.connect(gain1); gain1.connect(audioCtx.destination);
+            osc1.start(); osc1.stop(audioCtx.currentTime + 0.2);
 
-            setTimeout(() => {
-                let osc2 = audioCtx.createOscillator();
-                let gain2 = audioCtx.createGain();
-                osc2.type = 'square';
-                osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
-                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
-                osc2.start(); osc2.stop(audioCtx.currentTime + 0.2);
-            }, 250);
-        }
+            setTimeout(() => {
+                let osc2 = audioCtx.createOscillator();
+                let gain2 = audioCtx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gain2.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc2.connect(gain2); gain2.connect(audioCtx.destination);
+                osc2.start(); osc2.stop(audioCtx.currentTime + 0.2);
+            }, 250);
+        }
 
-        async function processBleQueue() {
-            if (isBleWriting || bleQueue.length === 0 || !characteristic) return;
-            isBleWriting = true;
-            
-            while (bleQueue.length > 0) {
-                let item = bleQueue.shift();
-                let { cmd, type, retries, resolve, reject } = item;
-                
-                if (!characteristic || !device || !device.gatt.connected) {
-                    if(reject) reject(new Error("Disconnected"));
-                    bleQueue = []; 
-                    break;
-                }
+        async function processBleQueue() {
+            if (isBleWriting || bleQueue.length === 0 || !characteristic) return;
+            isBleWriting = true;
+            
+            while (bleQueue.length > 0) {
+                let item = bleQueue.shift();
+                let { cmd, type, retries, resolve, reject } = item;
+                
+                if (!characteristic || !device || !device.gatt.connected) {
+                    if(reject) reject(new Error("Disconnected"));
+                    bleQueue = []; 
+                    break;
+                }
 
-                try {
-                    const writePromise = type === 'withResponse' 
-                        ? characteristic.writeValue(new TextEncoder().encode(cmd))
-                        : characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd));
-                    
-                    let timeoutMs = type === 'withResponse' ? 1500 : 1000;
-                    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("BLE Timeout")), timeoutMs));
-                    
-                    await Promise.race([writePromise, timeoutPromise]);
-                    if(resolve) resolve();
-                } catch (e) {
-                    console.warn("BLE Write Error:", cmd, e);
-                    
-                    if (retries > 0) {
-                        item.retries -= 1;
-                        bleQueue.unshift(item);
-                        await new Promise(r => setTimeout(r, 100));
-                        continue; 
-                    } else {
-                        if (cmd.startsWith("SB") || cmd.startsWith("SF") || cmd.startsWith("OBG") || cmd.startsWith("OFG")) {
-                            alert("⚠️ บลูทูธไม่ตอบสนอง บันทึกข้อมูลไม่สำเร็จ กรุณากด SAVE อีกครั้งครับ");
-                        }
-                        if(reject) reject(e);
-                    }
-                }
-                
-                await new Promise(r => setTimeout(r, 20)); 
-            }
-            
-            isBleWriting = false;
-        }
+                try {
+                    const writePromise = type === 'withResponse' 
+                        ? characteristic.writeValue(new TextEncoder().encode(cmd))
+                        : characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd));
+                    
+                    let timeoutMs = type === 'withResponse' ? 1500 : 1000;
+                    const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("BLE Timeout")), timeoutMs));
+                    
+                    await Promise.race([writePromise, timeoutPromise]);
+                    if(resolve) resolve();
+                } catch (e) {
+                    console.warn("BLE Write Error:", cmd, e);
+                    
+                    if (retries > 0) {
+                        item.retries -= 1;
+                        bleQueue.unshift(item);
+                        await new Promise(r => setTimeout(r, 100));
+                        continue; 
+                    } else {
+                        if (cmd.startsWith("SB") || cmd.startsWith("SF") || cmd.startsWith("OBG") || cmd.startsWith("OFG")) {
+                            alert("⚠️ บลูทูธไม่ตอบสนอง บันทึกข้อมูลไม่สำเร็จ กรุณากด SAVE อีกครั้งครับ");
+                        }
+                        if(reject) reject(e);
+                    }
+                }
+                
+                await new Promise(r => setTimeout(r, 20)); 
+            }
+            
+            isBleWriting = false;
+        }
 
-        function safeBleWrite(cmd, type = 'withoutResponse', retries = -1) {
-            return new Promise((resolve, reject) => {
-                if (bleQueue.length > 30) bleQueue.shift(); 
-                
-                let actualRetries = retries !== -1 ? retries : (type === 'withResponse' ? 3 : 0);
-                
-                bleQueue.push({ cmd, type, retries: actualRetries, resolve, reject });
-                processBleQueue();
-            });
-        }
+        function safeBleWrite(cmd, type = 'withoutResponse', retries = -1) {
+            return new Promise((resolve, reject) => {
+                if (bleQueue.length > 30) bleQueue.shift(); 
+                
+                let actualRetries = retries !== -1 ? retries : (type === 'withResponse' ? 3 : 0);
+                
+                bleQueue.push({ cmd, type, retries: actualRetries, resolve, reject });
+                processBleQueue();
+            });
+        }
 
-        function throttledBleWrite(key, cmd, type = 'withoutResponse', delay = 50) {
-            if (bleThrottleTimers[key]) clearTimeout(bleThrottleTimers[key]);
-            bleThrottleTimers[key] = setTimeout(() => {
-                safeBleWrite(cmd, type);
-            }, delay);
-        }
+        function throttledBleWrite(key, cmd, type = 'withoutResponse', delay = 50) {
+            if (bleThrottleTimers[key]) clearTimeout(bleThrottleTimers[key]);
+            bleThrottleTimers[key] = setTimeout(() => {
+                safeBleWrite(cmd, type);
+            }, delay);
+        }
 
-        function onDisconnected() { 
-            characteristic = null; 
-            isBleWriting = false; 
-            bleQueue = []; 
-            
-            const btn = document.getElementById('connectBtn'); 
-            btn.innerText = "CONNECT"; 
-            btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
-            updatePowerBar(0); 
-            document.getElementById('powerBarText').innerText = "OFF";
-            document.getElementById('powerLabel').innerText = "POWER"; 
-        }
-        // ==========================================
-        
-        let editorBPM = 128; 
-        let editorTapTimes = []; 
-        let editorTapTimeout = null; 
+        function onDisconnected() { 
+            characteristic = null; 
+            isBleWriting = false; 
+            bleQueue = []; 
+            
+            const btn = document.getElementById('connectBtn'); 
+            btn.innerText = "CONNECT"; 
+            btn.className = "bg-blue-600 text-white text-[10px] font-black px-4 py-2 rounded-xl active:scale-95 transition"; 
+            updatePowerBar(0); 
+            document.getElementById('powerBarText').innerText = "OFF";
+            document.getElementById('powerLabel').innerText = "POWER"; 
+        }
+        // ==========================================
+        
+        let editorBPM = 128; 
+        let editorTapTimes = []; 
+        let editorTapTimeout = null; 
 
-        let stateHistory = [];
-        let stateIndex = -1;
-        let isNavigatingHistory = false;
+        let stateHistory = [];
+        let stateIndex = -1;
+        let isNavigatingHistory = false;
 
-        function updateBeatDuration() {
-            let dur = 60 / editorBPM;
-            document.documentElement.style.setProperty('--beat-duration', dur + 's');
-        }
+        function updateBeatDuration() {
+            let dur = 60 / editorBPM;
+            document.documentElement.style.setProperty('--beat-duration', dur + 's');
+        }
 
-        function setActiveScaleBtn(btn) {
-            if (!btn) return;
-            let scaleText = btn.innerText.trim();
-            
-            const activeClasses = ['bg-green-700', 'text-white', 'border-green-500', 'font-black', 'active:bg-green-600', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]', 'sync-blink'];
-            const inactiveClasses = ['bg-gray-800', 'text-green-400', 'border-gray-600', 'font-bold', 'active:bg-gray-700'];
+        function setActiveScaleBtn(btn) {
+            if (!btn) return;
+            let scaleText = btn.innerText.trim();
+            
+            const activeClasses = ['bg-green-700', 'text-white', 'border-green-500', 'font-black', 'active:bg-green-600', 'shadow-[0_0_8px_rgba(34,197,94,0.6)]', 'sync-blink'];
+            const inactiveClasses = ['bg-gray-800', 'text-green-400', 'border-gray-600', 'font-bold', 'active:bg-gray-700'];
 
-            document.querySelectorAll('button[onclick*="setActiveScaleBtn"]').forEach(el => {
-                if (el.innerText.trim() === scaleText) {
-                    el.classList.remove(...inactiveClasses);
-                    el.classList.add(...activeClasses);
-                } else {
-                    el.classList.remove(...activeClasses);
-                    el.classList.add(...inactiveClasses);
-                }
-            });
-        }
+            document.querySelectorAll('button[onclick*="setActiveScaleBtn"]').forEach(el => {
+                if (el.innerText.trim() === scaleText) {
+                    el.classList.remove(...inactiveClasses);
+                    el.classList.add(...activeClasses);
+                } else {
+                    el.classList.remove(...activeClasses);
+                    el.classList.add(...inactiveClasses);
+                }
+            });
+        }
 
-        function clearActiveScaleBtns() {
-            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
-        }
+        function clearActiveScaleBtns() {
+            document.querySelectorAll('.sync-blink').forEach(el => el.classList.remove('sync-blink'));
+        }
 
-        function saveState() {
-            if (isNavigatingHistory) return;
-            stateHistory = stateHistory.slice(0, stateIndex + 1);
-            stateHistory.push(JSON.stringify(clips));
-            stateIndex = stateHistory.length - 1;
-        }
+        function saveState() {
+            if (isNavigatingHistory) return;
+            stateHistory = stateHistory.slice(0, stateIndex + 1);
+            stateHistory.push(JSON.stringify(clips));
+            stateIndex = stateHistory.length - 1;
+        }
 
-        function undoState() {
-            if (stateIndex > 0) {
-                stateIndex--;
-                isNavigatingHistory = true;
-                clips = JSON.parse(stateHistory[stateIndex]);
-                renderClips();
-                updateSelectedClipUI();
-                isNavigatingHistory = false;
-            }
-        }
+        function undoState() {
+            if (stateIndex > 0) {
+                stateIndex--;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
 
-        function redoState() {
-            if (stateIndex < stateHistory.length - 1) {
-                stateIndex++;
-                isNavigatingHistory = true;
-                clips = JSON.parse(stateHistory[stateIndex]);
-                renderClips();
-                updateSelectedClipUI();
-                isNavigatingHistory = false;
-            }
-        }
+        function redoState() {
+            if (stateIndex < stateHistory.length - 1) {
+                stateIndex++;
+                isNavigatingHistory = true;
+                clips = JSON.parse(stateHistory[stateIndex]);
+                renderClips();
+                updateSelectedClipUI();
+                isNavigatingHistory = false;
+            }
+        }
 
-        function updateSelectedClipUI() {
-            if(selectedClipId) {
-                const c = clips.find(x => x.id === selectedClipId);
-                if(c) {
-                    document.getElementById('cBright').value = c.bright; 
-                    document.getElementById('cFX').value = c.fx;
-                    updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
-                } else {
-                    selectedClipId = null; 
-                    document.getElementById('editorPanel').style.opacity = "0.3";
-                    document.getElementById('editorPanel').style.pointerEvents = "none";
-                }
-            }
-        }
+        function updateSelectedClipUI() {
+            if(selectedClipId) {
+                const c = clips.find(x => x.id === selectedClipId);
+                if(c) {
+                    document.getElementById('cBright').value = c.bright; 
+                    document.getElementById('cFX').value = c.fx;
+                    updateMirrorUI(c.mirror); renderLEDGrid(); renderColorBuilderSlots();
+                } else {
+                    selectedClipId = null; 
+                    document.getElementById('editorPanel').style.opacity = "0.3";
+                    document.getElementById('editorPanel').style.pointerEvents = "none";
+                }
+            }
+        }
 
-        // 🟢 พี่เจแก้ไข 1: ประกาศตัวแปร rawClips ให้จำค่าทศนิยมละเอียด
-        let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "", rawClips: null }));
-        let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "", rawClips: null }));
-        
-        let clips = []; 
-        let activeLayer = 'BG'; 
-        let activeIdxBG = -1;
-        let activeIdxFG = -1;
-        
-        let selectedClipId = null; let selectedIdx = -1;
-        let playheadTime = 0; let isPlaying = false;
-        let playInterval, startAnimateTime;
-        let currentLoopLimit = 1.0; let pxPerSec = 100;
-        let isFollowingPlayhead = false;
-        
-        let sortableBG = null;
-        let sortableFG = null;
-        let isDraggingPad = false;
+        let bgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        let fgPatterns = Array.from({length: 60}, (_, i) => ({ id: i, code: "" }));
+        
+        let clips = []; 
+        let activeLayer = 'BG'; 
+        let activeIdxBG = -1;
+        let activeIdxFG = -1;
+        
+        let selectedClipId = null; let selectedIdx = -1;
+        let playheadTime = 0; let isPlaying = false;
+        let playInterval, startAnimateTime;
+        let currentLoopLimit = 1.0; let pxPerSec = 100;
+        let isFollowingPlayhead = false;
+        
+        let sortableBG = null;
+        let sortableFG = null;
+        let isDraggingPad = false;
 
-        let activeColorIndex = -1;const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
+        let currentPowerPercent = 0;
+        let currentRawPower = 0;
+        let activeColorIndex = -1; 
+
+        const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
         const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
 
         function remoteEditAction(actionCallback) {
@@ -599,34 +602,27 @@
             selectedIdx = activeIdxBG;
             clips = [];
             
-            // 🟢 พี่เจแก้ไข 2: เช็กว่ามี rawClips หรือเปล่า
-            if (bgPatterns[activeIdxBG].rawClips && bgPatterns[activeIdxBG].rawClips.length > 0) {
-                clips = JSON.parse(JSON.stringify(bgPatterns[activeIdxBG].rawClips));
-            } else {
-                let rawCode = bgPatterns[activeIdxBG].code || "";
-                let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-                if (brackets) {
-                    brackets.forEach((bracket, i) => {
-                        let m = bracket.startsWith('m');
-                        let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                        if(content.length >= 4) {
-                            clips.push({ 
-                                id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
-                                target: content[1], color: content[2], fx: content[3].charAt(0), 
-                                duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
-                                loop: 1, mirror: m, track: i % 8 
-                            });
-                        }
-                    });
-                }
+            let rawCode = bgPatterns[activeIdxBG].code || "";
+            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
+            if (brackets) {
+                brackets.forEach((bracket, i) => {
+                    let m = bracket.startsWith('m');
+                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
+                    if(content.length >= 4) {
+                        clips.push({ 
+                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
+                            target: content[1], color: content[2], fx: content[3].charAt(0), 
+                            duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
+                            loop: 1, mirror: m, track: i % 8 
+                        });
+                    }
+                });
             }
             
             actionCallback();
             
             let newCode = generateCodeStr();
             bgPatterns[activeIdxBG].code = newCode;
-            // 🟢 พี่เจแก้ไข 3: จำ rawClips กลับเข้าไปด้วย
-            bgPatterns[activeIdxBG].rawClips = JSON.parse(JSON.stringify(clips));
             updatePadsVisuals('BG');
             
             if(characteristic) {
@@ -851,7 +847,7 @@
             updateLoopLine();
             fitToScreen();
             closeCodeModal();
-            handleBack(); 
+            handleBack(); // เซฟและกลับ
             alert("แปลงโค้ดกลับเป็นลายไฟสำเร็จ!");
         }
 
@@ -877,6 +873,10 @@
         function resetSpeed(layer) {
             let slider = document.getElementById(layer === 'BG' ? 'liveSpeedSlider' : 'fgSpeedSlider');
             if(slider) { slider.value = 1.0; updateSpeed(1.0, layer); }
+        }
+        function resetBright(layer) {
+            let slider = document.getElementById(layer === 'BG' ? 'bgBrightSlider' : 'fgBrightSlider');
+            if(slider) { slider.value = 0.30; updateBright(0.30, layer); }
         }
 
         function loadPatternOrder() {
@@ -918,8 +918,9 @@
             }
         }
 
-        // 🧹 พี่เจจัดการลบตัวแปรขยะ currentPowerPercent และ currentRawPower ออกจากฟังก์ชันนี้แล้วครับ
         function updatePowerBar(percent, raw = 0) {
+            currentPowerPercent = percent;
+            currentRawPower = raw;
             const fill = document.getElementById('powerBarFill');
             const text = document.getElementById('powerBarText');
             const label = document.getElementById('powerLabel');
@@ -999,11 +1000,10 @@
                     }
                     else if (val.startsWith("DB")) {
                         let p = val.substring(2).split(":");
-                        // 🟢 พี่เจแก้ไข 4: ตอนรับค่าใหม่จากบอร์ด ให้เคลียร์ rawClips เดิมทิ้งด้วย จะได้ไม่อ่านค่าเก่า
-                        if(p.length >= 3) { bgPatterns[parseInt(p[0])].code = p[2] || ""; bgPatterns[parseInt(p[0])].rawClips = null; updatePadsVisuals('BG'); }
+                        if(p.length >= 3) { bgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('BG'); }
                     } else if (val.startsWith("DF")) {
                         let p = val.substring(2).split(":");
-                        if(p.length >= 3) { fgPatterns[parseInt(p[0])].code = p[2] || ""; fgPatterns[parseInt(p[0])].rawClips = null; updatePadsVisuals('FG'); }
+                        if(p.length >= 3) { fgPatterns[parseInt(p[0])].code = p[2] || ""; updatePadsVisuals('FG'); }
                     } else if (val.startsWith("OBG:")) {
                         let orderStr = val.substring(4);
                         if(orderStr) {
@@ -1211,7 +1211,7 @@
             saveState(); 
         }
 
-        // 🧹 พี่เจย้าย interact('#timelineViewport') ออกไปไว้ข้างนอกแล้วนะครับ
+        // 🚀 แก้ไข: เพิ่มการหน่วงเวลา 50ms เพื่อให้กราฟิกตื่นขึ้นมาดูดเส้นกริดทันทีเมื่อคลิกเข้าหน้า Edit
         function openPopup(idx, layer) {
             clearActiveScaleBtns(); 
             window.location.hash = 'edit'; 
@@ -1223,28 +1223,21 @@
             editorTapTimes = [];
 
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
-            
-            // 🟢 พี่เจแก้ไข 5: เช็กก่อนว่ามีข้อมูลแบบละเอียดใน rawClips ไหม ถ้ามีใช้ตัวนี้เลย
-            if (patterns[idx].rawClips && patterns[idx].rawClips.length > 0) {
-                clips = JSON.parse(JSON.stringify(patterns[idx].rawClips));
-            } else {
-                // ถ้ายังไม่มี (กรณีเพิ่งเปิดแอป หรือเพิ่งก๊อปโค้ดมาวาง) ค่อยมาแปลงจาก string ธรรมดา
-                let rawCode = patterns[idx].code || "";
-                let brackets = rawCode.match(/m?\(([^)]+)\)/g);
-                if (brackets) {
-                    brackets.forEach((bracket, i) => {
-                        let m = bracket.startsWith('m');
-                        let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
-                        if(content.length >= 4) {
-                            clips.push({ 
-                                id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
-                                target: content[1], color: content[2], fx: content[3].charAt(0), 
-                                duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
-                                loop: 1, mirror: m, track: i % 8 
-                            });
-                        }
-                    });
-                }
+            let rawCode = patterns[idx].code || "";
+            let brackets = rawCode.match(/m?\(([^)]+)\)/g);
+            if (brackets) {
+                brackets.forEach((bracket, i) => {
+                    let m = bracket.startsWith('m');
+                    let content = bracket.replace('m','').replace('(','').replace(')','').split(',');
+                    if(content.length >= 4) {
+                        clips.push({ 
+                            id: Date.now() + i, start: parseInt(content[0].substring(0,2))/10, bright: parseInt(content[0].substring(2,4)), 
+                            target: content[1], color: content[2], fx: content[3].charAt(0), 
+                            duration: Math.max(0.1, parseInt(content[3].substring(1,3))/10), 
+                            loop: 1, mirror: m, track: i % 8 
+                        });
+                    }
+                });
             }
             
             setTimeout(() => {
@@ -1265,6 +1258,18 @@
                 
                 stateHistory = []; stateIndex = -1; saveState(); 
             }, 50);
+            
+            let initialPxPerSec = pxPerSec;
+            interact('#timelineViewport').gesturable({
+                listeners: {
+                    start(event) { initialPxPerSec = pxPerSec; },
+                    move(event) {
+                        let newPx = initialPxPerSec * event.scale;
+                        newPx = Math.max(20, Math.min(300, newPx));
+                        updateZoom(newPx);
+                    }
+                }
+            });
         }
 
         function handleBack() {
@@ -1275,10 +1280,6 @@
             
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
-            
-            // 🟢 พี่เจแก้ไข 6: ก่อนออกให้จำค่า clips ที่มีทศนิยมละเอียดลงไปใน rawClips กลับด้วย
-            patterns[selectedIdx].rawClips = JSON.parse(JSON.stringify(clips));
-            
             let prefix = (activeLayer === 'BG') ? 'SB' : 'SF';
             let playPrefix = (activeLayer === 'BG') ? '5' : 'FG:5';
 
@@ -1631,8 +1632,7 @@
             if (ll) { ll.style.left = (currentLoopLimit * pxPerSec) + 'px'; ll.style.display = clips.length > 0 ? 'block' : 'none'; } 
         }
         
-        // 🧹 พี่เจเปลี่ยนชื่อฟังก์ชันให้ตรงกับความจริง ไม่ให้สับสนครับ
-        function addClipAtBestGap() { 
+        function addClipAtPlayhead() { 
             const id = Date.now(); 
             let beatTime = 60 / editorBPM; 
             
@@ -1848,22 +1848,10 @@
                         }
                     }
                 });
-
-                // 🟢 พี่เจแก้ไข 4: ย้ายตัวจัดการซูมมารันแค่ตอนโหลดหน้าเว็บครั้งเดียว RAM จะได้ไม่ไหล
-                let initialPxPerSec = pxPerSec;
-                interact('#timelineViewport').gesturable({
-                    listeners: {
-                        start(event) { initialPxPerSec = pxPerSec; },
-                        move(event) {
-                            let newPx = initialPxPerSec * event.scale;
-                            newPx = Math.max(20, Math.min(300, newPx));
-                            updateZoom(newPx);
-                        }
-                    }
-                });
-
             } catch (err) { alert("เกิดข้อผิดพลาด: " + err.message); }
         };
     </script>
 </body>
 </html>
+
+
