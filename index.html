@@ -219,12 +219,11 @@
                     <input type="range" id="bgBrightSlider" min="0" max="0.30" step="0.01" value="0.30" class="flex-1 accent-yellow-500 h-1.5 bg-gray-700 rounded-lg appearance-none" oninput="updateBright(this.value, 'BG')">
                 </div>
 
-                <span id="liveBpmDisplay" class="text-[20px] text-white font-black px-2 py-1.5 ...">128</span>
+              <span id="liveBpmDisplay" class="text-[20px] text-white font-black px-2 py-1.5 rounded-lg border border-gray-700 bg-gray-800 cursor-pointer shrink-0 text-center">128</span>
                 
                 <button id="bgTapBtn" onpointerdown="remoteTapTempo(event)" class="bg-orange-600 hover:bg-orange-500 text-white px-5 py-3 rounded-xl text-[14px] font-black shadow-[0_0_15px_rgba(234,88,12,0.6)] active:scale-95 transition flex items-center justify-center shrink-0">
-    TAP
-</button>
-            </div>
+                    TAP
+                </button>
 
             <div class="pad-container mt-1">
                 <div id="padGridBG" class="grid-style"></div>
