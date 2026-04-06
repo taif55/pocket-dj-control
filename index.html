@@ -1206,8 +1206,24 @@
 
                 if(!characteristic || !patterns[idx].code) return;
                 
+                // ✅ นำโค้ดส่วนนี้ไปวางแทนที่
+            const parentBlock = document.querySelector('.layer-bg');
+            const activeScaleBtn = parentBlock.querySelector('button.bg-green-700');
+            
+            if (activeScaleBtn) {
+                // ถ้ามีปุ่ม Scale (Room) กระพริบทำงานอยู่ ให้จำลองการกดปุ่มเพื่อคำนวณความเร็วอัตโนมัติ
+                let scaleText = activeScaleBtn.innerText.trim();
+                let beats = 1;
+                if (scaleText === '1/2') beats = 0.5;
+                else if (scaleText === '1/4') beats = 0.25;
+                else beats = parseFloat(scaleText);
+                
+                remoteEditAction(() => setRoomScale(beats));
+            } else {
+                // ถ้าไม่ได้เลือกปุ่ม Scale ไว้ ให้รันข้อมูลดิบสปีดเดิม
                 safeBleWrite("T1.00");
                 safeBleWrite("5" + patterns[idx].code);
+            }
             } else {
                 activeIdxFG = idx;
                 localStorage.setItem('lastActiveFG', idx); 
