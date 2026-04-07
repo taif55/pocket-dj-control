@@ -1878,7 +1878,7 @@ code += `${m}(${s}${b},${compressLEDs(c.target || 'a')},${c.color},${c.fx}${d}00
                 let f = 1.0;
                 if (c.fx === 'u') f = p;
                 else if (c.fx === 'f') f = 1.0 - p;
-                else if (c.fx === 'w') f = 0.3 + (0.7 * Math.sin(Math.PI * p));
+                else if (c.fx === 'w') f = 0.1 + (0.9 * Math.sin(Math.PI * p));
                 else if (c.fx === 'p') f = Math.pow(Math.sin(Math.PI * p), 4);
                 else if (c.fx === 'd') f = Math.pow(1.0 - p, 4);
                 else if (c.fx === 'z') f = 1.0 - ((p * 4.0) % 1.0);
