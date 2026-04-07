@@ -342,7 +342,7 @@
                     <span class="text-[8px] text-gray-500 font-bold uppercase">FX</span>
                     <select id="cFX" class="bg-transparent text-[9px] font-black text-green-400 uppercase outline-none text-right flex-1 ml-1" onchange="updateSelectedClip()">
                         <option value="o">STATIC</option><option value="u">FADE UP</option><option value="f">FADE OUT</option><option value="s">STROBE</option><option value="b">BLINK</option>
-                        <option value="w">WAVE</option><option value="r">RANDOM</option><option value="p">PULSE</option><option value="d">DROP</option><option value="z">ZIGZAG</option><option value="h">H-STROBE</option>
+                        <option value="w">WAVE</option><option value="r">RANDOM</option><option value="p">PULSE</option><option value="d">DROP</option><option value="z">ZIGZAG</option><option value="h">H-STROBE</option><option value="v">MT. FUJI</option>
                     </select>
                 </div>
             </div>
@@ -634,7 +634,7 @@
         }
 
         const colorMap = { 'bl': '#0000FF', 're': '#FF0000', 'gr': '#00FF00', 'ye': '#FFFF00', 'wh': '#FFFFFF', 'pu': '#8000FF', 'aq': '#00FFFF', 'or': '#FF8000', 'pk': '#FF00FF', 'cy': '#00FFFF' };
-        const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE' };
+        const fxNames = { o: 'STATIC', u: 'FADE UP', f: 'FADE OUT', s: 'STROBE', b: 'BLINK', w: 'WAVE', r: 'RANDOM', p: 'PULSE', d: 'DROP', z: 'ZIGZAG', h: 'H-STROBE', v: 'MT. FUJI' };
 
         function remoteEditAction(actionCallback) {
             if (activeIdxBG === -1) return; 
@@ -1883,6 +1883,8 @@ code += `${m}(${s}${b},${compressLEDs(c.target || 'a')},${c.color},${c.fx}${d}00
                 else if (c.fx === 'p') f = Math.pow(Math.sin(Math.PI * p), 4);
                 else if (c.fx === 'd') f = Math.pow(1.0 - p, 4);
                 else if (c.fx === 'z') f = 1.0 - ((p * 4.0) % 1.0);
+                // 🟢 แทรกบรรทัดนี้ต่อท้ายลงไปครับ:
+                else if (c.fx === 'v') f = Math.sin(Math.PI * p);
                 let br = Math.max(0, Math.min(99, Math.round(c.bright * f)));
                 let bStr = br.toString().padStart(2, '0');
                 let m = c.mirror ? 'm' : '';
