@@ -1265,11 +1265,11 @@
             const activeScale = parentBlock.querySelector('button.bg-green-700');
             if (activeScale) setActiveScaleBtn(activeScale); 
 
-            if(isPlaying) {
+           if(isPlaying) {
                 isPlaying = false; 
                 cancelAnimationFrame(playInterval);
                 const btn = document.getElementById('playBtn'); 
-                if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+                if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-green-600'); } 
             }
             
             let patterns = (layer === 'BG') ? bgPatterns : fgPatterns;
@@ -1403,11 +1403,11 @@
             }, 50);
         }
 
-        function handleBack() {
+       function handleBack() {
             isPlaying = false;
             cancelAnimationFrame(playInterval);
             const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-green-600'); } 
             
             let patterns = (activeLayer === 'BG') ? bgPatterns : fgPatterns;
             patterns[selectedIdx].code = generateCodeStr();
@@ -1434,14 +1434,13 @@
             isPlaying = false;
             cancelAnimationFrame(playInterval);
             const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-green-600'); } 
             
             document.getElementById('modal').classList.add('hidden');
             if (window.location.hash === '#edit') {
                 history.replaceState(null, null, window.location.pathname);
             }
         }
-
         function fitToScreen() {
             const vp = document.getElementById('timelineViewport');
             if(currentLoopLimit > 0 && vp.clientWidth > 0) {
@@ -1843,9 +1842,11 @@ code += `${m}(${s}${b},${compressLEDs(c.target || 'a')},${c.color},${c.fx}${d}00
         function togglePlay() { 
             const btn = document.getElementById('playBtn'); 
             if (!isPlaying) { 
-                isPlaying = true; btn.innerText = "STOP"; btn.classList.replace('bg-red-600', 'bg-blue-600'); 
+                isPlaying = true; 
+                // เปลี่ยนปุ่มเป็นสีแดงและเขียนว่า STOP เวลาที่มันกำลังวิ่ง
+                if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-green-600', 'bg-red-600'); } 
                 sendFullCodeToBT(); 
-                startAnimateTime = performance.now() - (playheadTime * 1000); 
+                startAnimateTime = null; // 🟢 ปล่อยให้เวลาไปเซ็ตตัวในเฟรมแรก ป้องกันอาการค้าง 100%
                 playInterval = requestAnimationFrame(animatePlayhead); 
             } else { stopPlayback(); } 
         }
@@ -1853,7 +1854,8 @@ code += `${m}(${s}${b},${compressLEDs(c.target || 'a')},${c.color},${c.fx}${d}00
         function stopPlayback() { 
             isPlaying = false; 
             const btn = document.getElementById('playBtn'); 
-            if (btn) { btn.innerText = "STOP"; btn.classList.replace('bg-blue-600', 'bg-red-600'); } 
+            // เปลี่ยนปุ่มกลับเป็นสีเขียวและเขียนว่า PLAY เวลาหยุด
+            if (btn) { btn.innerText = "PLAY"; btn.classList.replace('bg-red-600', 'bg-green-600'); } 
             cancelAnimationFrame(playInterval); 
             const vp = document.getElementById('timelineViewport');
             vp.dataset.ignoreScroll = "true";
@@ -1866,6 +1868,12 @@ code += `${m}(${s}${b},${compressLEDs(c.target || 'a')},${c.color},${c.fx}${d}00
         
         function animatePlayhead(currentTime) { 
             if (!isPlaying) return; 
+            
+            // 🟢 ซิงค์เวลากับเบราว์เซอร์ให้แม่นยำในเฟรมแรก รับรองตัวกวาดออกตัวลื่นปื๊ด
+            if (startAnimateTime === null) {
+                startAnimateTime = currentTime - (playheadTime * 1000);
+            }
+
             let elapsed = (currentTime - startAnimateTime) / 1000; 
             if (elapsed >= currentLoopLimit) { startAnimateTime = currentTime; elapsed = 0; sendFullCodeToBT(); } 
             playheadTime = elapsed; 
