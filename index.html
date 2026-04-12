@@ -372,6 +372,23 @@
     </div>
 
     <script>
+        <div id="disconnectModal" class="fixed inset-0 hidden z-[70] modal-overlay flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-900 border-2 border-red-600 rounded-3xl p-6 w-full max-w-sm shadow-[0_0_40px_rgba(220,38,38,0.4)] flex flex-col items-center text-center transform transition-all">
+            <div class="text-red-500 text-5xl mb-3 animate-bounce">⚠️</div>
+            <h3 class="text-red-500 font-black text-xl mb-1 uppercase tracking-widest">การเชื่อมต่อขาดหาย</h3>
+            <p class="text-gray-400 text-xs mb-6">บลูทูธหลุด เดินห่างเกินไป หรือกล่องไฟปิดเครื่อง</p>
+            
+            <div class="flex flex-col space-y-3 w-full">
+                <button onclick="reconnectSameDevice()" class="bg-green-600 hover:bg-green-500 text-black px-4 py-3 rounded-xl text-sm font-black shadow-[0_0_15px_#00e676] active:scale-95 transition flex items-center justify-center">
+                    <span class="mr-2">🔄</span> เชื่อมต่อบอร์ดเดิมทันที
+                </button>
+                <button onclick="connectNewDevice()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl text-sm font-bold shadow-lg active:scale-95 transition flex items-center justify-center">
+                    <span class="mr-2">🔍</span> ค้นหาบอร์ดใหม่
+                </button>
+            </div>
+            <button onclick="closeDisconnectModal()" class="text-gray-500 underline text-[10px] mt-5 active:text-gray-300">ปิดหน้าต่าง (ใช้งานแบบออฟไลน์)</button>
+        </div>
+    </div>
         // ==========================================
         //  Bluetooth Queue & Throttle System (Auto-Retry)
         // ==========================================
@@ -467,14 +484,7 @@
             });
         }
 
-        function throttledBleWrite(key, cmd, type = 'withoutResponse', delay = 50) {
-            if (bleThrottleTimers[key]) clearTimeout(bleThrottleTimers[key]);
-            bleThrottleTimers[key] = setTimeout(() => {
-                safeBleWrite(cmd, type);
-            }, delay);
-        }
-
-        function onDisconnected() { 
+       function onDisconnected() { 
             characteristic = null; 
             isBleWriting = false; 
             bleQueue = []; 
@@ -485,6 +495,24 @@
             updatePowerBar(0); 
             document.getElementById('powerBarText').innerText = "OFF";
             document.getElementById('powerLabel').innerText = "POWER"; 
+
+            // เด้ง Popup แจ้งเตือนทันทีที่หลุด
+            document.getElementById('disconnectModal').classList.remove('hidden');
+        }
+
+        // ฟังก์ชันควบคุมปุ่มใน Popup
+        function closeDisconnectModal() { document.getElementById('disconnectModal').classList.add('hidden'); }
+        
+        function reconnectSameDevice() {
+            closeDisconnectModal();
+            if (!device) { connectNewDevice(); return; }
+            document.getElementById('connectBtn').onclick(null, true);
+        }
+        
+        function connectNewDevice() {
+            closeDisconnectModal();
+            device = null; 
+            document.getElementById('connectBtn').onclick(null, false);
         }
         // ==========================================
         
