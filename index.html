@@ -802,7 +802,7 @@
         function restartPlayhead() {
             if(isPlaying) {
                 playheadTime = 0;
-                startAnimateTime = performance.now();
+                startAnimateTime = null; // 🟢 สั่งให้รีเซ็ตเวลาใหม่เสมอ
                 sendFullCodeToBT(); 
             } else {
                 playheadTime = 0;
@@ -1392,12 +1392,12 @@
                 updateLoopLine();
                 fitToScreen(); 
                 
-                if(!isPlaying) {
+                if (!isPlaying) {
+                    togglePlay(); // 🟢 สั่งให้วิ่งอัตโนมัติ 100% ตอนเปิดหน้า Edit
+                } else {
+                    // ถ้ามันวิ่งอยู่แล้ว ให้แค่จัด playhead ให้ตรง
                     document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                    scrubLiveFrame(); 
                 }
-                
-                if (!isPlaying) togglePlay(); 
                 
                 stateHistory = []; stateIndex = -1; saveState(); 
             }, 50);
