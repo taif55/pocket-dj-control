@@ -262,7 +262,7 @@
         <div class="flex justify-between items-center p-2 bg-gray-900 border-b border-gray-800 flex-none">
             <button onclick="handleBack()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold text-[10px] uppercase px-3 py-2 rounded-lg transition shadow-md">🔙</button>
             <div class="flex space-x-1">
-                <button id="playBtn" onclick="togglePlay()" class="bg-red-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">STOP</button>
+               <button id="playBtn" onclick="togglePlay()" class="bg-green-600 text-white px-3 py-2 rounded-lg text-[10px] font-black shadow-lg w-12">PLAY</button>
                 <button onclick="addClipAtBestGap()" class="bg-green-600 text-black px-3 py-2 rounded-lg text-[10px] font-black">+ CLIP</button>
                 <button onclick="deleteSelectedClip()" class="bg-red-900 text-white px-2 py-2 rounded-lg text-[10px] font-black">DEL</button>
             </div>
@@ -1392,15 +1392,17 @@
                 updateLoopLine();
                 fitToScreen(); 
                 
-                if (!isPlaying) {
-                    togglePlay(); // 🟢 สั่งให้วิ่งอัตโนมัติ 100% ตอนเปิดหน้า Edit
-                } else {
-                    // ถ้ามันวิ่งอยู่แล้ว ให้แค่จัด playhead ให้ตรง
-                    document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
-                }
+                // 🟢 ให้เบราว์เซอร์เตรียมหน้าจอให้เสร็จก่อน 100% แล้วค่อยสั่งวิ่ง
+                requestAnimationFrame(() => {
+                    if (!isPlaying) {
+                        togglePlay(); 
+                    } else {
+                        document.getElementById('playhead').style.left = (playheadTime * pxPerSec) + 'px';
+                    }
+                });
                 
                 stateHistory = []; stateIndex = -1; saveState(); 
-            }, 50);
+            }, 250); // 🟢 เปลี่ยนจาก 50 เป็น 250 มิลลิวินาที ป้องกันอาการช็อก
         }
 
        function handleBack() {
