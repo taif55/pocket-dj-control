@@ -429,6 +429,7 @@
                         : characteristic.writeValueWithoutResponse(new TextEncoder().encode(cmd));
                     
                     let timeoutMs = type === 'withResponse' ? 1500 : 1000;
+                    if (cmd === "GET_ALL") timeoutMs = 8000; 
                     const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error("BLE Timeout")), timeoutMs));
                     
                     await Promise.race([writePromise, timeoutPromise]);
